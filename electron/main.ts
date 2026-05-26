@@ -91,6 +91,21 @@ app.whenReady().then(createWindow)
 app.on('web-contents-created', (_e, contents) => {
   if (contents.getType() !== 'webview') return
 
+  contents.session.webRequest.onHeadersReceived(
+    { urls: ['*://*/*'], types: ['mainFrame'] },
+    (details, callback) => {
+      const headers: Record<string, string[]> = {}
+      for (const [key, value] of Object.entries(details.responseHeaders ?? {})) {
+        const lk = key.toLowerCase()
+        if (lk !== 'content-security-policy' &&
+            lk !== 'content-security-policy-report-only') {
+          headers[key] = value
+        }
+      }
+      callback({ responseHeaders: headers })
+    }
+  )
+
   contents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('http://') || url.startsWith('https://')) {
       const sourceUrl = contents.getURL()
@@ -99,6 +114,7 @@ app.on('web-contents-created', (_e, contents) => {
       else if (sourceUrl.includes('liblib.tv')) siteId = 'liblib'
       else if (sourceUrl.includes('tapnow.ai')) siteId = 'tapnow'
       else if (sourceUrl.includes('chatgpt.com')) siteId = 'chatgpt'
+      else if (sourceUrl.includes('github.com')) siteId = 'github'
       else if (sourceUrl.includes('gemini.google.com')) siteId = 'gemini'
       else if (sourceUrl.includes('bigmodel.cn')) siteId = 'bigmodel'
       else if (sourceUrl.includes('kimi.com')) siteId = 'kimi'

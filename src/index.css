@@ -639,6 +639,17 @@ textarea.input-base {
 .tab-refresh:hover { color: var(--text-primary); background: rgba(255,255,255,0.04); }
 .tab-refresh-label { white-space: nowrap; }
 
+.tab-translate {
+  height: 28px; padding: 0 8px;
+  display: flex; align-items: center; gap: 4px;
+  cursor: pointer; color: var(--text-muted);
+  flex-shrink: 0;
+  font-size: 11px;
+}
+.tab-translate:hover { color: var(--text-primary); background: rgba(255,255,255,0.04); }
+.tab-translate.active { color: var(--accent); background: rgba(99,102,241,0.1); }
+.tab-translate.active:hover { color: var(--accent-hover); background: rgba(99,102,241,0.16); }
+
 .nav-btns {
   display: flex; align-items: center; flex-shrink: 0;
   padding: 0 2px; border-right: 1px solid var(--border-color);
@@ -659,6 +670,8 @@ textarea.input-base {
 }
 .theme-light .tab-close:hover { background: rgba(0,0,0,0.1); }
 .theme-light .tab-refresh:hover { background: rgba(0,0,0,0.04); }
+.theme-light .tab-translate:hover { background: rgba(0,0,0,0.04); }
+.theme-light .tab-translate.active:hover { background: rgba(99,102,241,0.1); }
 .theme-light .nav-btn:hover { background: rgba(0,0,0,0.04); }
 
 .accounts-page { padding: 20px; }

@@ -19,6 +19,7 @@ const navItems: NavItem[] = [
   { type: 'website', id: 'runninghub', label: 'RunningHub', url: 'https://www.runninghub.cn', icon: 'globe' },
   { type: 'website', id: 'tapnow', label: 'TapNow', url: 'https://app.tapnow.ai', icon: 'globe' },
   { type: 'website', id: 'chatgpt', label: 'ChatGPT', url: 'https://chatgpt.com', icon: 'globe' },
+  { type: 'website', id: 'github', label: 'GitHub', url: 'https://github.com', icon: 'globe' },
   { type: 'website', id: 'gemini', label: 'Gemini', url: 'https://gemini.google.com', icon: 'globe' },
   { type: 'tool', id: 'txt2img', label: '文生图', icon: 'tool' },
   { type: 'tool', id: 'img2img', label: '图生图', icon: 'tool' },

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { RefreshCw, ArrowLeft, ArrowRight } from 'lucide-react'
+import { RefreshCw, ArrowLeft, ArrowRight, Languages } from 'lucide-react'
 import type { NavItem } from '../types'
 
 interface Tab {
@@ -26,6 +26,7 @@ export default function WebViewPage({ site, visible }: WebViewPageProps) {
     { id: 'init', url: site.url, title: site.label },
   ])
   const [activeId, setActiveId] = useState('init')
+  const [translatedTabs, setTranslatedTabs] = useState<Set<string>>(new Set())
   const webviewMap = useRef<Map<string, WebviewElement>>(new Map())
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -121,6 +122,65 @@ export default function WebViewPage({ site, visible }: WebViewPageProps) {
     if (wv) (wv as any).goForward?.()
   }
 
+  const handleTranslate = () => {
+    const wv = webviewMap.current.get(activeId)
+    if (!wv) return
+    const isTranslated = translatedTabs.has(activeId)
+    if (isTranslated) {
+      (wv as any).reload?.()
+      setTranslatedTabs(prev => {
+        const next = new Set(prev)
+        next.delete(activeId)
+        return next
+      })
+    } else {
+      ;(wv as any).executeJavaScript(`
+        (function(){
+          try {
+            var css = 
+              'iframe[src*="translate.google.com"], ' +
+              'iframe[src*="translate.googleapis.com"], ' +
+              '.goog-te-banner-frame, .skiptranslate, ' +
+              '.goog-te-spinner-pos, .goog-te-gadget-icon, ' +
+              '.goog-tooltip, .goog-text-highlight, ' +
+              '.goog-te-balloon-frame, .goog-te-menu-frame, ' +
+              '#google_translate_element ' +
+              '{ display:none!important; height:0!important; width:0!important; min-height:0!important; border:none!important; } ' +
+              'body { top:0!important; position:static!important; } ' +
+              '.goog-te-gadget { font-size:0!important; color:transparent!important; }';
+            var st = document.createElement('style');
+            st.id = '__tr_hide__';
+            st.textContent = css;
+            document.head.appendChild(st);
+            document.cookie = 'googtrans=/auto/zh-CN;path=/';
+            var d = document.createElement('div');
+            d.id = 'google_translate_element';
+            d.style.cssText = 'display:none!important;';
+            document.body.appendChild(d);
+            window.googleTranslateElementInit = function() {
+              new google.translate.TranslateElement({pageLanguage:'auto',autoDisplay:false},'google_translate_element');
+            };
+            var s = document.createElement('script');
+            s.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+            document.head.appendChild(s);
+            function cleanup() {
+              document.querySelectorAll('iframe').forEach(function(f) {
+                if (f.src && (f.src.includes('translate.google.com') || f.src.includes('translate.googleapis.com'))) {
+                  f.remove();
+                }
+              });
+              document.body.style.top = '0';
+            }
+            setTimeout(cleanup, 1500);
+            setTimeout(cleanup, 3000);
+            setTimeout(cleanup, 8000);
+          } catch(e) {}
+        })();
+      `)
+      setTranslatedTabs(prev => new Set([...prev, activeId]))
+    }
+  }
+
   return (
     <div style={{ display: visible ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
       <div className="tab-bar">
@@ -145,6 +205,14 @@ export default function WebViewPage({ site, visible }: WebViewPageProps) {
               )}
             </div>
           ))}
+        </div>
+        <div
+          onClick={handleTranslate}
+          className={'tab-translate' + (translatedTabs.has(activeId) ? ' active' : '')}
+          title={translatedTabs.has(activeId) ? '取消翻译' : '翻译为中文'}
+        >
+          <Languages size={13} />
+          <span className="tab-refresh-label">翻译</span>
         </div>
         <div
           onClick={handleRefresh}
