@@ -1,4 +1,4 @@
-import { Globe, Brush, Settings, Clock, Sun, Moon, ChevronLeft, ChevronRight, Wrench, Grid3X3, Layers, CreditCard, Wifi, User } from 'lucide-react'
+import { Globe, Brush, Settings, Clock, Sun, Moon, ChevronLeft, ChevronRight, Wrench, Grid3X3, Layers, CreditCard, Wifi, User, ChevronDown } from 'lucide-react'
 import type { NavItem } from '../types'
 
 interface SidebarProps {
@@ -6,10 +6,12 @@ interface SidebarProps {
   activeId: string
   theme: 'dark' | 'light'
   collapsed: boolean
+  collapsedSections: Set<string>
   onSelect: (id: string) => void
   onToggleTheme: () => void
   onToggleCollapse: () => void
   onOpenSettings: () => void
+  onToggleSection: (sectionId: string) => void
 }
 
 const toolIcons: Record<string, React.ReactNode> = {
@@ -40,7 +42,7 @@ const iconLabel: Record<string, string> = {
   skyun: 'SK', mitce: 'MC',
 }
 
-export default function Sidebar({ items, activeId, theme, collapsed, onSelect, onToggleTheme, onToggleCollapse, onOpenSettings }: SidebarProps) {
+export default function Sidebar({ items, activeId, theme, collapsed, collapsedSections, onSelect, onToggleTheme, onToggleCollapse, onOpenSettings, onToggleSection }: SidebarProps) {
   const websites = items.filter(i => i.type === 'website')
   const tools = items.filter(i => i.type === 'tool')
   const aggregators = items.filter(i => i.type === 'aggregator')
@@ -132,11 +134,14 @@ export default function Sidebar({ items, activeId, theme, collapsed, onSelect, o
         </div>
       </div>
 
-      <div className="sidebar-section">
-        <div className="sidebar-section-title"><Globe size={14} /> 常用网站</div>
-      </div>
       <div className="sidebar-nav">
-        {websites.map(item => (
+        <div className="sidebar-section">
+          <div className="sidebar-section-title clickable" onClick={() => onToggleSection('websites')}>
+            <Globe size={14} /> 常用网站
+            <ChevronDown size={12} className={`chevron ${collapsedSections.has('websites') ? 'collapsed' : ''}`} />
+          </div>
+        </div>
+        {!collapsedSections.has('websites') && websites.map(item => (
           <div
             key={item.id}
             className={`sidebar-item ${activeId === item.id ? 'active' : ''}`}
@@ -149,10 +154,13 @@ export default function Sidebar({ items, activeId, theme, collapsed, onSelect, o
           </div>
         ))}
 
-        <div className="sidebar-section" style={{ marginTop: 12 }}>
-          <div className="sidebar-section-title"><Wrench size={14} /> 生图工具</div>
+        <div className="sidebar-section">
+          <div className="sidebar-section-title clickable" onClick={() => onToggleSection('tools')}>
+            <Wrench size={14} /> 生图工具
+            <ChevronDown size={12} className={`chevron ${collapsedSections.has('tools') ? 'collapsed' : ''}`} />
+          </div>
         </div>
-        {tools.map(item => (
+        {!collapsedSections.has('tools') && tools.map(item => (
           <div
             key={item.id}
             className={`sidebar-item ${activeId === item.id ? 'active' : ''}`}
@@ -163,10 +171,13 @@ export default function Sidebar({ items, activeId, theme, collapsed, onSelect, o
           </div>
         ))}
 
-        <div className="sidebar-section" style={{ marginTop: 12 }}>
-          <div className="sidebar-section-title"><Layers size={14} /> 聚合网站</div>
+        <div className="sidebar-section">
+          <div className="sidebar-section-title clickable" onClick={() => onToggleSection('aggregators')}>
+            <Layers size={14} /> 聚合网站
+            <ChevronDown size={12} className={`chevron ${collapsedSections.has('aggregators') ? 'collapsed' : ''}`} />
+          </div>
         </div>
-        {aggregators.map(item => (
+        {!collapsedSections.has('aggregators') && aggregators.map(item => (
           <div
             key={item.id}
             className={`sidebar-item ${activeId === item.id ? 'active' : ''}`}
@@ -177,10 +188,13 @@ export default function Sidebar({ items, activeId, theme, collapsed, onSelect, o
           </div>
         ))}
 
-        <div className="sidebar-section" style={{ marginTop: 12 }}>
-          <div className="sidebar-section-title"><User size={14} /> 常用账号</div>
+        <div className="sidebar-section">
+          <div className="sidebar-section-title clickable" onClick={() => onToggleSection('accounts')}>
+            <User size={14} /> 常用账号
+            <ChevronDown size={12} className={`chevron ${collapsedSections.has('accounts') ? 'collapsed' : ''}`} />
+          </div>
         </div>
-        {accounts.map(item => (
+        {!collapsedSections.has('accounts') && accounts.map(item => (
           <div
             key={item.id}
             className={`sidebar-item ${activeId === item.id ? 'active' : ''}`}
@@ -191,10 +205,13 @@ export default function Sidebar({ items, activeId, theme, collapsed, onSelect, o
           </div>
         ))}
 
-        <div className="sidebar-section" style={{ marginTop: 12 }}>
-          <div className="sidebar-section-title"><Wifi size={14} /> VPN配置</div>
+        <div className="sidebar-section">
+          <div className="sidebar-section-title clickable" onClick={() => onToggleSection('vpn')}>
+            <Wifi size={14} /> VPN配置
+            <ChevronDown size={12} className={`chevron ${collapsedSections.has('vpn') ? 'collapsed' : ''}`} />
+          </div>
         </div>
-        {vpnSites.map(item => (
+        {!collapsedSections.has('vpn') && vpnSites.map(item => (
           <div
             key={item.id}
             className={`sidebar-item ${activeId === item.id ? 'active' : ''}`}

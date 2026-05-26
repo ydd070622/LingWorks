@@ -35,7 +35,16 @@ export default function App() {
   const [models, setModels] = useState<CustomModel[]>(defaultModels)
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set())
   const [showSettings, setShowSettings] = useState(false)
+
+  const toggleSection = useCallback((sectionId: string) => {
+    setCollapsedSections(prev => {
+      const next = new Set(prev)
+      next.has(sectionId) ? next.delete(sectionId) : next.add(sectionId)
+      return next
+    })
+  }, [])
 
   useEffect(() => {
     document.documentElement.className = theme === 'dark' ? 'theme-dark' : 'theme-light'
@@ -102,10 +111,12 @@ export default function App() {
           activeId={activeId}
           theme={theme}
           collapsed={sidebarCollapsed}
+          collapsedSections={collapsedSections}
           onSelect={setActiveId}
           onToggleTheme={toggleTheme}
           onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
           onOpenSettings={() => setShowSettings(true)}
+          onToggleSection={toggleSection}
         />
 
       <div className="main-content">
