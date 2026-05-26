@@ -35,10 +35,14 @@ const favicons: Record<string, string> = {
   mitce: './favicons/mitce.png',
 }
 
-const iconLabel: Record<string, string> = {
+const iconLabel: Record<string, React.ReactNode> = {
   liblib: 'Lib', runninghub: 'RH', tapnow: 'TN', chatgpt: 'CG', gemini: 'GE',
-  txt2img: '文', img2img: '图', history: '史',
-  platforms: '台', recharge: '充', accounts: '号',
+  txt2img: <Sparkles size={16} color="#f59e0b" />,
+  img2img: <Images size={16} color="#8b5cf6" />,
+  history: <HistoryIcon size={16} color="#06b6d4" />,
+  platforms: <LayoutGrid size={16} color="#6366f1" />,
+  recharge: <Wallet size={16} color="#22c55e" />,
+  accounts: <Contact size={16} color="#f97316" />,
   skyun: 'SK', mitce: 'MC',
 }
 
