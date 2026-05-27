@@ -40,19 +40,35 @@ export default function Home() {
       wv.addEventListener('did-finish-load', () => {
         ;(wv as any).executeJavaScript(`
           (function(q){
-            var tries=0, max=20;
+            var tries=0, max=30;
             function fill(){
               tries++;
-              var el = document.querySelector('textarea') || document.querySelector('[contenteditable="true"]') || document.querySelector('[role="textbox"]');
+              var el = document.querySelector('textarea') || document.querySelector('[role="textbox"]') || document.querySelector('[contenteditable="true"]') || document.querySelector('input[type="text"]');
               if (el) {
-                if (el.contentEditable === 'true' || el.getAttribute('contenteditable') === 'true') {
-                  el.textContent = q;
-                  el.focus();
-                } else {
-                  el.value = q;
-                  el.focus();
+                el.focus();
+                try { document.execCommand('selectAll', false, null); } catch(e2){}
+                try { document.execCommand('insertText', false, q); } catch(e3){
+                  if (el.contentEditable === 'true' || el.getAttribute('contenteditable') === 'true') {
+                    el.textContent = q;
+                  } else {
+                    var d = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el), 'value');
+                    if (d && d.set) { d.set.call(el, q); } else { el.value = q; }
+                  }
+                  el.dispatchEvent(new Event('input', { bubbles: true }));
+                  el.dispatchEvent(new Event('change', { bubbles: true }));
                 }
-                el.dispatchEvent(new Event('input', { bubbles: true }));
+                setTimeout(function(){
+                  var btn = el.closest('form')?.querySelector('button[type="submit"]') || el.parentElement?.querySelector('button');
+                  if (!btn) {
+                    var allBtns = document.querySelectorAll('button');
+                    for (var i=0; i<allBtns.length; i++) {
+                      if (allBtns[i].offsetParent && (allBtns[i].innerText.includes('发送') || allBtns[i].innerText.includes('Send') || allBtns[i].getAttribute('aria-label')?.includes('send'))) {
+                        btn = allBtns[i]; break;
+                      }
+                    }
+                  }
+                  if (btn) { btn.click(); }
+                }, 500);
               } else if (tries < max) {
                 setTimeout(fill, 800);
               }
