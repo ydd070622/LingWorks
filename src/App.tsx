@@ -22,6 +22,8 @@ const navItems: NavItem[] = [
   { type: 'website', id: 'chatgpt', label: 'ChatGPT', url: 'https://chatgpt.com', icon: 'globe' },
   { type: 'website', id: 'github', label: 'GitHub', url: 'https://github.com', icon: 'globe' },
   { type: 'website', id: 'gemini', label: 'Gemini', url: 'https://gemini.google.com', icon: 'globe' },
+  { type: 'website', id: 'deepseek', label: 'DeepSeek', url: 'https://chat.deepseek.com', icon: 'globe' },
+  { type: 'website', id: 'kimi', label: 'Kimi', url: 'https://kimi.moonshot.cn', icon: 'globe' },
   { type: 'tool', id: 'txt2img', label: '文生图', icon: 'tool' },
   { type: 'tool', id: 'img2img', label: '图生图', icon: 'tool' },
   { type: 'tool', id: 'history', label: '生成历史', icon: 'tool' },
@@ -130,7 +132,7 @@ export default function App() {
         )}
 
         <div className="content-area">
-          {activeId === 'home' && <Home />}
+          {activeId === 'home' && <Home onNavigate={setActiveId} />}
           {websiteSites.map(site => (
             <WebViewPage key={site.id} site={site} visible={activeId === site.id} />
           ))}

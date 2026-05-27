@@ -90,6 +90,10 @@ ipcMain.handle('open-external', async (_e, url: string) => {
   await shell.openExternal(url)
 })
 
+ipcMain.handle('create-tab', (_e, data: { url: string; siteId: string }) => {
+  mainWindow?.webContents.send('new-tab', data)
+})
+
 app.whenReady().then(createWindow)
 
 app.on('web-contents-created', (_e, contents) => {
@@ -138,6 +142,7 @@ app.on('web-contents-created', (_e, contents) => {
       else if (sourceUrl.includes('bigmodel.cn')) siteId = 'bigmodel'
       else if (sourceUrl.includes('kimi.com')) siteId = 'kimi'
       else if (sourceUrl.includes('deepseek.com')) siteId = 'deepseek'
+      else if (sourceUrl.includes('kimi.moonshot.cn')) siteId = 'kimi'
       else if (sourceUrl.includes('minimaxi.com')) siteId = 'minimaxi'
       else if (sourceUrl.includes('siliconflow.cn')) siteId = 'siliconflow'
       else if (sourceUrl.includes('aliyun.com')) siteId = 'bailian'

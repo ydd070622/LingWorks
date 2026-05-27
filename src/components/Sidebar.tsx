@@ -33,12 +33,14 @@ const favicons: Record<string, string> = {
   chatgpt: './favicons/chatgpt.png',
   github: './favicons/github.png',
   gemini: './favicons/gemini.png',
+  deepseek: './favicons/deepseek.png',
+  kimi: './favicons/kimi.png',
   skyun: './favicons/skyun.png',
   mitce: './favicons/mitce.png',
 }
 
 const iconLabel: Record<string, React.ReactNode> = {
-  liblib: 'Lib', runninghub: 'RH', tapnow: 'TN', chatgpt: 'CG', github: 'GH', gemini: 'GE',
+  liblib: 'Lib', runninghub: 'RH', tapnow: 'TN', chatgpt: 'CG', github: 'GH', gemini: 'GE', deepseek: 'DS', kimi: 'KM',
   txt2img: <Sparkles size={16} color="#f59e0b" />,
   img2img: <Images size={16} color="#8b5cf6" />,
   history: <HistoryIcon size={16} color="#06b6d4" />,

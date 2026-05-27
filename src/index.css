@@ -809,6 +809,40 @@ textarea.input-base {
 }
 .home-search-icon:hover { color: var(--text-primary); }
 
+.home-engines {
+  display: flex; gap: 8px; justify-content: center; margin-top: 20px;
+}
+.home-engine-btn {
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  color: var(--text-muted);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all .15s;
+}
+.home-engine-btn:hover {
+  color: var(--text-secondary);
+  background: rgba(255,255,255,0.08);
+}
+.home-engine-btn.active {
+  color: var(--text-primary);
+  background: rgba(99,102,241,0.15);
+  border-color: rgba(99,102,241,0.35);
+}
+
+.theme-light .home-engine-btn {
+  background: rgba(0,0,0,0.05);
+}
+.theme-light .home-engine-btn:hover {
+  background: rgba(0,0,0,0.08);
+}
+.theme-light .home-engine-btn.active {
+  background: rgba(99,102,241,0.1);
+  border-color: rgba(99,102,241,0.35);
+}
+
 .theme-light .home-search-box {
   background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.08);
 }
