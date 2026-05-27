@@ -5,14 +5,15 @@ interface SearchEngine {
   id: string
   name: string
   buildUrl: (q: string) => string
+  ai?: boolean
 }
 
 const engines: SearchEngine[] = [
   { id: 'baidu', name: '百度', buildUrl: q => `https://www.baidu.com/s?wd=${encodeURIComponent(q)}` },
   { id: 'bing', name: '必应', buildUrl: q => `https://www.bing.com/search?q=${encodeURIComponent(q)}` },
   { id: 'google', name: 'Google', buildUrl: q => `https://www.google.com/search?q=${encodeURIComponent(q)}` },
-  { id: 'deepseek', name: 'DeepSeek', buildUrl: () => 'https://chat.deepseek.com/' },
-  { id: 'kimi', name: 'Kimi', buildUrl: () => 'https://kimi.moonshot.cn/' },
+  { id: 'deepseek', name: 'DeepSeek', buildUrl: () => 'https://chat.deepseek.com/', ai: true },
+  { id: 'kimi', name: 'Kimi', buildUrl: () => 'https://kimi.moonshot.cn/', ai: true },
 ]
 
 type WebviewElement = HTMLElement & { src: string }
@@ -25,6 +26,7 @@ export default function Home() {
 
   useEffect(() => {
     if (!searchUrl || !containerRef.current) return
+    const q = query.trim()
     const wv = document.createElement('webview') as unknown as WebviewElement
     wv.setAttribute('src', searchUrl)
     wv.setAttribute('disablewebsecurity', '')
@@ -33,10 +35,38 @@ export default function Home() {
       width: '100%', height: '100%', border: 'none',
       position: 'absolute', top: '0', left: '0',
     })
+
+    if (engine.ai && q) {
+      wv.addEventListener('did-finish-load', () => {
+        ;(wv as any).executeJavaScript(`
+          (function(q){
+            var tries=0, max=20;
+            function fill(){
+              tries++;
+              var el = document.querySelector('textarea') || document.querySelector('[contenteditable="true"]') || document.querySelector('[role="textbox"]');
+              if (el) {
+                if (el.contentEditable === 'true' || el.getAttribute('contenteditable') === 'true') {
+                  el.textContent = q;
+                  el.focus();
+                } else {
+                  el.value = q;
+                  el.focus();
+                }
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+              } else if (tries < max) {
+                setTimeout(fill, 800);
+              }
+            }
+            setTimeout(fill, 1500);
+          })(${JSON.stringify(q)})
+        `)
+      })
+    }
+
     while (containerRef.current.firstChild) containerRef.current.removeChild(containerRef.current.firstChild)
     containerRef.current.appendChild(wv)
     return () => wv.remove()
-  }, [searchUrl])
+  }, [searchUrl, engine.ai, query])
 
   const handleSearch = () => {
     const q = query.trim()
