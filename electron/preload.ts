@@ -8,6 +8,7 @@ window.electronAPI = {
   clearStore: () => ipcRenderer.invoke('store-clear'),
   saveImage: (dataUrl: string, defaultName: string) => ipcRenderer.invoke('save-image', dataUrl, defaultName),
   openImageWindow: (url: string) => ipcRenderer.invoke('open-image-window', url),
+  openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
   onNewTab: (cb: (data: { url: string; siteId: string }) => void) => {
     const h = (_e: any, d: { url: string; siteId: string }) => cb(d)
     ipcRenderer.on('new-tab', h)

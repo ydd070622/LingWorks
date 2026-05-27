@@ -12,6 +12,7 @@ interface SidebarProps {
   onToggleCollapse: () => void
   onOpenSettings: () => void
   onToggleSection: (sectionId: string) => void
+  onGoHome: () => void
 }
 
 const toolIcons: Record<string, React.ReactNode> = {
@@ -47,7 +48,7 @@ const iconLabel: Record<string, React.ReactNode> = {
   skyun: 'SK', mitce: 'MC',
 }
 
-export default function Sidebar({ items, activeId, theme, collapsed, collapsedSections, onSelect, onToggleTheme, onToggleCollapse, onOpenSettings, onToggleSection }: SidebarProps) {
+export default function Sidebar({ items, activeId, theme, collapsed, collapsedSections, onSelect, onToggleTheme, onToggleCollapse, onOpenSettings, onToggleSection, onGoHome }: SidebarProps) {
   const websites = items.filter(i => i.type === 'website')
   const tools = items.filter(i => i.type === 'tool')
   const aggregators = items.filter(i => i.type === 'aggregator')
@@ -131,7 +132,7 @@ export default function Sidebar({ items, activeId, theme, collapsed, collapsedSe
   return (
     <div className="sidebar">
       <div className="sidebar-header">
-        <div>
+        <div className="sidebar-header-title" onClick={onGoHome} title="回到主页">
           <h1>AI Web Tools</h1>
         </div>
         <div className="sidebar-collapse-toggle" onClick={onToggleCollapse} title="收起侧栏">

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, Menu } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, Menu, shell } from 'electron'
 import * as path from 'path'
 import * as fs from 'fs'
 
@@ -84,6 +84,10 @@ ipcMain.handle('open-image-window', async (_e, url: string) => {
     webPreferences: { webSecurity: false },
   })
   win.loadURL(url)
+})
+
+ipcMain.handle('open-external', async (_e, url: string) => {
+  await shell.openExternal(url)
 })
 
 app.whenReady().then(createWindow)

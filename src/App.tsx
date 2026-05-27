@@ -8,6 +8,7 @@ import Platforms from './pages/Platforms'
 import Recharge from './pages/Recharge'
 import ApiSettings from './pages/ApiSettings'
 import Accounts from './pages/Accounts'
+import Home from './pages/Home'
 import type { NavItem, CustomModel } from './types'
 
 const defaultModels: CustomModel[] = [
@@ -32,7 +33,7 @@ const navItems: NavItem[] = [
 ]
 
 export default function App() {
-  const [activeId, setActiveId] = useState('liblib')
+  const [activeId, setActiveId] = useState('home')
   const [models, setModels] = useState<CustomModel[]>(defaultModels)
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -118,6 +119,7 @@ export default function App() {
           onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
           onOpenSettings={() => setShowSettings(true)}
           onToggleSection={toggleSection}
+          onGoHome={() => setActiveId('home')}
         />
 
       <div className="main-content">
@@ -128,6 +130,7 @@ export default function App() {
         )}
 
         <div className="content-area">
+          {activeId === 'home' && <Home />}
           {websiteSites.map(site => (
             <WebViewPage key={site.id} site={site} visible={activeId === site.id} />
           ))}
