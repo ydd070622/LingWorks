@@ -37,7 +37,6 @@ declare global {
       saveImage: (dataUrl: string, defaultName: string) => Promise<void>
       openImageWindow: (url: string) => Promise<void>
       openExternal: (url: string) => Promise<void>
-      createTab: (data: { url: string; siteId: string }) => Promise<void>
       onNewTab: (cb: (data: { url: string; siteId: string }) => void) => () => void
       onPopupNavigate: (cb: (data: { url: string }) => void) => () => void
     }
