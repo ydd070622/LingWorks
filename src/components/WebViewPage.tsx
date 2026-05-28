@@ -65,6 +65,9 @@ export default function WebViewPage({ site, visible }: WebViewPageProps) {
 
     wv.addEventListener('did-finish-load', () => {
       ;(wv as any).executeJavaScript(`
+        Object.defineProperty(navigator,'webdriver',{get:function(){return false}});
+        Object.defineProperty(navigator,'plugins',{get:function(){return {length:3,item:function(){return null},namedItem:function(){return null},refresh:function(){return false}}});
+        Object.defineProperty(navigator,'languages',{get:function(){return ['zh-CN','zh','en']}});
         (function(){
           function fix(){
             document.querySelectorAll('a[target="_blank"]').forEach(function(a){ a.setAttribute('target','_self'); });

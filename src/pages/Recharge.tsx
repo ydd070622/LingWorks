@@ -177,7 +177,6 @@ export default function Recharge() {
           <div
             key={platform.id}
             className="glass-card"
-            onClick={() => openPlatform(platform)}
             style={{
               padding: 24,
               cursor: 'pointer',
@@ -187,10 +186,26 @@ export default function Recharge() {
               gap: 12,
               transition: 'all 0.15s',
               border: '1px solid var(--border-color)',
+              position: 'relative',
             }}
+            onClick={() => openPlatform(platform)}
             onMouseEnter={e => { e.currentTarget.style.borderColor = platform.color; e.currentTarget.style.transform = 'translateY(-2px)' }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-color)'; e.currentTarget.style.transform = 'none' }}
           >
+            <div
+              onClick={e => { e.stopPropagation(); if (window.electronAPI) { window.electronAPI.openExternal(platform.url) } else { window.open(platform.url, '_blank') } }}
+              style={{
+                position: 'absolute', top: 8, right: 8,
+                width: 24, height: 24, borderRadius: 4,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'var(--text-muted)', cursor: 'pointer', zIndex: 1,
+              }}
+              title="在浏览器中打开"
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--accent)'; e.currentTarget.style.background = 'var(--bg-card-hover)' }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent' }}
+            >
+              <ExternalLink size={13} />
+            </div>
             <div style={{
               width: 56, height: 56, borderRadius: 14,
               background: `${platform.color}22`,

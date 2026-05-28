@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { ArrowLeft, ExternalLink } from 'lucide-react'
+import { ArrowLeft, ArrowRight, ExternalLink, RefreshCw, Languages } from 'lucide-react'
 import { platforms, type Platform } from '../data/platforms'
 
 interface Tab {
@@ -21,6 +21,7 @@ let tabCounter = 0
 export default function Platforms() {
   const [tabs, setTabs] = useState<Tab[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [translatedTabs, setTranslatedTabs] = useState<Set<string>>(new Set())
   const webviewMap = useRef<Map<string, WebviewElement>>(new Map())
   const containerRef = useRef<HTMLDivElement>(null)
   const isGridView = activeId === null
@@ -54,6 +55,14 @@ export default function Platforms() {
       if (e.title) {
         setTabs(prev => prev.map(t => t.id === tabId ? { ...t, title: e.title } : t))
       }
+    })
+
+    wv.addEventListener('did-finish-load', () => {
+      ;(wv as any).executeJavaScript(`
+        Object.defineProperty(navigator,'webdriver',{get:function(){return false}});
+        Object.defineProperty(navigator,'plugins',{get:function(){return {length:3,item:function(){return null},namedItem:function(){return null},refresh:function(){return false}}});
+        Object.defineProperty(navigator,'languages',{get:function(){return ['zh-CN','zh','en']}});
+      `)
     })
 
     return wv
@@ -127,10 +136,92 @@ export default function Platforms() {
 
   const backToGrid = () => setActiveId(null)
 
+  const handleGoBack = () => {
+    const wv = webviewMap.current.get(activeId!)
+    if (wv) (wv as any).goBack?.()
+  }
+
+  const handleGoForward = () => {
+    const wv = webviewMap.current.get(activeId!)
+    if (wv) (wv as any).goForward?.()
+  }
+
+  const handleRefresh = () => {
+    const wv = webviewMap.current.get(activeId!)
+    if (wv) (wv as any).reload?.()
+  }
+
+  const handleTranslate = () => {
+    const wv = webviewMap.current.get(activeId!)
+    if (!wv) return
+    const isTranslated = translatedTabs.has(activeId!)
+    if (isTranslated) {
+      (wv as any).reload?.()
+      setTranslatedTabs(prev => {
+        const next = new Set(prev)
+        next.delete(activeId!)
+        return next
+      })
+    } else {
+      ;(wv as any).executeJavaScript(`
+        (function(){
+          try {
+            var css = 
+              'iframe[src*="translate.google.com"], ' +
+              'iframe[src*="translate.googleapis.com"], ' +
+              '.goog-te-banner-frame, .skiptranslate, ' +
+              '.goog-te-spinner-pos, .goog-te-gadget-icon, ' +
+              '.goog-tooltip, .goog-text-highlight, ' +
+              '.goog-te-balloon-frame, .goog-te-menu-frame, ' +
+              '#google_translate_element ' +
+              '{ display:none!important; height:0!important; width:0!important; min-height:0!important; border:none!important; } ' +
+              'body { top:0!important; position:static!important; } ' +
+              '.goog-te-gadget { font-size:0!important; color:transparent!important; }';
+            var st = document.createElement('style');
+            st.id = '__tr_hide__';
+            st.textContent = css;
+            document.head.appendChild(st);
+            document.cookie = 'googtrans=/auto/zh-CN;path=/';
+            var d = document.createElement('div');
+            d.id = 'google_translate_element';
+            d.style.cssText = 'display:none!important;';
+            document.body.appendChild(d);
+            window.googleTranslateElementInit = function() {
+              new google.translate.TranslateElement({pageLanguage:'auto',autoDisplay:false},'google_translate_element');
+            };
+            var s = document.createElement('script');
+            s.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+            document.head.appendChild(s);
+            function cleanup() {
+              document.querySelectorAll('iframe').forEach(function(f) {
+                if (f.src && (f.src.includes('translate.google.com') || f.src.includes('translate.googleapis.com'))) {
+                  f.remove();
+                }
+              });
+              document.body.style.top = '0';
+            }
+            setTimeout(cleanup, 1500);
+            setTimeout(cleanup, 3000);
+            setTimeout(cleanup, 8000);
+          } catch(e) {}
+        })();
+      `)
+      setTranslatedTabs(prev => new Set([...prev, activeId!]))
+    }
+  }
+
   if (!isGridView) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         <div className="tab-bar">
+          <div className="nav-btns">
+            <div className="nav-btn" onClick={handleGoBack} title="后退">
+              <ArrowLeft size={13} />
+            </div>
+            <div className="nav-btn" onClick={handleGoForward} title="前进">
+              <ArrowRight size={13} />
+            </div>
+          </div>
           <div
             onClick={backToGrid}
             style={{
@@ -156,6 +247,22 @@ export default function Platforms() {
               </div>
             ))}
           </div>
+          <div
+            onClick={handleTranslate}
+            className={'tab-translate' + (translatedTabs.has(activeId!) ? ' active' : '')}
+            title={translatedTabs.has(activeId!) ? '取消翻译' : '翻译为中文'}
+          >
+            <Languages size={13} />
+            <span className="tab-refresh-label">翻译</span>
+          </div>
+          <div
+            onClick={handleRefresh}
+            className="tab-refresh"
+            title="刷新"
+          >
+            <RefreshCw size={13} />
+            <span className="tab-refresh-label">刷新网页</span>
+          </div>
         </div>
         <div ref={containerRef} style={{ flex: 1, position: 'relative' }} />
       </div>
@@ -177,7 +284,6 @@ export default function Platforms() {
           <div
             key={platform.id}
             className="glass-card"
-            onClick={() => openPlatform(platform)}
             style={{
               padding: 24,
               cursor: 'pointer',
@@ -187,10 +293,26 @@ export default function Platforms() {
               gap: 12,
               transition: 'all 0.15s',
               border: '1px solid var(--border-color)',
+              position: 'relative',
             }}
+            onClick={() => openPlatform(platform)}
             onMouseEnter={e => { e.currentTarget.style.borderColor = platform.color; e.currentTarget.style.transform = 'translateY(-2px)' }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-color)'; e.currentTarget.style.transform = 'none' }}
           >
+            <div
+              onClick={e => { e.stopPropagation(); if (window.electronAPI) { window.electronAPI.openExternal(platform.url) } else { window.open(platform.url, '_blank') } }}
+              style={{
+                position: 'absolute', top: 8, right: 8,
+                width: 24, height: 24, borderRadius: 4,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'var(--text-muted)', cursor: 'pointer', zIndex: 1,
+              }}
+              title="在浏览器中打开"
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--accent)'; e.currentTarget.style.background = 'var(--bg-card-hover)' }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent' }}
+            >
+              <ExternalLink size={13} />
+            </div>
             <div style={{
               width: 56, height: 56, borderRadius: 14,
               background: `${platform.color}22`,

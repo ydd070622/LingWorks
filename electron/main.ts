@@ -2,6 +2,10 @@ import { app, BrowserWindow, ipcMain, dialog, Menu, shell } from 'electron'
 import * as path from 'path'
 import * as fs from 'fs'
 
+app.commandLine.appendSwitch('disable-gpu-sandbox')
+app.commandLine.appendSwitch('disable-software-rasterizer')
+app.commandLine.appendSwitch('disable-features', 'WebDriver')
+
 const isDev = !app.isPackaged
 Menu.setApplicationMenu(null)
 
@@ -108,19 +112,24 @@ app.on('web-contents-created', (_e, contents) => {
   }
 
   contents.session.webRequest.onHeadersReceived(
-    { urls: ['*://*/*'], types: ['mainFrame'] },
+    { urls: ['*://*/*'] },
     (details, callback) => {
       const headers: Record<string, string[]> = {}
       for (const [key, value] of Object.entries(details.responseHeaders ?? {})) {
         const lk = key.toLowerCase()
         if (lk !== 'content-security-policy' &&
-            lk !== 'content-security-policy-report-only') {
+            lk !== 'content-security-policy-report-only' &&
+            lk !== 'x-frame-options') {
           headers[key] = value
         }
       }
       callback({ responseHeaders: headers })
     }
   )
+
+  const chromeUA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36'
+  contents.setUserAgent(chromeUA)
+  contents.session.setUserAgent(chromeUA, 'zh-CN,zh;q=0.9,en;q=0.8')
 
   contents.setWindowOpenHandler(({ url }) => {
     if (url === 'about:blank') {
