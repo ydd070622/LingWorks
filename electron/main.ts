@@ -108,7 +108,7 @@ async function checkForUpdates() {
   try {
     const res = await net.fetch('https://gitee.com/api/v5/repos/ydd070622/ai-web-tools/releases/latest')
     if (!res.ok) return
-    const data = await res.json()
+    const data = await res.json() as { tag_name?: string; body?: string; assets?: { browser_download_url?: string }[] }
     const remoteVersion = (data.tag_name || '').replace(/^v/, '')
     const localVersion = app.getVersion()
     if (!remoteVersion || !compareVersions(localVersion, remoteVersion)) return

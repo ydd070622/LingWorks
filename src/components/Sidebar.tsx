@@ -121,7 +121,7 @@ export default function Sidebar({ items, activeId, theme, collapsed, collapsedSe
           <div className="sidebar-icon-item" onClick={onToggleTheme} title={theme === 'dark' ? '浅色' : '深色'}>
             {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
           </div>
-          <div className="sidebar-icon-item" onClick={onOpenSettings} title="API 设置">
+          <div className="sidebar-icon-item" onClick={onOpenSettings} title="设置">
             <Settings size={14} />
           </div>
         </div>
@@ -238,7 +238,7 @@ export default function Sidebar({ items, activeId, theme, collapsed, collapsedSe
         </div>
         <div className="sidebar-item" onClick={onOpenSettings} style={{ fontSize: 12, color: 'var(--text-muted)' }}>
           <span className="sidebar-item-icon"><Settings size={14} /></span>
-          <span>API 设置</span>
+          <span>设置</span>
         </div>
       </div>
     </div>

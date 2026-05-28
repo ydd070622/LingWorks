@@ -6,7 +6,7 @@ import ImageToImage from './pages/ImageToImage'
 import History from './pages/History'
 import Platforms from './pages/Platforms'
 import Recharge from './pages/Recharge'
-import ApiSettings from './pages/ApiSettings'
+import Settings from './pages/Settings'
 import Accounts from './pages/Accounts'
 import Home from './pages/Home'
 import type { NavItem, CustomModel } from './types'
@@ -147,7 +147,7 @@ export default function App() {
       </div>
 
       {showSettings && (
-        <ApiSettings models={models} onSave={saveModels} onClose={() => setShowSettings(false)} />
+        <Settings models={models} theme={theme} onSave={saveModels} onClose={() => setShowSettings(false)} onToggleTheme={toggleTheme} />
       )}
     </div>
   )
