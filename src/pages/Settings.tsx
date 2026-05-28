@@ -4,22 +4,19 @@ import type { CustomModel } from '../types'
 
 interface SettingsProps {
   models: CustomModel[]
-  theme: 'dark' | 'light'
   onSave: (models: CustomModel[]) => void
   onClose: () => void
-  onToggleTheme: () => void
 }
 
 type TabId = 'general' | 'api' | 'about'
 
 const emptyModel: CustomModel = { name: '', apiKey: '', endpoint: '', modelName: '' }
 
-export default function Settings({ models, theme, onSave, onClose, onToggleTheme }: SettingsProps) {
+export default function Settings({ models, onSave, onClose }: SettingsProps) {
   const [activeTab, setActiveTab] = useState<TabId>('general')
 
   const [showHome, setShowHome] = useState(true)
   const [checkUpdate, setCheckUpdate] = useState(true)
-  const [searchEngine, setSearchEngine] = useState('baidu')
 
   const [list, setList] = useState<CustomModel[]>(() => JSON.parse(JSON.stringify(models)))
   const [editing, setEditing] = useState<CustomModel>({ ...emptyModel })
@@ -28,14 +25,12 @@ export default function Settings({ models, theme, onSave, onClose, onToggleTheme
   useEffect(() => {
     const load = async () => {
       if (window.electronAPI) {
-        const [savedHome, savedUpdate, savedEngine] = await Promise.all([
+        const [savedHome, savedUpdate] = await Promise.all([
           window.electronAPI.getStore('showHomeOnStartup'),
           window.electronAPI.getStore('checkUpdate'),
-          window.electronAPI.getStore('searchEngine'),
         ])
         if (typeof savedHome === 'boolean') setShowHome(savedHome)
         if (typeof savedUpdate === 'boolean') setCheckUpdate(savedUpdate)
-        if (typeof savedEngine === 'string') setSearchEngine(savedEngine)
       }
     }
     load()
@@ -133,35 +128,6 @@ export default function Settings({ models, theme, onSave, onClose, onToggleTheme
                     className={`settings-toggle${checkUpdate ? ' on' : ''}`}
                     onClick={() => { setCheckUpdate(!checkUpdate); saveGeneral('checkUpdate', !checkUpdate) }}
                   />
-                </div>
-
-                <div className="setting-row">
-                  <div>
-                    <div className="setting-row-label">深色主题</div>
-                    <div className="setting-row-desc">切换浅色/深色显示模式</div>
-                  </div>
-                  <div
-                    className={`settings-toggle${theme === 'dark' ? ' on' : ''}`}
-                    onClick={onToggleTheme}
-                  />
-                </div>
-
-                <div className="setting-row">
-                  <div>
-                    <div className="setting-row-label">默认搜索引擎</div>
-                    <div className="setting-row-desc">主页搜索使用的搜索引擎</div>
-                  </div>
-                  <select
-                    className="input-base"
-                    style={{ width: 140 }}
-                    value={searchEngine}
-                    onChange={e => { setSearchEngine(e.target.value); saveGeneral('searchEngine', e.target.value) }}
-                  >
-                    <option value="baidu">百度</option>
-                    <option value="bing">必应</option>
-                    <option value="google">Google</option>
-                    <option value="duckduckgo">DuckDuckGo</option>
-                  </select>
                 </div>
 
                 <div style={{ textAlign: 'right', marginTop: 24 }}>

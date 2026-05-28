@@ -147,7 +147,7 @@ export default function App() {
       </div>
 
       {showSettings && (
-        <Settings models={models} theme={theme} onSave={saveModels} onClose={() => setShowSettings(false)} onToggleTheme={toggleTheme} />
+        <Settings models={models} onSave={saveModels} onClose={() => setShowSettings(false)} />
       )}
     </div>
   )
