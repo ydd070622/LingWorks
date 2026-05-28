@@ -13,4 +13,6 @@ export const platforms: Platform[] = [
   { id: 'siliconflow', name: 'SiliconFlow', url: 'https://cloud.siliconflow.cn', color: '#0d9488' },
   { id: 'bailian', name: '阿里云百炼', url: 'https://bailian.console.aliyun.com/cn-beijing#/home', color: '#ff6a00' },
   { id: 'tavily', name: 'Tavily', url: 'https://auth.tavily.com/', color: '#10b981' },
+  { id: 'volcengine', name: '火山引擎', url: 'https://signin.volcengine.com/auth/login?redirectURI=https%3A%2F%2Fconsole.volcengine.com%2Fark%2Fregion%3Aark%2Bcn-beijing%2FopenManagement%3FLLM%3D%257B%257D%26advancedActiveKey%3Dsubscribe', color: '#ee4823' },
+  { id: 'openrouter', name: 'OpenRouter', url: 'https://openrouter.ai', color: '#6366f1' },
 ]
