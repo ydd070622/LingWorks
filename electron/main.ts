@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, Menu, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, Menu, shell, net } from 'electron'
 import * as path from 'path'
 import * as fs from 'fs'
 
@@ -94,7 +94,46 @@ ipcMain.handle('open-external', async (_e, url: string) => {
   await shell.openExternal(url)
 })
 
-app.whenReady().then(createWindow)
+function compareVersions(local: string, remote: string): boolean {
+  const l = local.split('.').map(Number)
+  const r = remote.split('.').map(Number)
+  for (let i = 0; i < 3; i++) {
+    if ((r[i] || 0) > (l[i] || 0)) return true
+    if ((r[i] || 0) < (l[i] || 0)) return false
+  }
+  return false
+}
+
+async function checkForUpdates() {
+  try {
+    const res = await net.fetch('https://gitee.com/api/v5/repos/ydd070622/ai-web-tools/releases/latest')
+    if (!res.ok) return
+    const data = await res.json()
+    const remoteVersion = (data.tag_name || '').replace(/^v/, '')
+    const localVersion = app.getVersion()
+    if (!remoteVersion || !compareVersions(localVersion, remoteVersion)) return
+
+    const result = await dialog.showMessageBox(mainWindow!, {
+      type: 'info',
+      title: '发现新版本',
+      message: `发现新版本 v${remoteVersion}（当前 v${localVersion}）`,
+      detail: data.body || '',
+      buttons: ['前往下载', '以后再说'],
+      defaultId: 0,
+      cancelId: 1,
+    })
+    if (result.response === 0) {
+      const downloadUrl = data.assets?.[0]?.browser_download_url
+        || `https://gitee.com/ydd070622/ai-web-tools/releases/tag/${data.tag_name}`
+      shell.openExternal(downloadUrl)
+    }
+  } catch {}
+}
+
+app.whenReady().then(() => {
+  createWindow()
+  checkForUpdates()
+})
 
 app.on('web-contents-created', (_e, contents) => {
   const type = contents.getType()
