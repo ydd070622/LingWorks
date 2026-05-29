@@ -102,22 +102,24 @@ export default function Accounts() {
                 {copied === acc.id + '-user' ? <Check size={13} /> : <Copy size={13} />}
               </button>
             </div>
-            <div className="account-card-field">
-              <span className="account-label">密码</span>
-              <span className="account-value">
-                {showPassword[acc.id] ? acc.password : '••••••••'}
-              </span>
-              <button className="btn-copy-icon" onClick={() => toggleShowPassword(acc.id)} title={showPassword[acc.id] ? '隐藏' : '显示'}>
-                {showPassword[acc.id] ? <EyeOff size={13} /> : <Eye size={13} />}
-              </button>
-              <button
-                className={`btn-copy-icon ${copied === acc.id + '-pwd' ? 'copied' : ''}`}
-                onClick={() => copyToClipboard(acc.password, acc.id + '-pwd')}
-                title="复制"
-              >
-                {copied === acc.id + '-pwd' ? <Check size={13} /> : <Copy size={13} />}
-              </button>
-            </div>
+            {acc.password ? (
+              <div className="account-card-field">
+                <span className="account-label">密码</span>
+                <span className="account-value">
+                  {showPassword[acc.id] ? acc.password : '••••••••'}
+                </span>
+                <button className="btn-copy-icon" onClick={() => toggleShowPassword(acc.id)} title={showPassword[acc.id] ? '隐藏' : '显示'}>
+                  {showPassword[acc.id] ? <EyeOff size={13} /> : <Eye size={13} />}
+                </button>
+                <button
+                  className={`btn-copy-icon ${copied === acc.id + '-pwd' ? 'copied' : ''}`}
+                  onClick={() => copyToClipboard(acc.password, acc.id + '-pwd')}
+                  title="复制"
+                >
+                  {copied === acc.id + '-pwd' ? <Check size={13} /> : <Copy size={13} />}
+                </button>
+              </div>
+            ) : null}
             {acc.note && <div className="account-card-note">{acc.note}</div>}
           </div>
         ))}
@@ -138,7 +140,7 @@ export default function Accounts() {
               <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="如：ChatGPT" />
               <label>账号 *</label>
               <input value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} placeholder="用户名/邮箱/手机号" />
-              <label>密码 *</label>
+               <label>密码</label>
               <input type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} placeholder="密码" />
               <label>备注</label>
               <input value={form.note} onChange={e => setForm({ ...form, note: e.target.value })} placeholder="选填" />

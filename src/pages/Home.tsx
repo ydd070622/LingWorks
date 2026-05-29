@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Search, Download, Upload } from 'lucide-react'
+import { Search, Download, Upload, ArrowLeft, ArrowRight, RefreshCw } from 'lucide-react'
 import { bookmarkStore } from '../bookmarkStore'
 import type { BookmarkItem } from '../types'
 
@@ -30,6 +30,7 @@ export default function Home({ onSelect }: HomeProps) {
   const [engine, setEngine] = useState(engines[0])
   const [searchUrl, setSearchUrl] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const searchWvRef = useRef<any>(null)
 
   // --- Bookmark state ---
   const [bookmarks, setBookmarks] = useState<BookmarkItem[]>([])
@@ -64,6 +65,17 @@ export default function Home({ onSelect }: HomeProps) {
     Object.assign(wv.style, {
       width: '100%', height: '100%', border: 'none',
       position: 'absolute', top: '0', left: '0',
+    })
+
+    wv.addEventListener('did-finish-load', () => {
+      ;(wv as any).executeJavaScript(`
+        (function(){
+          window.open = function(url){ if(url && url.startsWith('http')) window.location.href=url; return null; };
+          function fix(){ document.querySelectorAll('a[target="_blank"]').forEach(function(a){ a.setAttribute('target','_self'); }); }
+          fix();
+          new MutationObserver(fix).observe(document.body,{childList:true,subtree:true});
+        })();
+      `)
     })
 
     if (engine.ai && q) {
@@ -112,7 +124,8 @@ export default function Home({ onSelect }: HomeProps) {
 
     while (containerRef.current.firstChild) containerRef.current.removeChild(containerRef.current.firstChild)
     containerRef.current.appendChild(wv)
-    return () => wv.remove()
+    searchWvRef.current = wv
+    return () => { wv.remove(); searchWvRef.current = null }
   }, [searchUrl, engine.ai, query])
 
   const handleSearch = () => {
@@ -126,6 +139,21 @@ export default function Home({ onSelect }: HomeProps) {
   }
 
   const handleBack = () => setSearchUrl(null)
+
+  const handleGoBack = () => {
+    const wv = searchWvRef.current
+    if (wv) (wv as any).goBack?.()
+  }
+
+  const handleGoForward = () => {
+    const wv = searchWvRef.current
+    if (wv) (wv as any).goForward?.()
+  }
+
+  const handleRefresh = () => {
+    const wv = searchWvRef.current
+    if (wv) (wv as any).reload?.()
+  }
 
   // --- Bookmark click: try to match site, else open external ---
   const handleBookmarkClick = (b: Extract<BookmarkItem, { type: 'bookmark' }>) => {
@@ -271,8 +299,25 @@ export default function Home({ onSelect }: HomeProps) {
     return (
       <div className="home-page-results">
         <div className="home-results-bar">
-          <span className="home-results-back" onClick={handleBack}>← 返回搜索</span>
-          <span className="home-results-engine">{engine.name} 搜索</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+            <span className="home-results-back" style={{ marginRight: 4 }} onClick={handleBack}>← 返回搜索</span>
+            <div className="nav-btns" style={{ borderRight: 'none' }}>
+              <div className="nav-btn" onClick={handleGoBack} title="后退">
+                <ArrowLeft size={13} />
+              </div>
+              <div className="nav-btn" onClick={handleGoForward} title="前进">
+                <ArrowRight size={13} />
+              </div>
+            </div>
+          </div>
+          <div
+            onClick={handleRefresh}
+            className="tab-refresh"
+            title="刷新网页"
+          >
+            <RefreshCw size={13} />
+            <span className="tab-refresh-label">刷新网页</span>
+          </div>
         </div>
         <div ref={containerRef} style={{ flex: 1, position: 'relative' }} />
       </div>
