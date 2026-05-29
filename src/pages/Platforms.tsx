@@ -81,10 +81,14 @@ export default function Platforms() {
       webviewMap.current.set(tab.id, wv)
     }
 
-    if (container.firstChild !== wv) {
-      while (container.firstChild) container.removeChild(container.firstChild)
+    if (!container.contains(wv)) {
       container.appendChild(wv)
     }
+    webviewMap.current.forEach((w, id) => {
+      if (container.contains(w)) {
+        (w.style as any).display = id === tab.id ? '' : 'none'
+      }
+    })
 
     setTimeout(() => (wv as any).focus?.(), 50)
   }, [activeId, isGridView, tabs, createWebview])
