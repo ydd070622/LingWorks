@@ -16,7 +16,7 @@ const defaultModels: CustomModel[] = [
 ]
 
 const navItems: NavItem[] = [
-  { type: 'website', id: 'liblib', label: 'Liblib', url: 'https://www.liblib.tv', icon: 'globe' },
+  { type: 'website', id: 'liblib', label: 'Lib tv', url: 'https://www.liblib.tv', icon: 'globe' },
   { type: 'website', id: 'runninghub', label: 'RunningHub', url: 'https://www.runninghub.cn', icon: 'globe' },
   { type: 'website', id: 'tapnow', label: 'TapNow', url: 'https://app.tapnow.ai', icon: 'globe' },
   { type: 'website', id: 'chatgpt', label: 'ChatGPT', url: 'https://chatgpt.com', icon: 'globe' },
