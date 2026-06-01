@@ -83,6 +83,13 @@ export default function Home({ onSelect, searchQuery, searchEngineId, searchUrl,
       `)
     })
 
+    wv.addEventListener('did-navigate', (e: any) => {
+      if (e.url && e.url !== 'about:blank') onSetSearchUrl(e.url)
+    })
+    wv.addEventListener('did-navigate-in-page', (e: any) => {
+      if (e.url && e.url !== 'about:blank') onSetSearchUrl(e.url)
+    })
+
     if (engine.ai && q) {
       wv.addEventListener('did-finish-load', () => {
         ;(wv as any).executeJavaScript(`
