@@ -20,6 +20,10 @@ const engines: SearchEngine[] = [
 
 type WebviewElement = HTMLElement & { src: string }
 
+let persistWv: WebviewElement | null = null
+let persistContainer: HTMLDivElement | null = null
+let persistUrl: string | null = null
+
 interface HomeProps {
   onSelect?: (id: string) => void
   searchQuery: string
@@ -62,6 +66,29 @@ export default function Home({ onSelect, searchQuery, searchEngineId, searchUrl,
   // --- Search logic ---
   useEffect(() => {
     if (!searchUrl || !containerRef.current) return
+
+    // Re-attach persisted webview if same search context
+    if (persistWv && persistContainer && persistUrl === searchUrl) {
+      while (containerRef.current.firstChild) containerRef.current.removeChild(containerRef.current.firstChild)
+      containerRef.current.appendChild(persistContainer)
+      searchWvRef.current = persistWv
+      const container = containerRef.current
+      const pContainer = persistContainer
+      return () => {
+        if (containerRef.current === container && pContainer && container.contains(pContainer)) {
+          container.removeChild(pContainer)
+        }
+      }
+    }
+
+    // Otherwise clean up old persisted webview
+    if (persistWv) {
+      try { persistWv.remove() } catch {}
+      persistWv = null
+      persistContainer = null
+      persistUrl = null
+    }
+
     const q = query.trim()
     const wv = document.createElement('webview') as unknown as WebviewElement
     wv.setAttribute('src', searchUrl)
@@ -135,9 +162,19 @@ export default function Home({ onSelect, searchQuery, searchEngineId, searchUrl,
     }
 
     while (containerRef.current.firstChild) containerRef.current.removeChild(containerRef.current.firstChild)
-    containerRef.current.appendChild(wv)
+    const wrapper = document.createElement('div')
+    Object.assign(wrapper.style, { width: '100%', height: '100%', position: 'absolute', top: '0', left: '0' })
+    wrapper.appendChild(wv)
+    containerRef.current.appendChild(wrapper)
     searchWvRef.current = wv
-    return () => { wv.remove(); searchWvRef.current = null }
+    persistWv = wv
+    persistContainer = wrapper
+    persistUrl = searchUrl
+    return () => {
+      if (containerRef.current?.contains(wrapper)) {
+        containerRef.current.removeChild(wrapper)
+      }
+    }
   }, [searchUrl, searchEngineId, searchQuery])
 
   const handleSearch = () => {
