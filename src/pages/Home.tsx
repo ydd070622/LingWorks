@@ -102,10 +102,14 @@ export default function Home({ onSelect, searchQuery, searchEngineId, searchUrl,
     wv.addEventListener('did-finish-load', () => {
       ;(wv as any).executeJavaScript(`
         (function(){
-          window.open = function(url){ if(url && url.startsWith('http')) window.location.href=url; return null; };
-          function fix(){ document.querySelectorAll('a[target="_blank"]').forEach(function(a){ a.setAttribute('target','_self'); }); }
-          fix();
-          new MutationObserver(fix).observe(document.body,{childList:true,subtree:true});
+          window.open=function(u){if(u)window.location.href=u;return null};
+          document.addEventListener('click',function(e){
+            var a=e.target.closest('a');
+            if(a&&a.target==='_blank'&&a.href){
+              e.preventDefault();e.stopPropagation();
+              window.location.href=a.href;
+            }
+          },true);
         })();
       `)
     })

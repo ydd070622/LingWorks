@@ -41,26 +41,31 @@ export default function Platforms() {
   const platformSiteIds = useRef(new Set(platforms.map(p => p.id)))
 
   const loadPlatforms = useCallback(async () => {
+    let list: Platform[] = []
     try {
       if (window.electronAPI) {
         const saved = await window.electronAPI.getStore('customPlatforms')
         if (Array.isArray(saved) && saved.length > 0) {
-          setPlatforms(saved)
-          return
+          list = saved
         }
       }
     } catch {}
-    try {
-      const saved = localStorage.getItem('customPlatforms')
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setPlatforms(parsed)
-          return
+    if (list.length === 0) {
+      try {
+        const saved = localStorage.getItem('customPlatforms')
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            list = parsed
+          }
         }
-      }
-    } catch {}
-    setPlatforms(JSON.parse(JSON.stringify(defaultPlatforms)))
+      } catch {}
+    }
+    if (list.length === 0) {
+      list = JSON.parse(JSON.stringify(defaultPlatforms))
+    }
+    setPlatforms(list)
+    platformSiteIds.current = new Set(list.map(p => p.id))
   }, [])
 
   const savePlatforms = useCallback(async (list: Platform[]) => {
@@ -111,6 +116,14 @@ export default function Platforms() {
         Object.defineProperty(navigator,'webdriver',{get:function(){return false}});
         Object.defineProperty(navigator,'plugins',{get:function(){return {length:3,item:function(){return null},namedItem:function(){return null},refresh:function(){return false}}});
         Object.defineProperty(navigator,'languages',{get:function(){return ['zh-CN','zh','en']}});
+        window.open=function(u){if(u)window.location.href=u;return null};
+        document.addEventListener('click',function(e){
+          var a=e.target.closest('a');
+          if(a&&a.target==='_blank'&&a.href){
+            e.preventDefault();e.stopPropagation();
+            window.location.href=a.href;
+          }
+        },true);
       `)
     })
 
