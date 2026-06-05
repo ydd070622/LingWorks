@@ -3,10 +3,13 @@ name: Sync to Gitee
 on:
   push:
     branches: [master]
+  release:
+    types: [published]
 
 jobs:
-  sync:
+  sync-code:
     runs-on: ubuntu-latest
+    if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -16,3 +19,34 @@ jobs:
         run: |
           git remote add gitee https://ydd070622:${{ secrets.GITEE_TOKEN }}@gitee.com/ydd070622/ai-web-tools.git
           git push gitee master --force
+
+  sync-release:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    steps:
+      - name: Download GitHub release asset
+        run: |
+          ASSET_URL=$(jq -r '.release.assets[0].browser_download_url' <<< '${{ toJson(github.event) }}')
+          echo "Asset URL: $ASSET_URL"
+          curl -L -o asset.exe "$ASSET_URL"
+
+      - name: Create Gitee Release
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          NAME="${{ github.event.release.name }}"
+          BODY="${{ github.event.release.body }}"
+          BODY_ESCAPED=$(echo "$BODY" | jq -Rs .)
+
+          RESP=$(curl -s -X POST "https://gitee.com/api/v5/repos/ydd070622/ai-web-tools/releases" \
+            -H "Content-Type: application/json" \
+            -d "{\"access_token\":\"${{ secrets.GITEE_TOKEN }}\",\"tag_name\":\"$TAG\",\"name\":\"$NAME\",\"body\":$BODY_ESCAPED,\"prerelease\":false}")
+
+          echo "Create release response: $RESP"
+          RELEASE_ID=$(echo "$RESP" | jq -r '.id')
+          echo "RELEASE_ID=$RELEASE_ID" >> $GITHUB_ENV
+
+      - name: Upload asset to Gitee Release
+        run: |
+          curl -s -X POST "https://gitee.com/api/v5/repos/ydd070622/ai-web-tools/releases/${{ env.RELEASE_ID }}/attach_files" \
+            -F "access_token=${{ secrets.GITEE_TOKEN }}" \
+            -F "file=@asset.exe"
