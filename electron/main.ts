@@ -10,6 +10,7 @@ const isDev = !app.isPackaged
 Menu.setApplicationMenu(null)
 
 let mainWindow: BrowserWindow | null = null
+const downloadItems = new Map<string, Electron.DownloadItem>()
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -98,6 +99,29 @@ ipcMain.handle('set-theme-source', async (_e, source: string) => {
   if (source === 'dark' || source === 'light' || source === 'system') {
     nativeTheme.themeSource = source
   }
+})
+
+ipcMain.handle('get-desktop-path', () => app.getPath('desktop'))
+
+ipcMain.handle('select-folder', async (_e, defaultPath: string) => {
+  const result = await dialog.showOpenDialog(mainWindow!, {
+    defaultPath: defaultPath || app.getPath('desktop'),
+    properties: ['openDirectory'],
+  })
+  return result.canceled ? null : result.filePaths[0]
+})
+
+ipcMain.handle('cancel-download', async (_e, id: string) => {
+  const item = downloadItems.get(id)
+  if (item) { item.cancel(); downloadItems.delete(id) }
+})
+
+ipcMain.handle('shell-open-path', async (_e, p: string) => {
+  shell.openPath(p)
+})
+
+ipcMain.handle('shell-show-item', async (_e, p: string) => {
+  shell.showItemInFolder(p)
 })
 
 function compareVersions(local: string, remote: string): boolean {
@@ -192,6 +216,19 @@ async function checkForUpdates() {
   } catch {}
 }
 
+function getDownloadPath(): string {
+  const p = path.join(app.getPath('userData'), 'config.json')
+  try {
+    if (fs.existsSync(p)) {
+      const data = JSON.parse(fs.readFileSync(p, 'utf-8'))
+      if (data.downloadPath && fs.existsSync(data.downloadPath)) {
+        return data.downloadPath
+      }
+    }
+  } catch {}
+  return app.getPath('desktop')
+}
+
 app.whenReady().then(() => {
   try {
     const p = path.join(app.getPath('userData'), 'config.json')
@@ -236,6 +273,56 @@ app.on('web-contents-created', (_e, contents) => {
       callback({ responseHeaders: headers })
     }
   )
+
+  contents.session.on('will-download', (_event, item) => {
+    const name = item.getFilename()
+    // deduplicate: check if same filename already downloading
+    for (const [, dl] of downloadItems) {
+      if (dl.getFilename() === name && dl.getState() === 'progressing') {
+        item.cancel()
+        return
+      }
+    }
+
+    const dir = getDownloadPath()
+    let filePath = path.join(dir, name)
+    let counter = 1
+    const ext = path.extname(name)
+    const base = path.basename(name, ext)
+    while (fs.existsSync(filePath)) {
+      filePath = path.join(dir, `${base} (${counter})${ext}`)
+      counter++
+    }
+    item.setSavePath(filePath)
+
+    const dlId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    downloadItems.set(dlId, item)
+
+    mainWindow?.webContents.send('download-started', {
+      id: dlId,
+      filename: name,
+      totalBytes: item.getTotalBytes(),
+      receivedBytes: 0,
+      state: 'progress',
+    })
+
+    item.on('updated', () => {
+      mainWindow?.webContents.send('download-progress', {
+        id: dlId,
+        receivedBytes: item.getReceivedBytes(),
+        totalBytes: item.getTotalBytes(),
+      })
+    })
+
+    item.on('done', (_event, state) => {
+      downloadItems.delete(dlId)
+      if (state === 'completed') {
+        mainWindow?.webContents.send('download-completed', { id: dlId, filePath })
+      } else {
+        mainWindow?.webContents.send('download-failed', { id: dlId })
+      }
+    })
+  })
 
   const chromeUA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36'
   contents.setUserAgent(chromeUA)

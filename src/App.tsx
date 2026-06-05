@@ -9,7 +9,7 @@ import Recharge from './pages/Recharge'
 import Settings from './pages/Settings'
 import Accounts from './pages/Accounts'
 import Home from './pages/Home'
-import type { NavItem, CustomModel } from './types'
+import type { NavItem, CustomModel, DownloadItem } from './types'
 
 const defaultModels: CustomModel[] = [
   { name: 'Pollinations AI', apiKey: '', endpoint: 'https://pollinations.ai', modelName: 'pollinations' },
@@ -44,6 +44,8 @@ export default function App() {
   const [searchEngineId, setSearchEngineId] = useState('baidu')
   const [searchUrl, setSearchUrl] = useState<string | null>(null)
 
+  const [downloads, setDownloads] = useState<DownloadItem[]>([])
+
   const toggleSection = useCallback((sectionId: string) => {
     setCollapsedSections(prev => {
       const next = new Set(prev)
@@ -55,6 +57,44 @@ export default function App() {
   useEffect(() => {
     document.documentElement.className = theme === 'dark' ? 'theme-dark' : 'theme-light'
   }, [theme])
+
+  useEffect(() => {
+    const unsubs: (() => void)[] = []
+    const api = window.electronAPI
+    if (api) {
+      unsubs.push(api.onDownloadStarted((d) => {
+        setDownloads(prev => {
+          if (prev.some(dl => dl.filename === d.filename && dl.state === 'progress')) return prev
+          return [...prev, { ...d, state: 'progress' as const }]
+        })
+      }))
+      unsubs.push(api.onDownloadProgress((d) => {
+        setDownloads(prev => prev.map(dl =>
+          dl.id === d.id ? { ...dl, receivedBytes: d.receivedBytes, totalBytes: d.totalBytes || dl.totalBytes } : dl
+        ))
+      }))
+      unsubs.push(api.onDownloadCompleted((d) => {
+        setDownloads(prev => prev.map(dl =>
+          dl.id === d.id ? { ...dl, state: 'completed' as const, filePath: d.filePath } : dl
+        ))
+      }))
+      unsubs.push(api.onDownloadFailed((d) => {
+        setDownloads(prev => prev.map(dl =>
+          dl.id === d.id ? { ...dl, state: 'failed' as const } : dl
+        ))
+      }))
+    }
+    return () => unsubs.forEach(fn => fn())
+  }, [])
+
+  const cancelDownload = useCallback(async (id: string) => {
+    if (window.electronAPI) await window.electronAPI.cancelDownload(id)
+    setDownloads(prev => prev.map(dl => dl.id === id ? { ...dl, state: 'failed' as const } : dl))
+  }, [])
+
+  const clearDownloads = useCallback(() => {
+    setDownloads(prev => prev.filter(dl => dl.state === 'progress'))
+  }, [])
 
   useEffect(() => {
     const load = async () => {
@@ -119,12 +159,15 @@ export default function App() {
           theme={theme}
           collapsed={sidebarCollapsed}
           collapsedSections={collapsedSections}
+          downloads={downloads}
           onSelect={setActiveId}
           onToggleTheme={toggleTheme}
           onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
           onOpenSettings={() => setShowSettings(true)}
           onToggleSection={toggleSection}
           onGoHome={() => setActiveId('home')}
+          onCancelDownload={cancelDownload}
+          onClearDownloads={clearDownloads}
         />
 
       <div className="main-content">

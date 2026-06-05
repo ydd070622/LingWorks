@@ -1,5 +1,6 @@
-import { Globe, Brush, Settings, Clock, Sun, Moon, ChevronLeft, ChevronRight, Wrench, Grid3X3, Layers, CreditCard, Wifi, User, ChevronDown, Sparkles, Images, HistoryIcon, LayoutGrid, Wallet, Contact } from 'lucide-react'
-import type { NavItem } from '../types'
+import { useState, useEffect } from 'react'
+import { Globe, Brush, Settings, Sun, Moon, ChevronLeft, ChevronRight, Wrench, Layers, CreditCard, Wifi, User, ChevronDown, Sparkles, Images, HistoryIcon, LayoutGrid, Wallet, Contact, Download, FolderOpen } from 'lucide-react'
+import type { NavItem, DownloadItem } from '../types'
 
 interface SidebarProps {
   items: NavItem[]
@@ -7,12 +8,15 @@ interface SidebarProps {
   theme: 'dark' | 'light'
   collapsed: boolean
   collapsedSections: Set<string>
+  downloads: DownloadItem[]
   onSelect: (id: string) => void
   onToggleTheme: () => void
   onToggleCollapse: () => void
   onOpenSettings: () => void
   onToggleSection: (sectionId: string) => void
   onGoHome: () => void
+  onCancelDownload: (id: string) => void
+  onClearDownloads: () => void
 }
 
 const toolIcons: Record<string, React.ReactNode> = {
@@ -48,12 +52,23 @@ const iconLabel: Record<string, React.ReactNode> = {
   skyun: 'SK', mitce: 'MC',
 }
 
-export default function Sidebar({ items, activeId, theme, collapsed, collapsedSections, onSelect, onToggleTheme, onToggleCollapse, onOpenSettings, onToggleSection, onGoHome }: SidebarProps) {
+export default function Sidebar({ items, activeId, theme, collapsed, collapsedSections, downloads, onSelect, onToggleTheme, onToggleCollapse, onOpenSettings, onToggleSection, onGoHome, onCancelDownload, onClearDownloads }: SidebarProps) {
   const websites = items.filter(i => i.type === 'website')
   const tools = items.filter(i => i.type === 'tool')
   const aggregators = items.filter(i => i.type === 'aggregator')
   const accounts = items.filter(i => i.type === 'account')
   const vpnSites = items.filter(i => i.type === 'vpn')
+
+  const activeDownloads = downloads.filter(d => d.state === 'progress')
+  const hasDownloads = downloads.length > 0
+  const [showDlFlyout, setShowDlFlyout] = useState(false)
+
+  useEffect(() => {
+    if (!showDlFlyout) return
+    const handler = () => setShowDlFlyout(false)
+    document.addEventListener('click', handler)
+    return () => document.removeEventListener('click', handler)
+  }, [showDlFlyout])
 
   if (collapsed) {
     return (
@@ -118,6 +133,19 @@ export default function Sidebar({ items, activeId, theme, collapsed, collapsedSe
           ))}
         </div>
         <div className="sidebar-footer-collapsed">
+          {hasDownloads && (
+            <div
+              className={`sidebar-icon-item${showDlFlyout ? ' active' : ''}`}
+              onClick={(e) => { e.stopPropagation(); setShowDlFlyout(!showDlFlyout) }}
+              title={`下载 (${activeDownloads.length} 进行中)`}
+              style={{ position: 'relative', color: activeDownloads.length > 0 ? '#10b981' : 'var(--text-muted)' }}
+            >
+              <Download size={14} />
+              {activeDownloads.length > 0 && (
+                <span className="dl-icon-badge">{activeDownloads.length}</span>
+              )}
+            </div>
+          )}
           <div className="sidebar-icon-item" onClick={onToggleTheme} title={theme === 'dark' ? '浅色' : '深色'}>
             {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
           </div>
@@ -125,6 +153,45 @@ export default function Sidebar({ items, activeId, theme, collapsed, collapsedSe
             <Settings size={14} />
           </div>
         </div>
+        {showDlFlyout && hasDownloads && (
+          <div className={`dl-flyout${collapsed ? '' : ' dl-expanded'}`} onClick={e => e.stopPropagation()}>
+            <div className="dl-flyout-header">
+              <span>下载 {activeDownloads.length > 0 && `(${activeDownloads.length} 进行中)`}</span>
+              <span className="dl-flyout-clear" onClick={() => { onClearDownloads(); setShowDlFlyout(false) }}>清除已完成</span>
+            </div>
+            <div className="dl-flyout-list">
+              {downloads.map(dl => (
+                <div key={dl.id} className="dl-item">
+                  <div className="dl-icon">{dl.state === 'completed' ? '✅' : dl.state === 'failed' ? '❌' : '📥'}</div>
+                  <div className="dl-info">
+                    <div className="dl-name" title={dl.filename}>{dl.filename}</div>
+                    {dl.state === 'progress' && (
+                      <>
+                        <div className="dl-meta">
+                          {dl.totalBytes > 0
+                            ? `${(dl.receivedBytes / 1e6).toFixed(1)} / ${(dl.totalBytes / 1e6).toFixed(1)} MB · ${Math.round((dl.receivedBytes / dl.totalBytes) * 100)}%`
+                            : `${(dl.receivedBytes / 1e6).toFixed(1)} MB · 下载中`
+                          }
+                        </div>
+                        <div className="dl-bar-wrap"><div className="dl-bar" style={{ width: dl.totalBytes > 0 ? `${(dl.receivedBytes / dl.totalBytes) * 100}%` : '20%' }} /></div>
+                      </>
+                    )}
+                    {dl.state === 'completed' && <div className="dl-meta">已完成 · {(dl.receivedBytes / 1e6).toFixed(1)} MB</div>}
+                    {dl.state === 'failed' && <div className="dl-meta">已取消或失败</div>}
+                  </div>
+                  <div className="dl-actions">
+                    {dl.state === 'progress' && (
+                      <span className="dl-cancel" onClick={() => onCancelDownload(dl.id)}>✕</span>
+                    )}
+                    {dl.state === 'completed' && dl.filePath && (
+                      <span className="dl-open" onClick={() => window.electronAPI?.shellShowItem(dl.filePath!)} title="在文件夹中显示"><FolderOpen size={14} /></span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -232,6 +299,16 @@ export default function Sidebar({ items, activeId, theme, collapsed, collapsedSe
       </div>
 
       <div style={{ padding: '6px 8px', borderTop: '1px solid var(--border-color)' }}>
+        {hasDownloads && (
+          <div
+            className="sidebar-item"
+            onClick={(e) => { e.stopPropagation(); setShowDlFlyout(!showDlFlyout) }}
+            style={{ fontSize: 12, color: activeDownloads.length > 0 ? '#10b981' : 'var(--text-muted)', position: 'relative' }}
+          >
+            <span className="sidebar-item-icon"><Download size={14} /></span>
+            <span>下载 {activeDownloads.length > 0 && `(${activeDownloads.length})`}</span>
+          </div>
+        )}
         <div className="sidebar-item" onClick={onToggleTheme} style={{ fontSize: 12, color: 'var(--text-muted)' }}>
           <span className="sidebar-item-icon">{theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}</span>
           <span>{theme === 'dark' ? '浅色主题' : '深色主题'}</span>
@@ -241,6 +318,45 @@ export default function Sidebar({ items, activeId, theme, collapsed, collapsedSe
           <span>设置</span>
         </div>
       </div>
+      {showDlFlyout && hasDownloads && (
+        <div className={`dl-flyout${collapsed ? '' : ' dl-expanded'}`} onClick={e => e.stopPropagation()}>
+          <div className="dl-flyout-header">
+            <span>下载 {activeDownloads.length > 0 && `(${activeDownloads.length} 进行中)`}</span>
+            <span className="dl-flyout-clear" onClick={() => { onClearDownloads(); setShowDlFlyout(false) }}>清除已完成</span>
+          </div>
+          <div className="dl-flyout-list">
+            {downloads.map(dl => (
+              <div key={dl.id} className="dl-item">
+                <div className="dl-icon">{dl.state === 'completed' ? '✅' : dl.state === 'failed' ? '❌' : '📥'}</div>
+                <div className="dl-info">
+                  <div className="dl-name" title={dl.filename}>{dl.filename}</div>
+                  {dl.state === 'progress' && (
+                    <>
+                      <div className="dl-meta">
+                        {dl.totalBytes > 0
+                          ? `${(dl.receivedBytes / 1e6).toFixed(1)} / ${(dl.totalBytes / 1e6).toFixed(1)} MB · ${Math.round((dl.receivedBytes / dl.totalBytes) * 100)}%`
+                          : `${(dl.receivedBytes / 1e6).toFixed(1)} MB · 下载中`
+                        }
+                      </div>
+                      <div className="dl-bar-wrap"><div className="dl-bar" style={{ width: dl.totalBytes > 0 ? `${(dl.receivedBytes / dl.totalBytes) * 100}%` : '20%' }} /></div>
+                    </>
+                  )}
+                  {dl.state === 'completed' && <div className="dl-meta">已完成 · {(dl.receivedBytes / 1e6).toFixed(1)} MB</div>}
+                  {dl.state === 'failed' && <div className="dl-meta">已取消或失败</div>}
+                </div>
+                <div className="dl-actions">
+                  {dl.state === 'progress' && (
+                    <span className="dl-cancel" onClick={() => onCancelDownload(dl.id)}>✕</span>
+                  )}
+                  {dl.state === 'completed' && dl.filePath && (
+                    <span className="dl-open" onClick={() => window.electronAPI?.shellShowItem(dl.filePath!)} title="在文件夹中显示"><FolderOpen size={14} /></span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

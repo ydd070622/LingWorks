@@ -17,6 +17,7 @@ export default function Settings({ models, onSave, onClose }: SettingsProps) {
 
   const [showHome, setShowHome] = useState(true)
   const [checkUpdate, setCheckUpdate] = useState(true)
+  const [downloadPath, setDownloadPath] = useState('')
 
   const [list, setList] = useState<CustomModel[]>(() => JSON.parse(JSON.stringify(models)))
   const [editing, setEditing] = useState<CustomModel>({ ...emptyModel })
@@ -25,12 +26,15 @@ export default function Settings({ models, onSave, onClose }: SettingsProps) {
   useEffect(() => {
     const load = async () => {
       if (window.electronAPI) {
-        const [savedHome, savedUpdate] = await Promise.all([
+        const [savedHome, savedUpdate, savedPath] = await Promise.all([
           window.electronAPI.getStore('showHomeOnStartup'),
           window.electronAPI.getStore('checkUpdate'),
+          window.electronAPI.getStore('downloadPath'),
         ])
         if (typeof savedHome === 'boolean') setShowHome(savedHome)
         if (typeof savedUpdate === 'boolean') setCheckUpdate(savedUpdate)
+        if (typeof savedPath === 'string') setDownloadPath(savedPath)
+        else setDownloadPath(await window.electronAPI.getDesktopPath())
       }
     }
     load()
@@ -128,6 +132,33 @@ export default function Settings({ models, onSave, onClose }: SettingsProps) {
                     className={`settings-toggle${checkUpdate ? ' on' : ''}`}
                     onClick={() => { setCheckUpdate(!checkUpdate); saveGeneral('checkUpdate', !checkUpdate) }}
                   />
+                </div>
+
+                <div className="setting-row" style={{ marginTop: 20, borderTop: '1px solid var(--border-color)', paddingTop: 20 }}>
+                  <div style={{ flex: 1 }}>
+                    <div className="setting-row-label">默认下载路径</div>
+                    <div className="setting-row-desc">网页中下载的文件直接保存到此位置</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <input
+                    className="input-base"
+                    style={{ flex: 1, fontSize: 12 }}
+                    value={downloadPath}
+                    onChange={e => setDownloadPath(e.target.value)}
+                    placeholder="选择或输入下载目录..."
+                  />
+                  <button className="btn btn-ghost btn-sm" onClick={async () => {
+                    if (window.electronAPI) {
+                      const p = await window.electronAPI.selectFolder(downloadPath)
+                      if (p) setDownloadPath(p)
+                    }
+                  }}>浏览</button>
+                  <button className="btn btn-primary btn-sm" onClick={() => {
+                    if (window.electronAPI) {
+                      window.electronAPI.setStore('downloadPath', downloadPath)
+                    }
+                  }}>保存</button>
                 </div>
 
                 <div style={{ textAlign: 'right', marginTop: 24 }}>
