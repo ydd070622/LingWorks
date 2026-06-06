@@ -28,9 +28,13 @@ function createWindow() {
       contextIsolation: false,
       sandbox: false,
     },
-    backgroundColor: '#0a0a0f',
+    backgroundColor: '#00000000',
     icon: path.join(__dirname, isDev ? '../public/app-icon.ico' : '../dist/app-icon.ico'),
   })
+
+  if (process.platform === 'win32') {
+    mainWindow.setBackgroundColor('#00000000')
+  }
 
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173')

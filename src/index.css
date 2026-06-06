@@ -83,11 +83,11 @@ body {
 }
 .app-rounded {
   border-radius: 12px;
-  box-shadow: 0 0 0 2px rgba(255,255,255,0.15);
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.1);
 }
 
 .theme-light .app-rounded {
-  box-shadow: 0 0 0 2px rgba(0,0,0,0.1);
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.08);
 }
 
 /* Custom titlebar */
@@ -116,9 +116,6 @@ body {
 
 .theme-light .titlebar-btn:hover { background: rgba(0,0,0,0.06); }
 .theme-light .titlebar-close:hover { background: #e81123; color: #fff; }
-.theme-light .app-rounded {
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.08), 0 0 30px rgba(0,0,0,0.2);
-}
 
 /* Sidebar */
 .sidebar {
