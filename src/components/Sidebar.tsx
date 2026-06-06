@@ -17,6 +17,7 @@ interface SidebarProps {
   onGoHome: () => void
   onCancelDownload: (id: string) => void
   onClearDownloads: () => void
+  onSidebarActivity: () => void
 }
 
 const toolIcons: Record<string, React.ReactNode> = {
@@ -52,7 +53,7 @@ const iconLabel: Record<string, React.ReactNode> = {
   skyun: 'SK', mitce: 'MC',
 }
 
-export default function Sidebar({ items, activeId, theme, collapsed, collapsedSections, downloads, onSelect, onToggleTheme, onToggleCollapse, onOpenSettings, onToggleSection, onGoHome, onCancelDownload, onClearDownloads }: SidebarProps) {
+export default function Sidebar({ items, activeId, theme, collapsed, collapsedSections, downloads, onSelect, onToggleTheme, onToggleCollapse, onOpenSettings, onToggleSection, onGoHome, onCancelDownload, onClearDownloads, onSidebarActivity }: SidebarProps) {
   const websites = items.filter(i => i.type === 'website')
   const tools = items.filter(i => i.type === 'tool')
   const aggregators = items.filter(i => i.type === 'aggregator')
@@ -72,7 +73,7 @@ export default function Sidebar({ items, activeId, theme, collapsed, collapsedSe
 
   if (collapsed) {
     return (
-      <div className="sidebar sidebar-collapsed">
+      <div className="sidebar sidebar-collapsed" onMouseMove={onSidebarActivity} onMouseEnter={onSidebarActivity}>
         <div className="sidebar-collapse-toggle" onClick={onToggleCollapse}>
           <ChevronRight size={14} />
         </div>
@@ -197,7 +198,7 @@ export default function Sidebar({ items, activeId, theme, collapsed, collapsedSe
   }
 
   return (
-    <div className="sidebar">
+    <div className="sidebar" onMouseMove={onSidebarActivity} onMouseEnter={onSidebarActivity}>
       <div className="sidebar-header">
         <div className="sidebar-header-title" onClick={onGoHome} title="回到主页">
           <h1>AI Web Tools</h1>

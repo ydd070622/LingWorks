@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Sidebar from './components/Sidebar'
 import WebViewPage from './components/WebViewPage'
 import TextToImage from './pages/TextToImage'
@@ -57,6 +57,17 @@ export default function App() {
   useEffect(() => {
     document.documentElement.className = theme === 'dark' ? 'theme-dark' : 'theme-light'
   }, [theme])
+
+  const autoCollapseTimer = useRef<ReturnType<typeof setTimeout>>()
+  const resetAutoCollapse = useCallback(() => {
+    clearTimeout(autoCollapseTimer.current)
+    autoCollapseTimer.current = setTimeout(() => setSidebarCollapsed(true), 10000)
+  }, [])
+
+  useEffect(() => {
+    resetAutoCollapse()
+    return () => clearTimeout(autoCollapseTimer.current)
+  }, [resetAutoCollapse])
 
   useEffect(() => {
     const unsubs: (() => void)[] = []
@@ -168,6 +179,7 @@ export default function App() {
           onGoHome={() => setActiveId('home')}
           onCancelDownload={cancelDownload}
           onClearDownloads={clearDownloads}
+          onSidebarActivity={resetAutoCollapse}
         />
 
       <div className="main-content">

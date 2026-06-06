@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>下载位置示意 - 侧边栏底部</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #111; }
+.app { display: flex; height: 100vh; background: #0a0a0f; color: #e0e0e0; overflow: hidden; }
+
+/* Sidebar */
+.sidebar { width: 56px; background: #0d0d14; border-right: 1px solid #1a1a2e; display: flex; flex-direction: column; align-items: center; padding: 12px 0 8px; gap: 8px; flex-shrink: 0; }
+.sidebar-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer; color: #888; transition: all 0.15s; flex-shrink: 0; }
+.sidebar-icon:hover { background: rgba(255,255,255,0.06); color: #ccc; }
+.sidebar-icon.active { background: rgba(99,102,241,0.15); color: #818cf8; }
+.sidebar-divider { width: 32px; height: 1px; background: #1a1a2e; margin: 4px 0; flex-shrink: 0; }
+.sidebar-spacer { flex: 1; }
+
+/* Download trigger in sidebar (above theme) */
+.sidebar-dl {
+  width: 36px; height: 36px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: #10b981; font-size: 16px;
+  transition: all 0.15s; flex-shrink: 0; position: relative;
+  background: rgba(16,185,129,0.08);
+}
+.sidebar-dl:hover { background: rgba(16,185,129,0.15); }
+.sidebar-dl-badge {
+  position: absolute; top: 2px; right: 2px;
+  background: #10b981; color: #000;
+  font-size: 9px; width: 15px; height: 15px;
+  border-radius: 8px; display: flex; align-items: center; justify-content: center;
+  font-weight: 700; line-height: 1;
+}
+@keyframes dlPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); } 50% { box-shadow: 0 0 0 6px rgba(16,185,129,0); } }
+.sidebar-dl.pulse { animation: dlPulse 2s infinite; }
+
+/* Theme toggle at very bottom */
+.sidebar-theme {
+  width: 36px; height: 36px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: #888; font-size: 16px;
+  flex-shrink: 0; transition: all 0.15s;
+}
+.sidebar-theme:hover { background: rgba(255,255,255,0.06); color: #ccc; }
+
+/* Main */
+.main { flex: 1; display: flex; flex-direction: column; }
+.tab-bar { height: 34px; background: #0d0d14; border-bottom: 1px solid #1a1a2e; display: flex; align-items: center; padding: 0 4px; }
+.nav-btns { display: flex; border-right: 1px solid #1a1a2e; padding: 0 2px; }
+.nav-btn { width: 26px; height: 28px; display: flex; align-items: center; justify-content: center; color: #666; border-radius: 4px; cursor: pointer; font-size: 14px; }
+.tab-item { height: 28px; padding: 0 10px; background: rgba(255,255,255,0.03); border-radius: 6px 6px 0 0; margin: 0 1px; display: flex; align-items: center; font-size: 11px; color: #888; cursor: pointer; }
+.tab-item.active { background: #0a0a0f; color: #e0e0e0; border: 1px solid #2a2a3e; border-bottom-color: #0a0a0f; }
+.tab-close { margin-left: 4px; opacity: 0.3; }
+.tab-refresh { margin-left: auto; padding: 0 8px; font-size: 11px; color: #666; cursor: pointer; display: flex; align-items: center; gap: 4px; border-left: 1px solid #1a1a2e; }
+.tab-translate { padding: 0 8px; font-size: 11px; color: #666; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+
+.content { flex: 1; display: flex; align-items: center; justify-content: center; background: #06060a; }
+.content-placeholder { color: #222; font-size: 14px; }
+
+/* Download Flyout - attached to sidebar bottom-left */
+.dl-flyout {
+  position: absolute;
+  bottom: 48px;
+  left: 60px;
+  width: 340px;
+  max-height: 300px;
+  background: #12121c;
+  border: 1px solid #1e1e32;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  overflow: hidden;
+  z-index: 100;
+  display: none;
+}
+.dl-flyout.show { display: block; }
+.dl-flyout-header {
+  padding: 10px 14px; font-size: 12px; font-weight: 600; color: #aaa;
+  border-bottom: 1px solid #1a1a2e;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.dl-flyout-header .clear { font-size: 11px; color: #666; cursor: pointer; }
+.dl-flyout-header .clear:hover { color: #ef4444; }
+.dl-list { overflow-y: auto; max-height: 240px; padding: 6px; }
+.dl-item {
+  padding: 8px 10px; border-radius: 8px;
+  display: flex; align-items: center; gap: 10px; font-size: 12px;
+}
+.dl-item:hover { background: rgba(255,255,255,0.03); }
+.dl-icon { font-size: 18px; flex-shrink: 0; }
+.dl-info { flex: 1; min-width: 0; }
+.dl-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #ccc; margin-bottom: 3px; }
+.dl-meta { font-size: 11px; color: #666; display: flex; align-items: center; gap: 6px; }
+.dl-bar-wrap { height: 3px; background: #1a1a2e; border-radius: 2px; margin-top: 4px; }
+.dl-bar { height: 100%; background: #10b981; border-radius: 2px; transition: width 0.3s; }
+.dl-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.dl-actions span {
+  font-size: 10px; padding: 2px 6px; border-radius: 3px; cursor: pointer;
+}
+.dl-actions .open { color: #60a5fa; }
+.dl-actions .open:hover { background: rgba(96,165,250,0.12); }
+.dl-actions .cancel { color: #ef4444; }
+.dl-actions .cancel:hover { background: rgba(239,68,68,0.12); }
+
+.empty-dl { text-align: center; color: #444; padding: 24px; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="app" onclick="document.getElementById('flyout').classList.remove('show')">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-icon active" title="主页">🏠</div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-icon" title="Lib tv">🎨</div>
+    <div class="sidebar-icon" title="RunningHub">🤖</div>
+    <div class="sidebar-icon" title="TapNow">📚</div>
+    <div class="sidebar-icon" title="ChatGPT">💬</div>
+    <div class="sidebar-icon" title="GitHub">🔮</div>
+    <div class="sidebar-icon" title="Gemini">✨</div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-icon" title="文生图">🖼️</div>
+    <div class="sidebar-icon" title="图生图">🔄</div>
+    <div class="sidebar-icon" title="历史">📋</div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-icon" title="开放平台">📦</div>
+    <div class="sidebar-icon" title="充值平台">💳</div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-icon" title="账号">👤</div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-icon" title="VPN">🔗</div>
+    <div class="sidebar-icon" title="VPN">🌐</div>
+
+    <div class="sidebar-spacer"></div>
+
+    <!-- ===== 下载按钮 - 主题/设置上方 ===== -->
+    <div
+      id="dlTrigger"
+      class="sidebar-dl pulse"
+      title="2 个文件正在下载"
+      onclick="event.stopPropagation(); toggleFlyout()"
+    >
+      ⬇
+      <div class="sidebar-dl-badge">2</div>
+    </div>
+
+    <!-- ===== 主题切换 ===== -->
+    <div class="sidebar-theme" title="切换主题">🌙</div>
+    <!-- ===== 设置 ===== -->
+    <div class="sidebar-theme" title="设置">⚙️</div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main">
+    <div class="tab-bar">
+      <div class="nav-btns">
+        <div class="nav-btn">←</div>
+        <div class="nav-btn">→</div>
+      </div>
+      <div class="tab-item active">DeepSeek 开放平台 <span class="tab-close">×</span></div>
+      <div class="tab-item">智谱AI Open <span class="tab-close">×</span></div>
+      <div class="tab-translate">🌐 翻译</div>
+      <div class="tab-refresh">↻ 刷新</div>
+    </div>
+    <div class="content">
+      <div class="content-placeholder">[ WebView 内容区域 ]</div>
+    </div>
+  </div>
+
+  <!-- 下载详情浮窗 -->
+  <div id="flyout" class="dl-flyout" onclick="event.stopPropagation()">
+    <div class="dl-flyout-header">
+      <span>📥 下载中 (<span id="dlCount">2</span>)</span>
+      <span class="clear" onclick="clearDownloads()">全部清除</span>
+    </div>
+    <div class="dl-list" id="dlList">
+      <div class="dl-item" style="opacity: 0.7;">
+        <div class="dl-icon">✅</div>
+        <div class="dl-info">
+          <div class="dl-name">AI-Web-Tools-Setup-1.11.3.exe</div>
+          <div class="dl-meta">已完成 · 47.4 MB</div>
+        </div>
+        <div class="dl-actions"><span class="open">📂 打开</span></div>
+      </div>
+      <div class="dl-item">
+        <div class="dl-icon">📄</div>
+        <div class="dl-info">
+          <div class="dl-name">model-checkpoint.safetensors</div>
+          <div class="dl-meta">
+            <span>12.8 / 47.2 MB</span>
+            <span>—</span>
+            <span>68%</span>
+          </div>
+          <div class="dl-bar-wrap"><div class="dl-bar" style="width: 68%;"></div></div>
+        </div>
+        <div class="dl-actions"><span class="cancel">✕</span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+var hasDl = true;
+function toggleFlyout() {
+  if (!hasDl) return;
+  document.getElementById('flyout').classList.toggle('show');
+}
+function clearDownloads() {
+  hasDl = false;
+  document.getElementById('dlList').innerHTML = '<div class="empty-dl">暂无下载</div>';
+  document.getElementById('dlCount').textContent = '0';
+  document.getElementById('dlTrigger').style.display = 'none';
+  document.getElementById('flyout').classList.remove('show');
+}
+</script>
+</body>
+</html>
