@@ -65,7 +65,7 @@ export default function TextToImage({ models }: { models: CustomModel[] }) {
   }
 
   return (
-    <div style={{ padding: 24, height: '100%', overflow: 'hidden', display: 'flex', gap: 16 }}>
+    <div style={{ padding: '8px 24px 24px', height: '100%', overflow: 'hidden', display: 'flex', gap: 16 }}>
       <div className="glass-card" style={{ padding: 20, width: 340, minWidth: 340, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
         <div className="form-group">
           <label>提示词</label>

@@ -68,7 +68,7 @@ export default function ImageToImage({ models }: { models: CustomModel[] }) {
   }
 
   return (
-    <div style={{ padding: 24, height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ padding: '8px 24px 24px', height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, flex: 1, minHeight: 0, marginBottom: 16 }}>
         <div className="glass-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <div className="form-group" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>

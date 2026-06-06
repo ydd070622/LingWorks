@@ -115,7 +115,7 @@ export default function History() {
   }
 
   return (
-    <div style={{ padding: 24, height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ padding: '8px 24px 24px', height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
           共 {items.length} 条记录
