@@ -30,7 +30,9 @@ export default function Prompts() {
   const [formTags, setFormTags] = useState('')
 
   // AI state
+  const [aiMode, setAiMode] = useState<'generate' | 'optimize'>('generate')
   const [aiDesc, setAiDesc] = useState('')
+  const [aiOptimizeInput, setAiOptimizeInput] = useState('')
   const [aiCategory, setAiCategory] = useState('生图提示词')
   const [aiResult, setAiResult] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
@@ -156,7 +158,8 @@ export default function Prompts() {
 
   // AI Generate
   const handleAiGenerate = async () => {
-    if (!aiDesc.trim()) return
+    const input = aiMode === 'optimize' ? aiOptimizeInput.trim() : aiDesc.trim()
+    if (!input) return
     if (!apiKey) {
       showToast('请先在上方配置 DeepSeek API Key')
       return
@@ -164,9 +167,13 @@ export default function Prompts() {
     setAiLoading(true)
     setAiResult('')
 
+    const systemPrompt = aiMode === 'optimize'
+      ? '你是一个 Prompt 优化专家。用户会给你一条已有的提示词，你需要在保留原意的基础上进行优化：使其更具体、更有条理、去掉歧义、补充细节。直接输出优化后的 Prompt，不要加任何解释。'
+      : '你是一个 Prompt 工程专家。用户会描述他想要什么类型的提示词，你直接输出优化后的 Prompt 模板，不要加任何解释。使用 {变量名} 表示可替换的地方。'
+
     const messages = [
-      { role: 'system', content: '你是一个 Prompt 工程专家。用户会描述他想要什么类型的提示词，你直接输出优化后的 Prompt 模板，不要加任何解释。使用 {变量名} 表示可替换的地方。' },
-      { role: 'user', content: aiDesc.trim() },
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: input },
     ]
 
     try {
@@ -206,7 +213,8 @@ export default function Prompts() {
 
   const handleAiSave = async () => {
     if (!aiResult.trim()) return
-    const title = aiDesc.trim().slice(0, 30) + (aiDesc.trim().length > 30 ? '...' : '')
+    const srcText = aiMode === 'optimize' ? aiOptimizeInput : aiDesc
+    const title = srcText.trim().slice(0, 30) + (srcText.trim().length > 30 ? '...' : '')
     const item: PromptItem = {
       id: `p-${Date.now()}`,
       title,
@@ -390,15 +398,29 @@ export default function Prompts() {
         </div>
       )}
 
-      {/* AI Generate Modal */}
+      {/* AI Modal */}
       {showAi && (
         <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowAi(false) }}>
-          <div className="prompts-modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header" style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: 15, fontWeight: 600 }}>🤖 AI 生成 Prompt</h3>
+          <div className="prompts-modal" style={{ width: 780, maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
+            <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 600 }}>🤖 AI 助手</h3>
+                <div style={{ display: 'flex', gap: 4, background: 'var(--bg-card)', borderRadius: 8, padding: 2 }}>
+                  <button
+                    className={`btn btn-sm ${aiMode === 'generate' ? 'btn-primary' : 'btn-ghost'}`}
+                    style={{ borderRadius: 6 }}
+                    onClick={() => { setAiMode('generate'); setAiResult('') }}
+                  >生成</button>
+                  <button
+                    className={`btn btn-sm ${aiMode === 'optimize' ? 'btn-primary' : 'btn-ghost'}`}
+                    style={{ borderRadius: 6 }}
+                    onClick={() => { setAiMode('optimize'); setAiResult('') }}
+                  >优化</button>
+                </div>
+              </div>
               <button className="btn btn-ghost btn-sm" onClick={() => setShowAi(false)}><X size={14} /></button>
             </div>
-            <div className="modal-body" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
               {!apiKey && (
                 <div className="prompts-api-setup">
                   <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>🔑 配置 DeepSeek API Key</div>
@@ -424,31 +446,57 @@ export default function Prompts() {
                   <button className="btn btn-ghost btn-sm" onClick={() => { setApiKey(''); setTempApiKey('') }}>更换</button>
                 </div>
               )}
-              <div>
-                <label className="label">描述你需要的 Prompt（用自然语言）</label>
-                <textarea className="input-base" style={{ minHeight: 80, resize: 'vertical', lineHeight: 1.6 }} value={aiDesc} onChange={e => setAiDesc(e.target.value)} placeholder='例如：帮我写一个生成国风插画的 Prompt，要求水墨画风、仙鹤、云雾元素...' />
-              </div>
-              <div style={{ display: 'flex', gap: 12 }}>
+
+              {aiMode === 'generate' && (
+                <div>
+                  <label className="label" style={{ marginBottom: 6, display: 'block' }}>描述你需要的 Prompt（用自然语言）</label>
+                  <textarea
+                    className="input-base"
+                    style={{ minHeight: 100, resize: 'vertical', lineHeight: 1.6 }}
+                    value={aiDesc}
+                    onChange={e => setAiDesc(e.target.value)}
+                    placeholder='例如：帮我写一个生成国风插画的 Prompt，要求水墨画风、仙鹤、云雾元素...'
+                  />
+                </div>
+              )}
+
+              {aiMode === 'optimize' && (
+                <div>
+                  <label className="label" style={{ marginBottom: 6, display: 'block' }}>粘贴需要优化的 Prompt</label>
+                  <textarea
+                    className="input-base"
+                    style={{ minHeight: 140, resize: 'vertical', lineHeight: 1.6, fontFamily: 'monospace', fontSize: 13 }}
+                    value={aiOptimizeInput}
+                    onChange={e => setAiOptimizeInput(e.target.value)}
+                    placeholder='粘贴你的原始 Prompt，AI 会帮你优化得更具体、更有条理...'
+                  />
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
                 <div style={{ width: 150 }}>
-                  <label className="label">分类到</label>
+                  <label className="label" style={{ marginBottom: 4, display: 'block' }}>分类到</label>
                   <select className="input-base select-base" value={aiCategory} onChange={e => setAiCategory(e.target.value)}>
                     {categories.filter(c => c.id !== '__all__').map(c => (
                       <option key={c.id} value={c.id}>{c.label}</option>
                     ))}
                   </select>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                  <button className="btn btn-primary" onClick={handleAiGenerate} disabled={!aiDesc.trim() || aiLoading}>
-                    {aiLoading ? '生成中...' : <>✨ 让 AI 生成</>}
-                  </button>
-                </div>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleAiGenerate}
+                  disabled={aiLoading || (aiMode === 'optimize' ? !aiOptimizeInput.trim() : !aiDesc.trim())}
+                >
+                  {aiLoading ? '处理中...' : <>{aiMode === 'optimize' ? <>🪄 优化 Prompt</> : <>✨ 生成 Prompt</>}</>}
+                </button>
               </div>
+
               {aiResult && (
                 <div className="prompts-ai-result">
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>生成结果：</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>{aiMode === 'optimize' ? '优化结果：' : '生成结果：'}</div>
                   <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6, fontSize: 13 }}>{aiResult}</div>
                   <div style={{ display: 'flex', gap: 8, marginTop: 12, justifyContent: 'flex-end' }}>
-                    <button className="btn btn-ghost" onClick={handleAiGenerate} disabled={aiLoading}>重新生成</button>
+                    <button className="btn btn-ghost" onClick={handleAiGenerate} disabled={aiLoading}>重新处理</button>
                     <button className="btn btn-primary" onClick={handleAiSave}><Check size={13} /> 加入 Prompt 库</button>
                   </div>
                 </div>
