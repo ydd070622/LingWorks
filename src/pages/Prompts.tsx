@@ -35,6 +35,7 @@ export default function Prompts() {
   const [aiResult, setAiResult] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
   const [apiKey, setApiKey] = useState('')
+  const [tempApiKey, setTempApiKey] = useState('')
 
   const toastTimer = useRef<ReturnType<typeof setTimeout>>()
 
@@ -157,7 +158,7 @@ export default function Prompts() {
   const handleAiGenerate = async () => {
     if (!aiDesc.trim()) return
     if (!apiKey) {
-      showToast('请先在设置 → API 中配置 DeepSeek 模型和 API Key')
+      showToast('请先在上方配置 DeepSeek API Key')
       return
     }
     setAiLoading(true)
@@ -185,6 +186,22 @@ export default function Prompts() {
     } finally {
       setAiLoading(false)
     }
+  }
+
+  const handleSaveApiKey = async () => {
+    if (!tempApiKey.trim()) return
+    setApiKey(tempApiKey.trim())
+    if (window.electronAPI) {
+      const models = await window.electronAPI.getStore('customModels')
+      let list = Array.isArray(models) ? models : []
+      const idx = list.findIndex((m: any) => m.name && m.name.toLowerCase().includes('deepseek'))
+      const model = { name: 'DeepSeek', apiKey: tempApiKey.trim(), endpoint: 'https://api.deepseek.com/v1', modelName: 'deepseek-chat' }
+      if (idx >= 0) list[idx] = model
+      else list.push(model)
+      await window.electronAPI.setStore('customModels', list)
+    }
+    setTempApiKey('')
+    showToast('API Key 已保存')
   }
 
   const handleAiSave = async () => {
@@ -383,8 +400,28 @@ export default function Prompts() {
             </div>
             <div className="modal-body" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
               {!apiKey && (
-                <div style={{ padding: 12, borderRadius: 8, background: 'rgba(239,68,68,0.08)', color: '#ef4444', fontSize: 12, border: '1px solid rgba(239,68,68,0.2)' }}>
-                  未配置 DeepSeek API Key，请先去 设置 → API 中添加 DeepSeek 模型并填入 Key
+                <div className="prompts-api-setup">
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>🔑 配置 DeepSeek API Key</div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      className="input-base"
+                      type="password"
+                      placeholder="输入 DeepSeek API Key (sk-...)"
+                      value={tempApiKey}
+                      onChange={e => setTempApiKey(e.target.value)}
+                      style={{ flex: 1 }}
+                    />
+                    <button className="btn btn-primary" onClick={handleSaveApiKey} disabled={!tempApiKey.trim()}>保存</button>
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                    获取 Key：<a href="https://platform.deepseek.com/api_keys" target="_blank" style={{ color: 'var(--accent)' }}>platform.deepseek.com</a>
+                  </div>
+                </div>
+              )}
+              {apiKey && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)', fontSize: 12 }}>
+                  <span>🔑 DeepSeek API 已配置 · <span style={{ color: 'var(--success)' }}>就绪</span></span>
+                  <button className="btn btn-ghost btn-sm" onClick={() => { setApiKey(''); setTempApiKey('') }}>更换</button>
                 </div>
               )}
               <div>

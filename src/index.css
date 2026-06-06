@@ -1302,3 +1302,8 @@ textarea.input-base {
 
 .btn-accent { background: rgba(99,102,241,0.1); color: var(--accent); border-color: rgba(99,102,241,0.2); }
 .btn-accent:hover { background: rgba(99,102,241,0.18); }
+
+.prompts-api-setup {
+  padding: 14px; border-radius: 8px;
+  background: var(--bg-card); border: 1px solid var(--border-color);
+}
