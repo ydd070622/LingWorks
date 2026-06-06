@@ -175,7 +175,7 @@ export default function App() {
     <div className={`app-layout${isMaximized ? '' : ' app-rounded'}`}>
       <div className="window-titlebar">
         <span className="titlebar-label">AI Web Tools</span>
-        <span style={{ flex: 1 }} />
+        <span className="titlebar-drag-area" onDoubleClick={() => window.electronAPI?.maximizeWindow()} />
         <div className="titlebar-btn" onClick={() => window.electronAPI?.minimizeWindow()} title="最小化">─</div>
         <div className="titlebar-btn" onClick={() => window.electronAPI?.maximizeWindow()} title={isMaximized ? '还原' : '最大化'}>{isMaximized ? '❐' : '☐'}</div>
         <div className="titlebar-btn titlebar-close" onClick={() => window.electronAPI?.closeWindow()} title="关闭">✕</div>
