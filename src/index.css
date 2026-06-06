@@ -1254,9 +1254,9 @@ textarea.input-base {
 }
 .prompts-cat-add:hover { background: rgba(99,102,241,0.06); }
 .prompts-cat-manage {
-  padding: 8px; border-radius: 8px; font-size: 13px;
+  padding: 10px; border-radius: 8px; font-size: 14px; font-weight: 600;
   cursor: pointer; color: var(--text-secondary); border: 1px solid var(--border-color);
-  text-align: center; transition: all .15s; margin-top: 6px;
+  text-align: center; transition: all .15s; margin-top: auto;
 }
 .prompts-cat-manage:hover { background: var(--bg-card-hover); color: var(--text-primary); }
 

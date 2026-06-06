@@ -21,6 +21,7 @@ export default function Prompts() {
   const [showAdd, setShowAdd] = useState(false)
   const [showAi, setShowAi] = useState(false)
   const [showCatManager, setShowCatManager] = useState(false)
+  const [catNewName, setCatNewName] = useState('')
   const [editId, setEditId] = useState<string | null>(null)
 
   // Form state
@@ -290,6 +291,18 @@ export default function Prompts() {
     saveCategories([...categories, newCat])
   }
 
+  const handleAddCategoryInManager = () => {
+    const name = catNewName.trim()
+    if (!name) return
+    if (categories.find(c => c.id === name)) {
+      showToast('分类已存在')
+      return
+    }
+    const newCat = { id: name, label: name, icon: '📌' }
+    saveCategories([...categories, newCat])
+    setCatNewName('')
+  }
+
   return (
     <div style={{ display: 'flex', height: '100%' }}>
       {/* Categories */}
@@ -304,8 +317,7 @@ export default function Prompts() {
             <span className="prompts-cat-count">{getCount(c.id)}</span>
           </div>
         ))}
-        <div className="prompts-cat-add" onClick={handleAddCategory}>+ 新建分类</div>
-        <div className="prompts-cat-manage" onClick={() => setShowCatManager(true)}>⚙ 管理分类</div>
+        <div className="prompts-cat-manage" onClick={() => setShowCatManager(true)}>管理分类</div>
       </div>
 
       {/* Main */}
@@ -543,7 +555,18 @@ export default function Prompts() {
               <h3 style={{ fontSize: 15, fontWeight: 600 }}>分类管理</h3>
               <button className="btn btn-ghost btn-sm" onClick={() => setShowCatManager(false)}><X size={14} /></button>
             </div>
-            <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 360, overflowY: 'auto' }}>
+            <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 360, overflowY: 'auto' }}>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                <input
+                  className="input-base"
+                  placeholder="输入新分类名称"
+                  value={catNewName}
+                  onChange={e => setCatNewName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleAddCategoryInManager()}
+                  style={{ flex: 1 }}
+                />
+                <button className="btn btn-primary btn-sm" onClick={handleAddCategoryInManager} disabled={!catNewName.trim()}>新建</button>
+              </div>
               {categories.filter(c => c.id !== '__all__').map(c => (
                 <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
                   <span style={{ fontSize: 13 }}>{c.icon} {c.label}</span>
