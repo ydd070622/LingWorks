@@ -47,10 +47,11 @@
       "target": "nsis",
       "icon": "build/icon.ico"
     },
-    "linux": {
-      "target": "deb",
-      "icon": "build/icon.png",
-      "category": "Utility"
-    }
+  "linux": {
+    "target": "deb",
+    "icon": "build/icon.png",
+    "category": "Utility",
+    "maintainer": "ydd070622 <ydd070622@gmail.com>"
+  }
   }
 }
