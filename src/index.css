@@ -1274,10 +1274,11 @@ textarea.input-base {
   display: flex; align-items: center; gap: 12px; flex-shrink: 0;
 }
 
-.prompts-list { flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+.prompts-list { flex: 1; overflow-y: auto; padding: 12px 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; align-content: start; }
 .prompts-card {
   padding: 14px 16px; border-radius: 10px; background: var(--bg-card);
   border: 1px solid var(--border-color); transition: all .15s;
+  cursor: pointer;
 }
 .prompts-card:hover { border-color: rgba(255,255,255,0.15); }
 .prompts-card-platform {
@@ -1293,7 +1294,7 @@ textarea.input-base {
 .prompts-card-btn-del:hover { color: #ef4444; background: rgba(239,68,68,0.08); }
 .prompts-card-preview {
   font-size: 12px; color: var(--text-muted); white-space: pre-wrap;
-  line-height: 1.6; max-height: 55px; overflow: hidden; margin-bottom: 8px;
+  line-height: 1.6; max-height: 68px; overflow: hidden; margin-bottom: 8px;
   font-family: 'SF Mono', 'Cascadia Code', Consolas, monospace;
 }
 .prompts-tag {
