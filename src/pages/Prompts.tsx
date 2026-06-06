@@ -478,12 +478,6 @@ export default function Prompts() {
                   <button className="btn btn-ghost btn-sm" onClick={() => setShowApiForm(true)}>更换</button>
                 </div>
               )}
-              {apiKey && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)', fontSize: 12 }}>
-                  <span>🔑 DeepSeek API 已配置 · <span style={{ color: 'var(--success)' }}>就绪</span></span>
-                  <button className="btn btn-ghost btn-sm" onClick={() => setApiKey('')}>更换</button>
-                </div>
-              )}
 
               {aiMode === 'generate' && (
                 <div>

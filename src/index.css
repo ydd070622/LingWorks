@@ -463,6 +463,10 @@ textarea.input-base {
   cursor: pointer;
   transition: border-color 0.15s;
 }
+.select-base option {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
 .select-base:focus {
   border-color: var(--accent);
 }
