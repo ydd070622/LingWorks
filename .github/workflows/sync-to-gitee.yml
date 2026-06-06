@@ -24,11 +24,21 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'release'
     steps:
-      - name: Download GitHub release asset
+      - name: Download GitHub release asset (with retry)
         run: |
-          ASSET_URL="${{ github.event.release.assets[0].browser_download_url }}"
-          echo "Downloading: $ASSET_URL"
-          curl -L -o asset.exe "$ASSET_URL"
+          for i in $(seq 1 15); do
+            ASSETS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "${{ github.event.release.assets_url }}")
+            ASSET_URL=$(echo "$ASSETS" | python3 -c "import sys,json; a=json.load(sys.stdin); print(a[0]['browser_download_url'] if a else '')")
+            if [ -n "$ASSET_URL" ]; then
+              echo "Downloading: $ASSET_URL"
+              curl -L -o asset.exe "$ASSET_URL"
+              exit 0
+            fi
+            echo "Waiting for asset... ($i/15)"
+            sleep 4
+          done
+          echo "Asset not found after retries"
+          exit 1
 
       - name: Create Gitee Release
         run: |
