@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { RefreshCw, ArrowLeft, ArrowRight, Languages } from 'lucide-react'
+import { RefreshCw, ArrowLeft, ArrowRight, Languages, Copy, ExternalLink } from 'lucide-react'
 import type { NavItem } from '../types'
 
 interface Tab {
@@ -27,6 +27,8 @@ export default function WebViewPage({ site, visible }: WebViewPageProps) {
   ])
   const [activeId, setActiveId] = useState('init')
   const [translatedTabs, setTranslatedTabs] = useState<Set<string>>(new Set())
+  const [ctxTab, setCtxTab] = useState<Tab | null>(null)
+  const [ctxPos, setCtxPos] = useState<{ x: number; y: number } | null>(null)
   const webviewMap = useRef<Map<string, WebviewElement>>(new Map())
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -133,6 +135,43 @@ export default function WebViewPage({ site, visible }: WebViewPageProps) {
     if (wv) { wv.remove(); webviewMap.current.delete(id) }
   }
 
+  const handleTabContext = (e: React.MouseEvent, tab: Tab) => {
+    e.preventDefault()
+    setCtxTab(tab)
+    setCtxPos({ x: e.clientX, y: e.clientY })
+  }
+
+  const closeCtx = () => { setCtxTab(null); setCtxPos(null) }
+
+  const handleCopyUrl = () => {
+    if (ctxTab) navigator.clipboard.writeText(ctxTab.url).catch(() => {})
+    closeCtx()
+  }
+
+  const handleOpenExternal = () => {
+    if (ctxTab) {
+      if (window.electronAPI) window.electronAPI.openExternal(ctxTab.url)
+      else window.open(ctxTab.url, '_blank')
+    }
+    closeCtx()
+  }
+
+  const handleCloseOthers = () => {
+    if (ctxTab) {
+      setTabs(prev => prev.filter(t => t.id === ctxTab.id))
+      setActiveId(ctxTab.id)
+    }
+    closeCtx()
+  }
+
+  const handleCloseRight = () => {
+    if (ctxTab) {
+      const idx = tabs.findIndex(t => t.id === ctxTab.id)
+      setTabs(prev => prev.filter((t, i) => i <= idx))
+    }
+    closeCtx()
+  }
+
   const handleRefresh = () => {
     const wv = webviewMap.current.get(activeId)
     if (wv) (wv as any).reload?.()
@@ -224,6 +263,7 @@ export default function WebViewPage({ site, visible }: WebViewPageProps) {
               key={tab.id}
               className={'tab-item' + (tab.id === activeId ? ' active' : '')}
               onClick={() => handleSwitch(tab.id)}
+              onContextMenu={e => handleTabContext(e, tab)}
             >
               <span className="tab-title">{tab.title}</span>
               {tabs.length > 1 && (
@@ -250,6 +290,25 @@ export default function WebViewPage({ site, visible }: WebViewPageProps) {
         </div>
       </div>
       <div ref={containerRef} style={{ flex: 1, position: 'relative' }} />
+
+      {ctxTab && ctxPos && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={closeCtx} onContextMenu={e => { e.preventDefault(); closeCtx() }}>
+          <div style={{
+            position: 'absolute', left: ctxPos.x, top: ctxPos.y,
+            background: 'var(--bg-secondary)', border: '1px solid var(--border-color)',
+            borderRadius: 8, padding: 4, minWidth: 160,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+          }}>
+            <div className="webview-ctx-item" onClick={handleSwitch.bind(null, ctxTab.id)}>切换到此标签</div>
+            <div className="webview-ctx-item" onClick={handleCopyUrl}><Copy size={12} /> 复制网址</div>
+            <div className="webview-ctx-item" onClick={handleOpenExternal}><ExternalLink size={12} /> 在浏览器中打开</div>
+            <div style={{ height: 1, background: 'var(--border-color)', margin: '2px 8px' }} />
+            <div className="webview-ctx-item" onClick={handleClose.bind(null, ctxTab.id)}>关闭标签</div>
+            <div className="webview-ctx-item" onClick={handleCloseOthers}>关闭其他标签</div>
+            <div className="webview-ctx-item" onClick={handleCloseRight}>关闭右侧标签</div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
