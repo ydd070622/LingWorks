@@ -20,6 +20,7 @@ window.electronAPI = {
   maximizeWindow: () => ipcRenderer.invoke('window-maximize'),
   closeWindow: () => ipcRenderer.invoke('window-close'),
   isMaximized: () => ipcRenderer.invoke('window-is-maximized'),
+  setWindowPosition: (x: number, y: number) => ipcRenderer.invoke('window-set-position', x, y),
   onMaximizeChange: (cb: (isMax: boolean) => void) => {
     const h = (_e: any, isMax: boolean) => cb(isMax)
     ipcRenderer.on('window-maximize-change', h)

@@ -47,6 +47,26 @@ export default function App() {
   const [downloads, setDownloads] = useState<DownloadItem[]>([])
   const [isMaximized, setIsMaximized] = useState(false)
 
+  const onTitleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (isMaximized) return
+    if ((e.target as HTMLElement).closest('.titlebar-btn')) return
+    const api = window.electronAPI
+    if (!api) return
+    const sx = e.screenX
+    const sy = e.screenY
+    const wx = window.screenX
+    const wy = window.screenY
+    const onMove = (ev: MouseEvent) => {
+      api.setWindowPosition(wx + ev.screenX - sx, wy + ev.screenY - sy)
+    }
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }, [isMaximized])
+
   const toggleSection = useCallback((sectionId: string) => {
     setCollapsedSections(prev => {
       const next = new Set(prev)
@@ -173,7 +193,7 @@ export default function App() {
 
   return (
     <div className={`app-layout${isMaximized ? '' : ' app-rounded'}`}>
-      <div className="window-titlebar">
+      <div className="window-titlebar" onMouseDown={onTitleMouseDown}>
         <span className="titlebar-label">AI Web Tools</span>
         <span className="titlebar-drag-area" onDoubleClick={() => window.electronAPI?.maximizeWindow()} />
         <div className="titlebar-btn" onClick={() => window.electronAPI?.minimizeWindow()} title="最小化">─</div>

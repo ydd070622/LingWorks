@@ -140,6 +140,9 @@ ipcMain.handle('window-maximize', () => {
 })
 ipcMain.handle('window-close', () => mainWindow?.close())
 ipcMain.handle('window-is-maximized', () => mainWindow?.isMaximized() ?? false)
+ipcMain.handle('window-set-position', (_e, x: number, y: number) => {
+  mainWindow?.setPosition(x, y)
+})
 
 function compareVersions(local: string, remote: string): boolean {
   const l = local.split('.').map(Number)
