@@ -91,7 +91,8 @@ export default function Dashboard() {
   const refreshAll = useCallback(() => { fetchBalance(); fetchUsage() }, [fetchBalance, fetchUsage])
 
   useEffect(() => { loadApiKey() }, [loadApiKey])
-  useEffect(() => { if (apiKey) { refreshAll(); timerRef.current = setInterval(refreshAll, 300000) }; return () => { if (timerRef.current) clearInterval(timerRef.current) } }, [apiKey])
+  useEffect(() => { if (apiKey) { fetchBalance(); timerRef.current = setInterval(fetchBalance, 300000) }; return () => { if (timerRef.current) clearInterval(timerRef.current) } }, [apiKey])
+  useEffect(() => { if (platformToken) fetchUsage() }, [platformToken])
 
   const flash = usage?.models.find(m => m.key === 'flash') || null
   const pro = usage?.models.find(m => m.key === 'pro') || null
@@ -177,23 +178,38 @@ export default function Dashboard() {
 
         <div className="api-config-section" style={{ padding: 20 }}>
           <h4 style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}><BarChart3 size={14} /> 用量同步 Token</h4>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>DeepSeek 用量详情需网页登录 token（与 API Key 不同）。</p>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>获取方式：浏览器登录 <a href="#" onClick={e => { e.preventDefault(); if (window.electronAPI) window.electronAPI.openExternal('https://platform.deepseek.com/usage') }} style={{ color: 'var(--accent)' }}>platform.deepseek.com</a>，F12 控制台输入：<code style={{ background: 'rgba(99,102,241,0.1)', padding: '2px 6px', borderRadius: 4, fontSize: 11 }}>JSON.parse(localStorage.userToken).value</code></p>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>用于同步 Token 用量、消费和趋势图。点击下方按钮自动登录并提取 Token。</p>
           <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
             <input className="input-base" style={{ flex: 1 }} type="password" value={platformToken} onChange={async e => {
               setPlatformToken(e.target.value)
               if (window.electronAPI) await window.electronAPI.setStore('dsPlatformToken', e.target.value)
-            }} placeholder={platformToken ? '••••••••••••••••••••••••••••••••••' : '粘贴 token...'} />
+            }} placeholder={platformToken ? '••••••••••••••••••••••••••••••••••' : '自动提取或手动粘贴'} />
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button className="btn btn-primary btn-sm" onClick={async () => {
+              if (window.electronAPI) {
+                const token = await window.electronAPI.dsLogin()
+                if (token) {
+                  setPlatformToken(token)
+                  await window.electronAPI.setStore('dsPlatformToken', token)
+                  setPage('dashboard')
+                  await fetchUsage()
+                }
+              }
+            }}>🔐 网页登录自动提取</button>
+            <button className="btn btn-ghost btn-sm" onClick={async () => {
               if (!platformToken) return
               setPage('dashboard')
               await fetchUsage()
             }}>保存并刷新</button>
           </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 4 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
             <span style={{ fontSize: 11, color: platformToken ? 'var(--success)' : 'var(--text-muted)' }}>{platformToken ? '已配置' : '未配置（仅可查看余额）'}</span>
             {platformToken && <button className="btn btn-ghost btn-sm" style={{ fontSize: 11 }} onClick={async () => { setPlatformToken(''); if (window.electronAPI) await window.electronAPI.setStore('dsPlatformToken', ''); setUsage(null); setUsageState('nokey') }}>清除 Token</button>}
           </div>
+          <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>
+            也可手动获取：登录 platform.deepseek.com，F12 控制台输入 <code style={{ background: 'rgba(99,102,241,0.1)', padding: '1px 5px', borderRadius: 3 }}>JSON.parse(localStorage.userToken).value</code>
+          </p>
         </div>
       </div>
     )

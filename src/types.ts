@@ -79,6 +79,7 @@ declare global {
       onMaximizeChange: (cb: (isMax: boolean) => void) => () => void
       onNewTab: (cb: (data: { url: string; siteId: string }) => void) => () => void
       onPopupNavigate: (cb: (data: { url: string }) => void) => () => void
+      dsLogin: () => Promise<string | null>
     }
   }
 }

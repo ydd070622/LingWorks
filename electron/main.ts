@@ -6,6 +6,35 @@ app.commandLine.appendSwitch('disable-gpu-sandbox')
 app.commandLine.appendSwitch('disable-software-rasterizer')
 app.commandLine.appendSwitch('disable-features', 'WebDriver')
 
+ipcMain.handle('ds-login', async () => {
+  return new Promise<string | null>((resolve) => {
+    const loginWin = new BrowserWindow({
+      width: 800, height: 700,
+      title: 'DeepSeek 登录',
+      webPreferences: { nodeIntegration: false, contextIsolation: true },
+    })
+
+    let resolved = false
+    const checkToken = () => {
+      if (resolved) return
+      loginWin.webContents.executeJavaScript('JSON.parse(localStorage.userToken || "{}").value || null')
+        .then((token: string | null) => {
+          if (token) {
+            resolved = true
+            loginWin.close()
+            resolve(token)
+          }
+        }).catch(() => {})
+    }
+
+    loginWin.webContents.on('did-navigate', checkToken)
+    loginWin.webContents.on('did-finish-load', () => setTimeout(checkToken, 2000))
+    loginWin.on('closed', () => { if (!resolved) resolve(null) })
+
+    loginWin.loadURL('https://platform.deepseek.com')
+  })
+})
+
 const isDev = !app.isPackaged
 Menu.setApplicationMenu(null)
 

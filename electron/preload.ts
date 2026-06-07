@@ -58,4 +58,5 @@ window.electronAPI = {
     ipcRenderer.on('popup-navigate', h)
     return () => { ipcRenderer.removeListener('popup-navigate', h) }
   },
+  dsLogin: () => ipcRenderer.invoke('ds-login'),
 }
