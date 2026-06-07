@@ -275,7 +275,7 @@ export default function Dashboard() {
 
         {/* ===== RIGHT ===== */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, height: '100%' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px' }}>
+          <div className="api-config-section" style={{ padding: '10px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ fontSize: 15, fontWeight: 700 }}>📅 历史月用量</div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="btn btn-ghost btn-sm" onClick={() => { fetchBalance(); fetchAllData() }} disabled={loading}><RefreshCw size={14} style={loading ? { animation: 'spin 1s infinite linear' } : {}} /></button>
