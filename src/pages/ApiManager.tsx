@@ -30,6 +30,7 @@ export default function ApiManager() {
   const [showAddChannel, setShowAddChannel] = useState(false)
   const [channelForm, setChannelForm] = useState<ProviderConfig | null>(null)
   const [toast, setToast] = useState('')
+  const [fetchingModels, setFetchingModels] = useState(false)
   const [requestLog, setRequestLog] = useState<{ model: string; provider: string; tokens: number; time: number }[]>([])
 
   const load = useCallback(async () => {
@@ -46,6 +47,61 @@ export default function ApiManager() {
 
   const save = async (list: ProviderConfig[]) => { setProviders(list); if (window.electronAPI) await window.electronAPI.setStore('apiProviders', list) }
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 1500) }
+
+  const ensureToken = () => {
+    if (!masterKey) {
+      const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+      let key = 'sk-'
+      for (let i = 0; i < 48; i++) key += chars[Math.floor(Math.random() * chars.length)]
+      setMasterKey(key)
+      if (window.electronAPI) window.electronAPI.setStore('apiMasterKey', key)
+      showToast('已自动生成令牌')
+    }
+  }
+
+  const fetchModels = async (provider: ProviderConfig) => {
+    if (!provider.apiKey) { showToast('请先填入 API Key'); return }
+    setFetchingModels(true)
+    try {
+      let url = `${provider.endpoint}/models`
+      const headers: Record<string, string> = {}
+      if (provider.id === 'google') {
+        url = `${provider.endpoint}/models?key=${provider.apiKey}`
+      } else if (provider.id === 'claude') {
+        headers['x-api-key'] = provider.apiKey
+        headers['anthropic-version'] = '2023-06-01'
+      } else {
+        headers['Authorization'] = `Bearer ${provider.apiKey}`
+      }
+      const res = await fetch(url, { headers })
+      const data = await res.json()
+      if (data.data && Array.isArray(data.data)) {
+        const fetched = data.data
+          .filter((m: any) => m.id && !m.id.includes('embed') && !m.id.includes('moderation') && !m.id.includes('whisper') && !m.id.includes('tts'))
+          .map((m: any) => ({
+            id: m.id, name: m.id, type: 'chat' as const,
+            desc: m.owned_by || '',
+            enabled: true,
+          }))
+        if (fetched.length > 0) {
+          setChannelForm({ ...provider, models: fetched })
+          showToast(`拉取到 ${fetched.length} 个模型`)
+        } else {
+          showToast('未找到模型，请检查 API Key')
+        }
+      } else if (data.models && Array.isArray(data.models)) {
+        const fetched = data.models.map((m: any) => ({
+          id: typeof m === 'string' ? m : m.name || m.id, name: typeof m === 'string' ? m : m.name || m.id,
+          type: 'chat' as const, desc: '', enabled: true,
+        }))
+        setChannelForm({ ...provider, models: fetched })
+        showToast(`拉取到 ${fetched.length} 个模型`)
+      } else {
+        showToast('未找到模型列表')
+      }
+    } catch { showToast('拉取失败，请检查 API 地址') }
+    finally { setFetchingModels(false) }
+  }
 
   const handleTest = async (p: ProviderConfig) => {
     if (!p.apiKey) return
@@ -138,18 +194,19 @@ export default function ApiManager() {
           <>
             <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 20 }}>🔑 令牌管理</div>
             <div className="api-config-section" style={{ marginBottom: 16, padding: 20 }}>
-              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>设置统一访问密钥，外部客户端通过此 Key 使用所有已配置渠道的模型</div>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                <input className="input-base" style={{ width: 320, fontFamily: 'monospace' }} type="text" value={masterKey} onChange={async e => { setMasterKey(e.target.value); if (window.electronAPI) await window.electronAPI.setStore('apiMasterKey', e.target.value) }} placeholder="输入统一访问密钥" />
-                {masterKey && <button className="btn btn-ghost" onClick={() => { navigator.clipboard.writeText(masterKey); showToast('已复制') }}><Copy size={13} /></button>}
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>统一访问密钥，外部客户端通过此 Key 使用所有已配置渠道的模型</div>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 8 }}>
+                <input className="input-base" style={{ width: 380, fontFamily: 'monospace', fontSize: 12 }} type="text" value={masterKey} onChange={async e => { setMasterKey(e.target.value); if (window.electronAPI) await window.electronAPI.setStore('apiMasterKey', e.target.value) }} placeholder="点击右侧按钮自动生成，或手动输入" />
+                <button className="btn btn-primary btn-sm" onClick={ensureToken} style={{ whiteSpace: 'nowrap' }}>🪄 自动生成</button>
+                {masterKey && <button className="btn btn-ghost btn-sm" onClick={() => { navigator.clipboard.writeText(masterKey); showToast('已复制') }}><Copy size={13} /></button>}
               </div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>{masterKey ? '已设置' : '留空则无需认证即可访问'}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{masterKey ? '已设置，下方复制接入信息即可使用' : '点击「自动生成」创建一个安全密钥'}</div>
             </div>
             {masterKey && (
               <div className="api-config-section" style={{ padding: 20 }}>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 2 }}>
                   <div>接入地址：<code style={{ background: 'rgba(34,197,94,0.1)', color: 'var(--success)', padding: '2px 8px', borderRadius: 4 }}>http://127.0.0.1:19384/v1</code></div>
-                  <div style={{ marginTop: 4 }}>可用模型：{allModels.join('、') || '无'}</div>
+                  <div>模型列表：{allModels.length > 0 ? allModels.join('、') : <span style={{ color: 'var(--text-muted)' }}>请先在渠道管理中添加</span>}</div>
                 </div>
               </div>
             )}
@@ -208,7 +265,12 @@ export default function ApiManager() {
                       <input className="input-base" type="password" value={channelForm.apiKey} onChange={e => setChannelForm({ ...channelForm, apiKey: e.target.value })} placeholder="sk-..." />
                     </div>
                     <div>
-                      <label className="label" style={{ marginBottom: 6, display: 'block' }}>选择模型</label>
+                      <label className="label" style={{ marginBottom: 6, display: 'block' }}>
+                        选择模型
+                        <button className="btn btn-ghost btn-sm" style={{ marginLeft: 8 }} onClick={() => channelForm && fetchModels(channelForm)} disabled={!channelForm?.apiKey || fetchingModels}>
+                          {fetchingModels ? '拉取中...' : '🔄 拉取模型列表'}
+                        </button>
+                      </label>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         {channelForm.models.map(m => (
                           <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', background: 'var(--bg-card)', borderRadius: 6, border: '1px solid var(--border-color)' }}>
