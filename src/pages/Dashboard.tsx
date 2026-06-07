@@ -67,28 +67,81 @@ export default function Dashboard() {
     if (!platformToken) { setUsageState('nokey'); return }
     setUsageState('loading')
     try {
-      const res = await fetch('https://platform.deepseek.com/api/v1/usage/summary', {
-        headers: { Authorization: `Bearer ${platformToken}` }
-      })
-      if (res.status === 200) {
-        const data = await res.json()
-        const models: UsageModel[] = (data.models || []).map((m: any) => ({
-          key: (m.model || '').toLowerCase().includes('pro') ? 'pro' : 'flash',
-          name: m.model || '', totalTokens: (m.total_tokens || 0),
-          requestCount: m.request_count || 0, cost: m.cost || 0,
-          cacheHitTokens: m.cache_hit_tokens || 0, cacheMissTokens: m.cache_miss_tokens || 0,
-          responseTokens: m.completion_tokens || 0,
-        }))
-        const days: UsageDay[] = (data.days || data.daily || []).map((d: any) => ({
-          date: d.date || d.day, flashTokens: d.flash_tokens || 0, proTokens: d.pro_tokens || 0,
-          totalTokens: (d.total_tokens || 0), totalCost: d.total_cost || d.cost || 0,
-        }))
-        setUsage({ models, days, monthCost: data.month_cost || data.total_cost || 0 })
-        setUsageState('ok')
-      } else {
-        // Platform API not accessible, show as error
-        setUsageState('error')
+      const now = new Date()
+      const month = now.getMonth() + 1
+      const year = now.getFullYear()
+      const ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36'
+      const headers: Record<string, string> = {
+        Authorization: `Bearer ${platformToken}`,
+        'x-app-version': '1.0.0',
+        Accept: '*/*',
+        'User-Agent': ua,
       }
+
+      const [amountRes, costRes] = await Promise.all([
+        fetch(`https://platform.deepseek.com/api/v0/usage/amount?month=${month}&year=${year}`, { headers }),
+        fetch(`https://platform.deepseek.com/api/v0/usage/cost?month=${month}&year=${year}`, { headers }),
+      ])
+
+      if (!amountRes.ok || !costRes.ok) { setUsageState('error'); return }
+
+      const amountData = await amountRes.json()
+      const costData = await costRes.json()
+
+      const costByDate: Record<string, number> = {}
+      const costTotal = costData?.data?.biz_data?.[0]
+      if (costTotal) {
+        for (const day of (costTotal.days || [])) {
+          const dayCost = (day.data || []).reduce((s: number, m: any) => s + (m.usage || []).filter((e: any) => e.type !== 'REQUEST').reduce((ss: number, ee: any) => ss + (parseFloat(ee.amount) || 0), 0), 0)
+          costByDate[day.date] = dayCost
+        }
+      }
+
+      const costForModel = (model: string) => {
+        if (!costTotal) return 0
+        const m = (costTotal.total || []).find((m: any) => m.model === model)
+        if (!m) return 0
+        return (m.usage || []).filter((e: any) => e.type !== 'REQUEST').reduce((s: number, e: any) => s + (parseFloat(e.amount) || 0), 0)
+      }
+
+      const models: UsageModel[] = []
+      for (const mu of (amountData?.data?.biz_data?.total || [])) {
+        const isFlash = mu.model === 'deepseek-v4-flash'
+        const isPro = mu.model === 'deepseek-v4-pro'
+        if (!isFlash && !isPro) continue
+        let total = 0, request = 0, hit = 0, miss = 0, response = 0
+        for (const e of (mu.usage || [])) {
+          const v = Math.round(parseFloat(e.amount) || 0)
+          switch (e.type) {
+            case 'REQUEST': request = v; break
+            case 'PROMPT_CACHE_HIT_TOKEN': hit = v; total += v; break
+            case 'PROMPT_CACHE_MISS_TOKEN': miss = v; total += v; break
+            case 'RESPONSE_TOKEN': response = v; total += v; break
+            case 'PROMPT_TOKEN': total += v; break
+          }
+        }
+        models.push({
+          key: isFlash ? 'flash' : 'pro', name: isFlash ? 'V4 Flash' : 'V4 Pro',
+          totalTokens: total, requestCount: request, cost: costForModel(mu.model),
+          cacheHitTokens: hit, cacheMissTokens: miss, responseTokens: response,
+        })
+      }
+
+      const days: UsageDay[] = (amountData?.data?.biz_data?.days || []).map((d: any) => {
+        let flash = 0, pro = 0, total = 0
+        for (const mu of (d.data || [])) {
+          const tokens = (mu.usage || []).reduce((s: number, e: any) => s + (['PROMPT_CACHE_HIT_TOKEN', 'PROMPT_CACHE_MISS_TOKEN', 'RESPONSE_TOKEN', 'PROMPT_TOKEN'].includes(e.type) ? Math.round(parseFloat(e.amount) || 0) : 0), 0)
+          total += tokens
+          if (mu.model === 'deepseek-v4-flash') flash = tokens
+          else if (mu.model === 'deepseek-v4-pro') pro = tokens
+        }
+        return { date: d.date, flashTokens: flash, proTokens: pro, totalTokens: total, totalCost: costByDate[d.date] || 0 }
+      })
+
+      const monthCost: number = costTotal ? (costTotal.total || []).reduce((s: number, m: any) => s + (m.usage || []).filter((e: any) => e.type !== 'REQUEST').reduce((ss: number, ee: any) => ss + (parseFloat(ee.amount) || 0), 0), 0) : 0
+
+      setUsage({ models, days, monthCost })
+      setUsageState('ok')
     } catch { setUsageState('error') }
   }, [platformToken])
 
