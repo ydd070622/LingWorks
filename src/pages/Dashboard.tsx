@@ -204,6 +204,10 @@ export default function Dashboard() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, height: '100%' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 700 }}>🔵 DeepSeek Monitor</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-ghost btn-sm" onClick={() => { fetchBalance(); fetchAllData() }} disabled={loading}><RefreshCw size={14} style={loading ? { animation: 'spin 1s infinite linear' } : {}} /></button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setPage('settings')}><Settings size={14} /></button>
+            </div>
           </div>
 
           {/* Balance */}
@@ -278,13 +282,7 @@ export default function Dashboard() {
 
           {/* History stats */}
           <div className="api-config-section" style={{ padding: 18 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <div style={{ fontSize: 15, fontWeight: 700 }}>📅 历史月用量</div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn btn-ghost btn-sm" onClick={() => { fetchBalance(); fetchAllData() }} disabled={loading}><RefreshCw size={14} style={loading ? { animation: 'spin 1s infinite linear' } : {}} /></button>
-                <button className="btn btn-ghost btn-sm" onClick={() => setPage('settings')}><Settings size={14} /></button>
-              </div>
-            </div>
+            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>📅 历史月用量</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div style={{ background: 'var(--bg-card)', borderRadius: 8, padding: 10, textAlign: 'center' }}>
                 <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--accent)' }}>{fmtMoney(totalHistCost)}</div>
