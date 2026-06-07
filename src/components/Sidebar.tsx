@@ -50,6 +50,7 @@ const iconLabel: Record<string, React.ReactNode> = {
   prompts: <Sparkles size={16} color="#a78bfa" />,
   platforms: <LayoutGrid size={16} color="#6366f1" />,
   recharge: <Wallet size={16} color="#22c55e" />,
+  dashboard: <HistoryIcon size={16} color="#06b6d4" />,
   accounts: <Contact size={16} color="#f97316" />,
   skyun: 'SK', mitce: 'MC',
 }
