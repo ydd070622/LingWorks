@@ -208,7 +208,7 @@ export default function Dashboard() {
           <button className="btn btn-ghost btn-sm" onClick={() => setPage('settings')}><Settings size={14} /></button>
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, maxWidth: 1080, margin: '0 auto', padding: '0 20px 20px 20px', flex: 1 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, maxWidth: 1080, width: '100%', margin: '0 auto', padding: '0 20px 20px 20px', flex: 1 }}>
         {/* ===== LEFT ===== */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, height: '100%' }}>
 
