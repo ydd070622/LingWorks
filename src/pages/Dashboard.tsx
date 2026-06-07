@@ -198,7 +198,7 @@ export default function Dashboard() {
   }, [] as string[]).join(' ')
 
   return (
-    <div style={{ height: '100%', overflow: 'auto', background: 'var(--bg-primary)' }}>
+    <div style={{ height: '100%', overflow: 'auto', background: 'var(--bg-primary)', display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, maxWidth: 1080, margin: '0 auto', padding: '20px 20px 12px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 700 }}>
           🔵 DeepSeek Monitor
@@ -208,7 +208,7 @@ export default function Dashboard() {
           <button className="btn btn-ghost btn-sm" onClick={() => setPage('settings')}><Settings size={14} /></button>
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, maxWidth: 1080, margin: '0 auto', padding: '0 20px 20px 20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, maxWidth: 1080, margin: '0 auto', padding: '0 20px 20px 20px', flex: 1 }}>
         {/* ===== LEFT ===== */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, height: '100%' }}>
 
