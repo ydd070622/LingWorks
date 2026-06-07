@@ -5,369 +5,344 @@ interface BalanceData { isAvailable: boolean; currency: string; totalBalance: st
 interface UsageModel { key: string; name: string; totalTokens: number; requestCount: number; cost: number; cacheHitTokens: number; cacheMissTokens: number; responseTokens: number }
 interface UsageDay { date: string; flashTokens: number; proTokens: number; totalTokens: number; totalCost: number }
 interface UsageResult { models: UsageModel[]; days: UsageDay[]; monthCost: number }
+interface HistoryMonth { month: string; cost: number; tokens: number }
 
-type Page = 'dashboard' | 'settings' | 'detail'
-type ModelKey = 'flash' | 'pro'
+type Page = 'dashboard' | 'settings'
 
 const fmtInt = (n: number) => Math.round(n).toLocaleString()
 const fmtMoney = (n: number) => '¥' + n.toFixed(2)
 const mmdd = (d: string) => { const p = d.split('-'); return p.length === 3 ? `${+p[1]}/${+p[2]}` : d }
 
-function recent7Days(days: UsageDay[]): UsageDay[] {
-  const map = new Map(days.map(d => [d.date, d]))
-  const now = new Date()
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(now); d.setDate(d.getDate() - 6 + i)
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    return map.get(key) || { date: key, flashTokens: 0, proTokens: 0, totalTokens: 0, totalCost: 0 }
-  })
+const headersWithToken = (token: string): Record<string, string> => ({
+  Authorization: `Bearer ${token}`,
+  'x-app-version': '1.0.0', Accept: '*/*',
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36',
+})
+
+async function fetchMonthUsage(token: string, month: number, year: number): Promise<UsageResult | null> {
+  try {
+    const h = headersWithToken(token)
+    const [amountRes, costRes] = await Promise.all([
+      fetch(`https://platform.deepseek.com/api/v0/usage/amount?month=${month}&year=${year}`, { headers: h }),
+      fetch(`https://platform.deepseek.com/api/v0/usage/cost?month=${month}&year=${year}`, { headers: h }),
+    ])
+    if (!amountRes.ok || !costRes.ok) return null
+    const am = await amountRes.json(); const co = await costRes.json()
+
+    const costTotal = co?.data?.biz_data?.[0]
+    const costByDate: Record<string, number> = {}
+    if (costTotal) for (const d of (costTotal.days || [])) costByDate[d.date] = (d.data || []).reduce((s: number, m: any) => s + (m.usage || []).filter((e: any) => e.type !== 'REQUEST').reduce((ss: number, ee: any) => ss + (+ee.amount || 0), 0), 0)
+
+    const costForModel = (model: string) => {
+      if (!costTotal) return 0
+      const m = (costTotal.total || []).find((x: any) => x.model === model)
+      return m ? (m.usage || []).filter((e: any) => e.type !== 'REQUEST').reduce((s: number, e: any) => s + (+e.amount || 0), 0) : 0
+    }
+
+    const models: UsageModel[] = []
+    for (const mu of (am?.data?.biz_data?.total || [])) {
+      if (mu.model !== 'deepseek-v4-flash' && mu.model !== 'deepseek-v4-pro') continue
+      let total = 0, request = 0, hit = 0, miss = 0, response = 0
+      for (const e of (mu.usage || [])) {
+        const v = Math.round(+e.amount || 0)
+        switch (e.type) { case 'REQUEST': request = v; break; case 'PROMPT_CACHE_HIT_TOKEN': hit = v; total += v; break; case 'PROMPT_CACHE_MISS_TOKEN': miss = v; total += v; break; case 'RESPONSE_TOKEN': response = v; total += v; break; case 'PROMPT_TOKEN': total += v; break }
+      }
+      models.push({ key: mu.model === 'deepseek-v4-flash' ? 'flash' : 'pro', name: mu.model === 'deepseek-v4-flash' ? 'V4 Flash' : 'V4 Pro', totalTokens: total, requestCount: request, cost: costForModel(mu.model), cacheHitTokens: hit, cacheMissTokens: miss, responseTokens: response })
+    }
+
+    const days: UsageDay[] = (am?.data?.biz_data?.days || []).map((d: any) => {
+      let flash = 0, pro = 0
+      for (const mu of (d.data || [])) {
+        const t = (mu.usage || []).reduce((s: number, e: any) => s + (['PROMPT_CACHE_HIT_TOKEN', 'PROMPT_CACHE_MISS_TOKEN', 'RESPONSE_TOKEN', 'PROMPT_TOKEN'].includes(e.type) ? Math.round(+e.amount || 0) : 0), 0)
+        if (mu.model === 'deepseek-v4-flash') flash = t; else if (mu.model === 'deepseek-v4-pro') pro = t
+      }
+      return { date: d.date, flashTokens: flash, proTokens: pro, totalTokens: flash + pro, totalCost: costByDate[d.date] || 0 }
+    })
+
+    const monthCost = costTotal ? (costTotal.total || []).reduce((s: number, m: any) => s + (m.usage || []).filter((e: any) => e.type !== 'REQUEST').reduce((ss: number, ee: any) => ss + (+ee.amount || 0), 0), 0) : 0
+    return { models, days, monthCost }
+  } catch { return null }
 }
 
 export default function Dashboard() {
   const [page, setPage] = useState<Page>('dashboard')
-  const [detailModel, setDetailModel] = useState<ModelKey>('flash')
   const [apiKey, setApiKey] = useState('')
-  const [balance, setBalance] = useState<BalanceData | null>(null)
-  const [balanceState, setBalanceState] = useState<'loading' | 'ok' | 'error' | 'nokey'>('loading')
-  const [usage, setUsage] = useState<UsageResult | null>(null)
-  const [usageState, setUsageState] = useState<'loading' | 'ok' | 'error' | 'nokey'>('loading')
   const [platformToken, setPlatformToken] = useState('')
-  const [configPath, setConfigPath] = useState('')
+  const [balance, setBalance] = useState<BalanceData | null>(null)
+  const [usage, setUsage] = useState<UsageResult | null>(null)
+  const [history, setHistory] = useState<HistoryMonth[]>([])
+  const [loading, setLoading] = useState(false)
   const timerRef = useRef<ReturnType<typeof setInterval>>()
 
-  const loadApiKey = useCallback(async () => {
+  const loadConfig = useCallback(async () => {
     if (window.electronAPI) {
       const models = await window.electronAPI.getStore('customModels')
-      if (Array.isArray(models)) {
-        const ds = models.find((m: any) => m.name && m.name.toLowerCase().includes('deepseek'))
-        if (ds?.apiKey) setApiKey(ds.apiKey)
-      }
-      const pt = await window.electronAPI.getStore('dsPlatformToken')
-      if (typeof pt === 'string') setPlatformToken(pt)
-      try { setConfigPath((await window.electronAPI.getStore('configPath')) || '') } catch {}
+      if (Array.isArray(models)) { const ds = models.find((m: any) => m.name?.toLowerCase().includes('deepseek')); if (ds?.apiKey) setApiKey(ds.apiKey) }
+      const pt = await window.electronAPI.getStore('dsPlatformToken'); if (typeof pt === 'string') setPlatformToken(pt)
     }
   }, [])
 
   const fetchBalance = useCallback(async () => {
-    if (!apiKey) { setBalanceState('nokey'); return }
-    setBalanceState('loading')
+    if (!apiKey) return
     try {
       const res = await fetch('https://api.deepseek.com/user/balance', { headers: { Authorization: `Bearer ${apiKey}` } })
-      if (!res.ok) throw new Error('查询失败')
-      const data = await res.json()
-      const infos = data.balance_infos || []
-      let total = 0, topped = 0
-      for (const info of infos) { total += +info.total_balance; topped += +info.topped_up_balance }
-      setBalance({ isAvailable: data.is_available ?? total > 0, currency: infos[0]?.currency || 'CNY', totalBalance: total.toFixed(2), toppedUpBalance: topped.toFixed(2) })
-      setBalanceState('ok')
-    } catch { setBalanceState('error') }
+      if (res.ok) {
+        const data = await res.json(); const infos = data.balance_infos || []
+        let total = 0, topped = 0; for (const i of infos) { total += +i.total_balance; topped += +i.topped_up_balance }
+        setBalance({ isAvailable: data.is_available ?? total > 0, currency: infos[0]?.currency || 'CNY', totalBalance: total.toFixed(2), toppedUpBalance: topped.toFixed(2) })
+      }
+    } catch {}
   }, [apiKey])
 
-  const fetchUsage = useCallback(async () => {
-    if (!platformToken) { setUsageState('nokey'); return }
-    setUsageState('loading')
-    try {
-      const now = new Date()
-      const month = now.getMonth() + 1
-      const year = now.getFullYear()
-      const ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36'
-      const headers: Record<string, string> = {
-        Authorization: `Bearer ${platformToken}`,
-        'x-app-version': '1.0.0',
-        Accept: '*/*',
-        'User-Agent': ua,
-      }
+  const fetchAllData = useCallback(async () => {
+    if (!platformToken) return
+    setLoading(true)
+    const now = new Date()
+    const current = await fetchMonthUsage(platformToken, now.getMonth() + 1, now.getFullYear())
+    if (current) setUsage(current)
 
-      const [amountRes, costRes] = await Promise.all([
-        fetch(`https://platform.deepseek.com/api/v0/usage/amount?month=${month}&year=${year}`, { headers }),
-        fetch(`https://platform.deepseek.com/api/v0/usage/cost?month=${month}&year=${year}`, { headers }),
-      ])
-
-      if (!amountRes.ok || !costRes.ok) { setUsageState('error'); return }
-
-      const amountData = await amountRes.json()
-      const costData = await costRes.json()
-
-      const costByDate: Record<string, number> = {}
-      const costTotal = costData?.data?.biz_data?.[0]
-      if (costTotal) {
-        for (const day of (costTotal.days || [])) {
-          const dayCost = (day.data || []).reduce((s: number, m: any) => s + (m.usage || []).filter((e: any) => e.type !== 'REQUEST').reduce((ss: number, ee: any) => ss + (parseFloat(ee.amount) || 0), 0), 0)
-          costByDate[day.date] = dayCost
-        }
-      }
-
-      const costForModel = (model: string) => {
-        if (!costTotal) return 0
-        const m = (costTotal.total || []).find((m: any) => m.model === model)
-        if (!m) return 0
-        return (m.usage || []).filter((e: any) => e.type !== 'REQUEST').reduce((s: number, e: any) => s + (parseFloat(e.amount) || 0), 0)
-      }
-
-      const models: UsageModel[] = []
-      for (const mu of (amountData?.data?.biz_data?.total || [])) {
-        const isFlash = mu.model === 'deepseek-v4-flash'
-        const isPro = mu.model === 'deepseek-v4-pro'
-        if (!isFlash && !isPro) continue
-        let total = 0, request = 0, hit = 0, miss = 0, response = 0
-        for (const e of (mu.usage || [])) {
-          const v = Math.round(parseFloat(e.amount) || 0)
-          switch (e.type) {
-            case 'REQUEST': request = v; break
-            case 'PROMPT_CACHE_HIT_TOKEN': hit = v; total += v; break
-            case 'PROMPT_CACHE_MISS_TOKEN': miss = v; total += v; break
-            case 'RESPONSE_TOKEN': response = v; total += v; break
-            case 'PROMPT_TOKEN': total += v; break
-          }
-        }
-        models.push({
-          key: isFlash ? 'flash' : 'pro', name: isFlash ? 'V4 Flash' : 'V4 Pro',
-          totalTokens: total, requestCount: request, cost: costForModel(mu.model),
-          cacheHitTokens: hit, cacheMissTokens: miss, responseTokens: response,
-        })
-      }
-
-      const days: UsageDay[] = (amountData?.data?.biz_data?.days || []).map((d: any) => {
-        let flash = 0, pro = 0, total = 0
-        for (const mu of (d.data || [])) {
-          const tokens = (mu.usage || []).reduce((s: number, e: any) => s + (['PROMPT_CACHE_HIT_TOKEN', 'PROMPT_CACHE_MISS_TOKEN', 'RESPONSE_TOKEN', 'PROMPT_TOKEN'].includes(e.type) ? Math.round(parseFloat(e.amount) || 0) : 0), 0)
-          total += tokens
-          if (mu.model === 'deepseek-v4-flash') flash = tokens
-          else if (mu.model === 'deepseek-v4-pro') pro = tokens
-        }
-        return { date: d.date, flashTokens: flash, proTokens: pro, totalTokens: total, totalCost: costByDate[d.date] || 0 }
-      })
-
-      const monthCost: number = costTotal ? (costTotal.total || []).reduce((s: number, m: any) => s + (m.usage || []).filter((e: any) => e.type !== 'REQUEST').reduce((ss: number, ee: any) => ss + (parseFloat(ee.amount) || 0), 0), 0) : 0
-
-      setUsage({ models, days, monthCost })
-      setUsageState('ok')
-    } catch { setUsageState('error') }
+    const hist: HistoryMonth[] = []
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const result = await fetchMonthUsage(platformToken, d.getMonth() + 1, d.getFullYear())
+      if (result) hist.push({ month: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, cost: result.monthCost, tokens: result.days.reduce((s, day) => s + day.totalTokens, 0) })
+    }
+    setHistory(hist)
+    setLoading(false)
   }, [platformToken])
 
-  const refreshAll = useCallback(() => { fetchBalance(); fetchUsage() }, [fetchBalance, fetchUsage])
-
-  useEffect(() => { loadApiKey() }, [loadApiKey])
+  useEffect(() => { loadConfig() }, [loadConfig])
   useEffect(() => { if (apiKey) { fetchBalance(); timerRef.current = setInterval(fetchBalance, 300000) }; return () => { if (timerRef.current) clearInterval(timerRef.current) } }, [apiKey])
-  useEffect(() => { if (platformToken) fetchUsage() }, [platformToken])
+  useEffect(() => { if (platformToken) fetchAllData() }, [platformToken])
 
   const flash = usage?.models.find(m => m.key === 'flash') || null
   const pro = usage?.models.find(m => m.key === 'pro') || null
   const maxTokens = Math.max(flash?.totalTokens || 0, pro?.totalTokens || 0, 1)
   const today = usage?.days.find(d => d.date === new Date().toISOString().slice(0, 10)) || null
+  const recentDays = usage?.days.slice(-7) || []
+  const maxDailyToken = Math.max(...recentDays.map(d => d.totalTokens), 1)
+  const maxDailyCost = Math.max(...recentDays.map(d => d.totalCost), 0.01)
+  const histMaxCost = Math.max(...history.map(h => h.cost), 1)
+  const totalHistCost = history.reduce((s, h) => s + h.cost, 0)
+  const totalHistTokens = history.reduce((s, h) => s + h.tokens, 0)
 
-  if (page === 'detail') {
-    const isFlash = detailModel === 'flash'
-    const data = isFlash ? flash : pro
-    const title = isFlash ? 'V4 Flash' : 'V4 Pro'
-    const points = recent7Days(usage?.days || []).map(d => ({ date: d.date, value: isFlash ? d.flashTokens : d.proTokens }))
-    const maxVal = Math.max(...points.map(p => p.value), 1)
-
-    return (
-      <div style={{ maxWidth: 640, margin: '0 auto', padding: '24px 0' }}>
-        <div style={{ marginBottom: 16 }}><span style={{ fontSize: 13, color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => setPage('dashboard')}><ArrowLeft size={14} /> 返回</span></div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '18px 20px', borderRadius: 12, background: 'var(--bg-card)', border: '1px solid var(--border-color)', marginBottom: 16 }}>
-          <div style={{ width: 52, height: 52, borderRadius: 12, background: isFlash ? 'rgba(245,158,11,0.12)' : 'rgba(99,102,241,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>
-            {isFlash ? <Zap size={30} fill="#f59e0b" color="#f59e0b" /> : <Brain size={28} color="#6366f1" />}
-          </div>
-          <div><h2 style={{ fontSize: 16, fontWeight: 700 }}>{title}</h2><div style={{ fontSize: 18, fontWeight: 700, color: isFlash ? '#f59e0b' : 'var(--accent)' }}>{data ? fmtMoney(data.cost) : '—'}</div></div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-          <div className="api-config-section" style={{ textAlign: 'center', padding: 16 }}>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>请求次数</div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: isFlash ? '#f59e0b' : 'var(--accent)' }}>{data ? fmtInt(data.requestCount) : '—'}</div>
-          </div>
-          <div className="api-config-section" style={{ textAlign: 'center', padding: 16 }}>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Token 总量</div>
-            <div style={{ fontSize: 20, fontWeight: 700 }}>{data ? fmtInt(data.totalTokens) : '—'}</div>
-          </div>
-        </div>
-
-        <div className="api-config-section" style={{ padding: 20 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
-            <span>按日 Token 消耗</span>
-            <span style={{ color: 'var(--accent)' }}>{data ? fmtInt(data.totalTokens) : ''}</span>
-          </div>
-          {usageState === 'ok' && points.length > 0 ? (
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 120 }}>
-              {points.map((p, i) => (
-                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                  <span style={{ fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{p.value > 0 ? (p.value >= 1e6 ? (p.value / 1e6).toFixed(1) + 'M' : p.value >= 1e3 ? (p.value / 1e3).toFixed(1) + 'K' : String(p.value)) : ''}</span>
-                  <div style={{ width: '100%', height: `${Math.max(6, (p.value / maxVal) * 100 * 0.85)}px`, background: isFlash ? 'linear-gradient(180deg,#f59e0b,rgba(245,158,11,0.15))' : 'linear-gradient(180deg,#6366f1,rgba(99,102,241,0.15))', borderRadius: '4px 4px 0 0' }} />
-                  <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>{mmdd(p.date)}</span>
-                </div>
-              ))}
-            </div>
-          ) : <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 30 }}>{usageState === 'nokey' ? '未配置' : usageState === 'loading' ? '查询中…' : '暂无数据'}</div>}
-        </div>
-      </div>
-    )
-  }
+  // Token format
+  const fmtShort = (n: number) => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'K' : String(n)
 
   if (page === 'settings') {
     return (
-      <div style={{ padding: 24, height: '100%', overflow: 'auto' }}>
-        <div style={{ marginBottom: 16 }}><span style={{ fontSize: 13, color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => setPage('dashboard')}><ArrowLeft size={14} /> 返回</span></div>
+      <div style={{ maxWidth: 500, margin: '0 auto', padding: 24 }}>
+        <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 13, color: 'var(--accent)', cursor: 'pointer' }} onClick={() => setPage('dashboard')}><ArrowLeft size={14} /> 返回</span>
+        </div>
         <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 20 }}>⚙️ 设置</h2>
 
         <div className="api-config-section" style={{ padding: 20, marginBottom: 16 }}>
-          <h4 style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}><KeyRound size={14} /> API Key</h4>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>用于调用 DeepSeek API 获取余额和用量数据，保存在本地配置中。</p>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+          <h4 style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}><KeyRound size={14} /> API Key（余额查询）</h4>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>用于查询 DeepSeek 账户余额。</p>
+          <div style={{ display: 'flex', gap: 8 }}>
             <input className="input-base" style={{ flex: 1 }} type="password" value={apiKey} onChange={async e => {
               setApiKey(e.target.value)
-              if (window.electronAPI) {
-                const models = await window.electronAPI.getStore('customModels')
-                let list = Array.isArray(models) ? models : []
-                const idx = list.findIndex((m: any) => m.name === 'DeepSeek')
-                const item = { name: 'DeepSeek', apiKey: e.target.value, endpoint: 'https://api.deepseek.com/v1', modelName: 'deepseek-chat' }
-                if (idx >= 0) list[idx] = item; else list.push(item)
-                await window.electronAPI.setStore('customModels', list)
-              }
-            }} placeholder={apiKey ? '••••••••••••••••••••••••••••••••••••' : 'sk-...'} />
+              if (window.electronAPI) { const models = await window.electronAPI.getStore('customModels'); let list = Array.isArray(models) ? models : []; const idx = list.findIndex((m: any) => m.name === 'DeepSeek'); const item = { name: 'DeepSeek', apiKey: e.target.value, endpoint: 'https://api.deepseek.com/v1', modelName: 'deepseek-chat' }; if (idx >= 0) list[idx] = item; else list.push(item); await window.electronAPI.setStore('customModels', list) }
+            }} placeholder={apiKey ? '••••••••••••••••••••' : 'sk-...'} />
+            <button className="btn btn-primary btn-sm" onClick={fetchBalance}>验证</button>
           </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <button className="btn btn-primary btn-sm" onClick={refreshAll}>验证并保存</button>
-            <span style={{ fontSize: 11, color: apiKey ? 'var(--success)' : 'var(--text-muted)' }}>{apiKey ? '已配置' : '未配置'}</span>
-          </div>
+          <div style={{ fontSize: 11, color: apiKey ? 'var(--success)' : 'var(--text-muted)', marginTop: 6 }}>{apiKey ? '已配置' : '未配置'}</div>
         </div>
 
         <div className="api-config-section" style={{ padding: 20 }}>
-          <h4 style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}><BarChart3 size={14} /> 用量同步 Token</h4>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>用于同步 Token 用量、消费和趋势图。点击下方按钮自动登录并提取 Token。</p>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-            <input className="input-base" style={{ flex: 1 }} type="password" value={platformToken} onChange={async e => {
-              setPlatformToken(e.target.value)
-              if (window.electronAPI) await window.electronAPI.setStore('dsPlatformToken', e.target.value)
-            }} placeholder={platformToken ? '••••••••••••••••••••••••••••••••••' : '自动提取或手动粘贴'} />
+          <h4 style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}><BarChart3 size={14} /> 用量 Token（趋势+模型数据）</h4>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>用于同步 Token 用量和费用趋势。登录后自动提取。</p>
+          <button className="btn btn-primary btn-sm" style={{ marginBottom: 8 }} onClick={async () => {
+            if (window.electronAPI) { const token = await window.electronAPI.dsLogin(); if (token) { setPlatformToken(token); await window.electronAPI.setStore('dsPlatformToken', token) } }
+          }}>🔐 网页登录自动提取</button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input className="input-base" style={{ flex: 1 }} type="password" value={platformToken} onChange={async e => { setPlatformToken(e.target.value); if (window.electronAPI) await window.electronAPI.setStore('dsPlatformToken', e.target.value) }} placeholder={platformToken ? '已提取' : '或手动粘贴'} />
+            <button className="btn btn-primary btn-sm" onClick={fetchAllData} disabled={!platformToken}>刷新</button>
           </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button className="btn btn-primary btn-sm" onClick={async () => {
-              if (window.electronAPI) {
-                const token = await window.electronAPI.dsLogin()
-                if (token) {
-                  setPlatformToken(token)
-                  await window.electronAPI.setStore('dsPlatformToken', token)
-                  setPage('dashboard')
-                  await fetchUsage()
-                }
-              }
-            }}>🔐 网页登录自动提取</button>
-            <button className="btn btn-ghost btn-sm" onClick={async () => {
-              if (!platformToken) return
-              setPage('dashboard')
-              await fetchUsage()
-            }}>保存并刷新</button>
-          </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
-            <span style={{ fontSize: 11, color: platformToken ? 'var(--success)' : 'var(--text-muted)' }}>{platformToken ? '已配置' : '未配置（仅可查看余额）'}</span>
-            {platformToken && <button className="btn btn-ghost btn-sm" style={{ fontSize: 11 }} onClick={async () => { setPlatformToken(''); if (window.electronAPI) await window.electronAPI.setStore('dsPlatformToken', ''); setUsage(null); setUsageState('nokey') }}>清除 Token</button>}
-          </div>
-          <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>
-            也可手动获取：登录 platform.deepseek.com，F12 控制台输入 <code style={{ background: 'rgba(99,102,241,0.1)', padding: '1px 5px', borderRadius: 3 }}>JSON.parse(localStorage.userToken).value</code>
-          </p>
+          <div style={{ fontSize: 11, color: platformToken ? 'var(--success)' : 'var(--text-muted)', marginTop: 6 }}>{platformToken ? '已配置' : '未配置（仅可查余额）'}</div>
         </div>
       </div>
     )
   }
 
-  // === DASHBOARD ===
+  // Cost curve SVG points
+  const costPoints = recentDays.map((d, i) => {
+    const x = 10 + (i / Math.max(recentDays.length - 1, 1)) * 560
+    const y = 100 - (d.totalCost / maxDailyCost) * 90
+    return `${x},${y}`
+  }).join(' ')
+
+  const cumPoints = recentDays.reduce((acc, d, i) => {
+    const cum = recentDays.slice(0, i + 1).reduce((s, dd) => s + dd.totalCost, 0)
+    const x = 10 + (i / Math.max(recentDays.length - 1, 1)) * 560
+    const y = 100 - (cum / (maxDailyCost * recentDays.length)) * 90
+    acc.push(`${x},${y}`); return acc
+  }, [] as string[]).join(' ')
+
   return (
-    <div style={{ padding: 24, height: '100%', overflow: 'auto', background: 'var(--bg-primary)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 24 }}>🔵</span>
-          <h1 style={{ fontSize: 16, fontWeight: 700 }}>DeepSeek Monitor</h1>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn btn-ghost" onClick={refreshAll}><RefreshCw size={14} /></button>
-          <button className="btn btn-ghost" onClick={() => setPage('settings')}><Settings size={14} /></button>
-        </div>
-      </div>
-
-      {/* Balance card */}
-      <div className="api-config-section" style={{ padding: 20, marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}><CreditCard size={15} /><span>账户余额</span></div>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, padding: '2px 10px', borderRadius: 10, background: balance?.isAvailable ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)', color: balance?.isAvailable ? 'var(--success)' : '#ef4444' }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: balance?.isAvailable ? 'var(--success)' : '#ef4444' }} />{balance?.isAvailable ? '可用' : '余额不足'}
-          </span>
-        </div>
-        <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 14, color: balanceState === 'ok' ? 'var(--text)' : 'var(--text-muted)' }}>
-          {balanceState === 'loading' ? '查询中…' : balanceState === 'nokey' ? '未配置' : balanceState === 'error' ? '查询失败' : `${balance?.currency === 'USD' ? '$' : '¥'}${balance?.totalBalance || '0.00'}`}
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div style={{ padding: 12, background: 'var(--bg-card)', borderRadius: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#f59e0b', marginBottom: 4 }}><SunMedium size={13} /> 当日消耗</div>
-            <strong>{today ? fmtMoney(today.totalCost) : '—'}</strong>
+    <div style={{ height: '100%', overflow: 'auto', background: 'var(--bg-primary)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, maxWidth: 1080, margin: '0 auto', padding: 20, alignItems: 'start' }}>
+        {/* ===== LEFT ===== */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 700 }}>🔵 DeepSeek Monitor</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-ghost btn-sm" onClick={() => { fetchBalance(); fetchAllData() }} disabled={loading}><RefreshCw size={14} style={loading ? { animation: 'spin 1s infinite linear' } : {}} /></button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setPage('settings')}><Settings size={14} /></button>
+            </div>
           </div>
-          <div style={{ padding: 12, background: 'var(--bg-card)', borderRadius: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#f59e0b', marginBottom: 4 }}><CalendarDays size={13} /> 本月消费</div>
-            <strong>{usageState === 'ok' && usage ? fmtMoney(usage.monthCost) : '—'}</strong>
-          </div>
-        </div>
-      </div>
 
-      {/* Model cards */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
-        {(['flash', 'pro'] as ModelKey[]).map(k => {
-          const d = k === 'flash' ? flash : pro
-          const isFlash = k === 'flash'
-          return (
-            <div key={k} className="api-config-section" style={{ padding: '14px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14 }} onClick={() => { setDetailModel(k); setPage('detail') }}>
-              <div style={{ width: 44, height: 44, borderRadius: 10, background: isFlash ? 'rgba(245,158,11,0.12)' : 'rgba(99,102,241,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
-                {isFlash ? <Zap size={24} fill="#f59e0b" color="#f59e0b" /> : <Brain size={22} color="#6366f1" />}
+          {/* Balance */}
+          <div className="api-config-section" style={{ padding: 18 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 12, color: 'var(--text-muted)', alignItems: 'center' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><CreditCard size={14} /> 账户余额</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, padding: '2px 10px', borderRadius: 10, background: balance?.isAvailable ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)', color: balance?.isAvailable ? 'var(--success)' : '#ef4444' }}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: balance?.isAvailable ? 'var(--success)' : '#ef4444' }} />{balance?.isAvailable ? '可用' : '不足'}
+              </span>
+            </div>
+            <div style={{ fontSize: 26, fontWeight: 700, marginBottom: 12 }}>{balance ? `${balance.currency === 'USD' ? '$' : '¥'}${balance.totalBalance}` : '查询中…'}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div style={{ background: 'var(--bg-card)', borderRadius: 8, padding: 10, textAlign: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, fontSize: 11, color: '#f59e0b', marginBottom: 2 }}><SunMedium size={13} /> 当日</div>
+                <div style={{ fontWeight: 700 }}>{today ? fmtMoney(today.totalCost) : '—'}</div>
+              </div>
+              <div style={{ background: 'var(--bg-card)', borderRadius: 8, padding: 10, textAlign: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, fontSize: 11, color: '#f59e0b', marginBottom: 2 }}><CalendarDays size={13} /> 本月</div>
+                <div style={{ fontWeight: 700 }}>{usage ? fmtMoney(usage.monthCost) : '—'}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Models */}
+          {[flash, pro].map((m, i) => m && (
+            <div key={i} className="api-config-section" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 38, height: 38, borderRadius: 10, background: i === 0 ? 'rgba(245,158,11,0.12)' : 'rgba(99,102,241,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
+                {i === 0 ? <Zap size={20} fill="#f59e0b" color="#f59e0b" /> : <Brain size={18} color="#6366f1" />}
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, marginBottom: 4 }}>{isFlash ? 'V4 Flash' : 'V4 Pro'}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span>{d ? `${fmtInt(d.totalTokens)} Tokens` : '—'}</span>
-                  <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2 }}>
-                    <div style={{ height: '100%', width: `${d ? Math.max(2, (d.totalTokens / maxTokens) * 100) : 0}%`, background: isFlash ? 'linear-gradient(90deg,#f59e0b,#fbbf24)' : 'linear-gradient(90deg,#6366f1,#818cf8)', borderRadius: 2 }} />
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{m.name}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span>{fmtShort(m.totalTokens)} Tokens</span>
+                  <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${Math.max(2, (m.totalTokens / maxTokens) * 100)}%`, background: i === 0 ? 'linear-gradient(90deg,#f59e0b,#fbbf24)' : 'linear-gradient(90deg,#6366f1,#818cf8)', borderRadius: 2 }} />
                   </div>
                 </div>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontWeight: 700 }}>{d ? fmtMoney(d.cost) : '—'}</div>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>{fmtMoney(m.cost)}</div>
+            </div>
+          ))}
+
+          {/* Token trend */}
+          <div className="api-config-section" style={{ padding: 18 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+              <BarChart3 size={14} color="var(--accent)" /> 本月 Token 消耗趋势
+            </div>
+            {recentDays.length > 0 ? (
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: 90 }}>
+                {recentDays.map((d, i) => (
+                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                    <span style={{ fontSize: 9, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{d.totalTokens > 0 ? fmtShort(d.totalTokens) : ''}</span>
+                    <div style={{ width: '100%', height: `${Math.max(6, (d.totalTokens / maxDailyToken) * 80)}px`, background: 'linear-gradient(180deg,var(--accent),rgba(99,102,241,0.1))', borderRadius: '3px 3px 0 0' }} />
+                    <span style={{ fontSize: 8, color: 'var(--text-muted)' }}>{mmdd(d.date)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 20, fontSize: 13 }}>暂无数据</div>}
+          </div>
+
+          {/* Cost curve */}
+          <div className="api-config-section" style={{ padding: 18 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>💹 本月消费趋势（金额）</div>
+            {recentDays.length > 0 ? (
+              <div>
+                <svg viewBox="0 0 580 120" style={{ width: '100%', height: 110 }}>
+                  <line x1="0" y1="30" x2="580" y2="30" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+                  <line x1="0" y1="60" x2="580" y2="60" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+                  <line x1="0" y1="90" x2="580" y2="90" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+                  <text x="3" y="14" fill="var(--text-muted)" fontSize="8">¥{maxDailyCost.toFixed(1)}</text>
+                  <text x="3" y="44" fill="var(--text-muted)" fontSize="8">¥{(maxDailyCost * 0.66).toFixed(1)}</text>
+                  <text x="3" y="74" fill="var(--text-muted)" fontSize="8">¥{(maxDailyCost * 0.33).toFixed(1)}</text>
+                  <text x="3" y="104" fill="var(--text-muted)" fontSize="8">¥0</text>
+                  {costPoints && <polyline points={costPoints} fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" />}
+                  {cumPoints && <polyline points={cumPoints} fill="none" stroke="#f59e0b" strokeWidth="2" strokeDasharray="5,3" strokeLinecap="round" />}
+                  {recentDays.map((d, i) => (
+                    <text key={i} x={10 + (i / Math.max(recentDays.length - 1, 1)) * 560} y="116" fill="var(--text-muted)" fontSize="8" textAnchor="middle">{mmdd(d.date)}</text>
+                  ))}
+                </svg>
+                <div style={{ display: 'flex', gap: 14, fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 2, background: 'var(--accent)', borderRadius: 1 }} /> 当日</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 2, border: '1px dashed #f59e0b', background: 'transparent', borderRadius: 1 }} /> 累计</span>
+                </div>
+              </div>
+            ) : <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 20, fontSize: 13 }}>暂无数据</div>}
+          </div>
+        </div>
+
+        {/* ===== RIGHT ===== */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, padding: '0 4px' }}>📅 历史月用量</div>
+
+          {/* History stats */}
+          <div className="api-config-section" style={{ padding: 18 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div style={{ background: 'var(--bg-card)', borderRadius: 8, padding: 10, textAlign: 'center' }}>
+                <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--accent)' }}>{fmtMoney(totalHistCost)}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>累计消费</div>
+              </div>
+              <div style={{ background: 'var(--bg-card)', borderRadius: 8, padding: 10, textAlign: 'center' }}>
+                <div style={{ fontSize: 20, fontWeight: 700 }}>{history.length}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>统计月数</div>
+              </div>
+              <div style={{ background: 'var(--bg-card)', borderRadius: 8, padding: 10, textAlign: 'center' }}>
+                <div style={{ fontSize: 20, fontWeight: 700 }}>{fmtShort(totalHistTokens)}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>总 Token</div>
+              </div>
+              <div style={{ background: 'var(--bg-card)', borderRadius: 8, padding: 10, textAlign: 'center' }}>
+                <div style={{ fontSize: 20, fontWeight: 700 }}>{fmtMoney(history.length > 0 ? totalHistCost / history.length : 0)}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>月均消费</div>
               </div>
             </div>
-          )
-        })}
-      </div>
+          </div>
 
-      {/* Trend chart */}
-      <div className="api-config-section" style={{ padding: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600 }}><BarChart3 size={14} color="var(--accent)" /> 消耗趋势</div>
-        </div>
-        {usageState === 'ok' && usage && usage.days.length > 0 ? (
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 100 }}>
-            {recent7Days(usage.days).map((d, i) => {
-              const max = Math.max(...recent7Days(usage.days).map(x => x.totalTokens), 1)
+          {/* Monthly comparison */}
+          <div className="api-config-section" style={{ padding: 18 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+              <BarChart3 size={14} color="var(--accent)" /> 月度费用对比
+            </div>
+            {history.length > 0 ? history.map((h, i) => {
+              const colors = ['#4c1d95', '#5b21b6', '#6d28d9', '#7c3aed', '#8b5cf6', '#6366f1']
+              const isCurrent = i === history.length - 1
               return (
-                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                  <span style={{ fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{d.totalTokens > 0 ? (d.totalTokens >= 1e6 ? (d.totalTokens / 1e6).toFixed(0) + 'M' : d.totalTokens >= 1e3 ? (d.totalTokens / 1e3).toFixed(1) + 'K' : String(d.totalTokens)) : ''}</span>
-                  <div style={{ width: '100%', height: `${Math.max(6, (d.totalTokens / max) * 100 * 0.75)}px`, background: 'linear-gradient(180deg,var(--accent),rgba(99,102,241,0.15))', borderRadius: '4px 4px 0 0' }} />
-                  <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>{mmdd(d.date)}</span>
+                <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '9px 0', borderBottom: i < history.length - 1 ? '1px solid var(--border-color)' : 'none' }}>
+                  <span style={{ width: 70, fontSize: 12, fontWeight: 600, flexShrink: 0, color: isCurrent ? 'var(--green)' : 'var(--text)' }}>{h.month}</span>
+                  <div style={{ flex: 1, height: 20, background: 'rgba(255,255,255,0.03)', borderRadius: 3, overflow: 'hidden', margin: '0 10px' }}>
+                    <div style={{ height: '100%', width: `${Math.max(2, (h.cost / histMaxCost) * 100)}%`, borderRadius: 3, background: `linear-gradient(90deg,${isCurrent ? 'var(--green)' : colors[i % 6]},${isCurrent ? '#4ade80' : colors[(i + 1) % 6]})`, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 8, fontSize: 10, fontWeight: 600, color: '#fff' }}>{fmtMoney(h.cost)}</div>
+                  </div>
+                  <span style={{ width: 50, textAlign: 'right', fontSize: 12, fontWeight: 600, flexShrink: 0, color: isCurrent ? 'var(--green)' : 'var(--text)' }}>{isCurrent ? '本月' : fmtMoney(h.cost)}</span>
                 </div>
               )
-            })}
+            }) : <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 20, fontSize: 13 }}>暂无历史数据</div>}
           </div>
-        ) : (
-          <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 20 }}>
-            {usageState === 'nokey' ? '点击设置 → 网页登录获取用量 Token' :
-             usageState === 'loading' ? '查询中…' :
-             usageState === 'error' ? (
-               <div>
-                 <div style={{ marginBottom: 8 }}>平台用量 API 不可用，请在网页中查看</div>
-                 <button className="btn btn-ghost btn-sm" onClick={() => {
-                   if (window.electronAPI) window.electronAPI.openExternal('https://platform.deepseek.com/usage')
-                 }}>打开 DeepSeek 平台</button>
-               </div>
-             ) : '暂无数据'}
+
+          {/* Monthly trend bars */}
+          <div className="api-config-section" style={{ padding: 18 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+              📈 月度消费趋势
+            </div>
+            {history.length > 0 ? (
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 120 }}>
+                {history.map((h, i) => (
+                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                    <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>{fmtMoney(h.cost)}</span>
+                    <div style={{ width: '100%', height: `${Math.max(6, (h.cost / histMaxCost) * 100)}px`, background: i === history.length - 1 ? 'linear-gradient(180deg,var(--green),rgba(34,197,94,0.1))' : 'linear-gradient(180deg,var(--accent),rgba(99,102,241,0.1))', borderRadius: '3px 3px 0 0' }} />
+                    <span style={{ fontSize: 9, color: i === history.length - 1 ? 'var(--green)' : 'var(--text-muted)' }}>{h.month.slice(5)}月</span>
+                  </div>
+                ))}
+              </div>
+            ) : <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 20, fontSize: 13 }}>暂无数据</div>}
           </div>
-        )}
+        </div>
       </div>
     </div>
   )
