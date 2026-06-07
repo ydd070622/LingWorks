@@ -268,8 +268,8 @@ export default function Dashboard() {
                 {recentDays.map((d, i) => (
                   <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                     <span style={{ fontSize: 9, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{d.totalTokens > 0 ? fmtShort(d.totalTokens) : ''}</span>
-                    <div style={{ width: '100%', height: `${Math.max(6, (d.totalTokens / maxDailyToken) * 80)}px`, background: 'linear-gradient(180deg,var(--accent),rgba(99,102,241,0.1))', borderRadius: '3px 3px 0 0' }} />
-                    <span style={{ fontSize: 8, color: 'var(--text-muted)' }}>{mmdd(d.date)}</span>
+                    <div style={{ width: '100%', height: `${Math.max(6, (d.totalTokens / maxDailyToken) * 80)}px`, background: i === recentDays.length - 1 ? 'linear-gradient(180deg,#22c55e,rgba(34,197,94,0.1))' : 'linear-gradient(180deg,#6366f1,rgba(99,102,241,0.1))', borderRadius: '3px 3px 0 0' }} />
+                    <span style={{ fontSize: 8, color: i === recentDays.length - 1 ? '#22c55e' : 'var(--text-muted)' }}>{mmdd(d.date)}</span>
                   </div>
                 ))}
               </div>
