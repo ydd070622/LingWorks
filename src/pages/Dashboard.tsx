@@ -266,11 +266,13 @@ export default function Dashboard() {
             ) : loading ? (
               <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 16, fontSize: 13 }}>加载中…</div>
             ) : recentDays.length > 0 ? (
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, flex: 1, position: 'relative' }}>
                 {recentDays.map((d, i) => (
                   <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                     <span style={{ fontSize: 9, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{d.totalTokens > 0 ? fmtShort(d.totalTokens) : ''}</span>
-                    <div style={{ width: '100%', height: `${Math.max(2, (d.totalTokens / maxDailyToken) * 100)}%`, background: i === recentDays.length - 1 ? 'linear-gradient(180deg,#22c55e,rgba(34,197,94,0.1))' : 'linear-gradient(180deg,#6366f1,rgba(99,102,241,0.1))', borderRadius: '3px 3px 0 0' }} />
+                    <div style={{ width: '100%', flex: 1, position: 'relative' }}>
+                      <div style={{ position: 'absolute', bottom: 0, width: '100%', height: `${Math.max(2, (d.totalTokens / maxDailyToken) * 100)}%`, background: i === recentDays.length - 1 ? 'linear-gradient(180deg,#22c55e,rgba(34,197,94,0.1))' : 'linear-gradient(180deg,#6366f1,rgba(99,102,241,0.1))', borderRadius: '3px 3px 0 0' }} />
+                    </div>
                     <span style={{ fontSize: 8, color: i === recentDays.length - 1 ? '#22c55e' : 'var(--text-muted)' }}>{mmdd(d.date)}</span>
                   </div>
                 ))}
@@ -311,12 +313,14 @@ export default function Dashboard() {
               📈 月度消费趋势
             </div>
             {history.length > 0 ? (
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, flex: 1, position: 'relative' }}>
                 {history.map((h, i) => (
                   <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                     <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>{fmtMoney(h.cost)}</span>
-                    <div style={{ width: '100%', height: `${Math.max(2, (h.cost / histMaxCost) * 100)}%`, background: i === history.length - 1 ? 'linear-gradient(180deg,#22c55e,rgba(34,197,94,0.15))' : 'linear-gradient(180deg,#6366f1,rgba(99,102,241,0.1))', borderRadius: '3px 3px 0 0' }} />
-                    <span style={{ fontSize: 9, color: i === history.length - 1 ? 'var(--green)' : 'var(--text-muted)' }}>{h.month.slice(5)}月</span>
+                    <div style={{ width: '100%', flex: 1, position: 'relative' }}>
+                      <div style={{ position: 'absolute', bottom: 0, width: '100%', height: `${Math.max(2, (h.cost / histMaxCost) * 100)}%`, background: i === history.length - 1 ? 'linear-gradient(180deg,#22c55e,rgba(34,197,94,0.15))' : 'linear-gradient(180deg,#6366f1,rgba(99,102,241,0.1))', borderRadius: '3px 3px 0 0' }} />
+                    </div>
+                    <span style={{ fontSize: 9, color: i === history.length - 1 ? '#22c55e' : 'var(--text-muted)' }}>{h.month.slice(5)}月</span>
                   </div>
                 ))}
               </div>
