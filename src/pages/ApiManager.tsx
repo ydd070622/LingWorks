@@ -72,6 +72,14 @@ export default function ApiManager() {
   const [providers, setProviders] = useState<ProviderConfig[]>(DEFAULT_PROVIDERS)
   const [activeProvider, setActiveProvider] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<ProviderConfig | null>(null)
+  const [masterKey, setMasterKey] = useState('')
+
+  const loadMasterKey = useCallback(async () => {
+    if (window.electronAPI) {
+      const saved = await window.electronAPI.getStore('apiMasterKey')
+      if (typeof saved === 'string') setMasterKey(saved)
+    }
+  }, [])
 
   const loadProviders = useCallback(async () => {
     if (window.electronAPI) {
@@ -85,7 +93,7 @@ export default function ApiManager() {
     }
   }, [])
 
-  useEffect(() => { loadProviders() }, [loadProviders])
+  useEffect(() => { loadProviders(); loadMasterKey() }, [loadProviders, loadMasterKey])
 
   const saveProviders = async (list: ProviderConfig[]) => {
     setProviders(list)
@@ -234,12 +242,23 @@ export default function ApiManager() {
       </div>
 
       {enabledProviders.length > 0 && (
-        <div className="api-config-section" style={{ marginBottom: 20 }}>
-          <h4>🚀 本地代理服务</h4>
-          <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.8 }}>
-            端点：<code style={{ background: 'rgba(34,197,94,0.1)', color: 'var(--success)', padding: '2px 8px', borderRadius: 4 }}>http://127.0.0.1:19384/v1</code> <span style={{ color: 'var(--success)', fontSize: 11 }}>● 运行中</span><br />
-            统一 Key：<code style={{ background: 'rgba(99,102,241,0.1)', color: 'var(--accent)', padding: '2px 8px', borderRadius: 4 }}>ai-web-tools</code>（本地代理无需真实 Key，填这个即可）<br />
-            可连接的模型：{providers.filter(p => p.apiKey).flatMap(p => p.models.filter(m => m.enabled).map(m => m.id)).join('、')}
+        <div className="api-config-section" style={{ marginBottom: 20, borderColor: 'rgba(34,197,94,0.2)' }}>
+          <h4>🚀 统一 API 入口</h4>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 2 }}>
+            <div>地址：<code style={{ background: 'rgba(34,197,94,0.1)', color: 'var(--success)', padding: '2px 8px', borderRadius: 4 }}>http://127.0.0.1:19384/v1</code> <span style={{ color: 'var(--success)', fontSize: 11 }}>● 运行中</span></div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+              <span>统一 Key：</span>
+              <input
+                className="input-base"
+                style={{ width: 200, fontFamily: 'monospace', padding: '4px 8px', fontSize: 12 }}
+                type="text"
+                value={masterKey}
+                onChange={async e => { setMasterKey(e.target.value); if (window.electronAPI) await window.electronAPI.setStore('apiMasterKey', e.target.value) }}
+                placeholder="设置一个统一访问密钥"
+              />
+              {masterKey ? <span style={{ color: 'var(--success)', fontSize: 11 }}>已设置</span> : <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>未设置，留空则无需认证</span>}
+            </div>
+            <div style={{ fontSize: 11, marginTop: 2 }}>可用模型：{providers.filter(p => p.apiKey).flatMap(p => p.models.filter(m => m.enabled).map(m => m.id)).join('、') || '尚未配置'}</div>
           </div>
         </div>
       )}

@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>模型 API 管理 - 原型</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg-primary: #0a0a0f; --bg-secondary: #12121a;
+    --bg-card: rgba(255,255,255,0.04); --bg-card-hover: rgba(255,255,255,0.08);
+    --border: rgba(255,255,255,0.08); --border-active: rgba(99,102,241,0.5);
+    --text: #e8e8ed; --text2: rgba(255,255,255,0.5); --text3: rgba(255,255,255,0.3);
+    --accent: #6366f1; --accent-h: #818cf8; --green: #22c55e; --red: #ef4444;
+    --radius: 10px; --radius-sm: 6px;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg-primary); color: var(--text);
+    display: flex; justify-content: center; min-height: 100vh;
+    padding: 40px 20px; -webkit-font-smoothing: antialiased;
+  }
+  .wrapper { width: 860px; max-width: 100%; }
+
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .header h2 { font-size: 18px; font-weight: 700; }
+  .header p { font-size: 13px; color: var(--text3); margin-top: 4px; }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+  .stat-card {
+    padding: 16px 20px; border-radius: var(--radius);
+    background: var(--bg-card); border: 1px solid var(--border);
+  }
+  .stat-card .num { font-size: 24px; font-weight: 700; }
+  .stat-card .label { font-size: 12px; color: var(--text3); margin-top: 4px; }
+
+  .section-title {
+    font-size: 13px; font-weight: 600; color: var(--text2);
+    margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+  }
+
+  .provider-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; margin-bottom: 28px; }
+  .provider-card {
+    padding: 20px; border-radius: var(--radius);
+    background: var(--bg-card); border: 1px solid var(--border);
+    cursor: pointer; transition: all .15s; position: relative;
+  }
+  .provider-card:hover { border-color: rgba(255,255,255,0.15); background: var(--bg-card-hover); }
+  .provider-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .provider-icon {
+    width: 42px; height: 42px; border-radius: 10px; display: flex;
+    align-items: center; justify-content: center; font-size: 20px;
+  }
+  .provider-name { font-size: 14px; font-weight: 600; }
+  .provider-stat { font-size: 12px; color: var(--text3); }
+  .provider-models { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 10px; }
+  .model-tag { padding: 2px 8px; border-radius: 4px; font-size: 10px; background: rgba(255,255,255,0.06); color: var(--text3); }
+  .provider-status { position: absolute; top: 20px; right: 20px; width: 8px; height: 8px; border-radius: 50%; }
+  .provider-status.online { background: var(--green); box-shadow: 0 0 6px rgba(34,197,94,0.4); }
+  .provider-status.offline { background: var(--red); }
+
+  /* Sub page */
+  .sub-page { display: none; }
+  .back-btn {
+    font-size: 13px; color: var(--accent); cursor: pointer;
+    display: flex; align-items: center; gap: 6px; margin-bottom: 24px;
+  }
+  .back-btn:hover { color: var(--accent-h); }
+
+  .config-section {
+    padding: 20px; border-radius: var(--radius);
+    background: var(--bg-card); border: 1px solid var(--border); margin-bottom: 16px;
+  }
+  .config-section h4 { font-size: 14px; font-weight: 600; margin-bottom: 14px; }
+  .row { display: flex; gap: 12px; margin-bottom: 12px; }
+  .row > div { flex: 1; }
+  .label { font-size: 12px; color: var(--text2); margin-bottom: 4px; display: block; }
+  .input {
+    background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text); padding: 8px 12px;
+    font-size: 13px; outline: none; width: 100%;
+  }
+  .input:focus { border-color: var(--accent); }
+  .input::placeholder { color: var(--text3); }
+
+  .model-list { display: flex; flex-direction: column; gap: 6px; }
+  .model-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; border-radius: 8px;
+    background: var(--bg-card); border: 1px solid var(--border);
+  }
+  .model-item-left { display: flex; align-items: center; gap: 10px; }
+  .model-item-name { font-size: 13px; font-weight: 500; }
+  .model-item-desc { font-size: 11px; color: var(--text3); }
+  .model-item-tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; }
+  .model-item-tag.text { background: rgba(99,102,241,0.12); color: var(--accent); }
+  .model-item-tag.image { background: rgba(245,158,11,0.12); color: #f59e0b; }
+  .model-item-tag.audio { background: rgba(34,197,94,0.12); color: var(--green); }
+
+  .toggle {
+    width: 36px; height: 20px; border-radius: 10px;
+    background: rgba(255,255,255,0.12); cursor: pointer; position: relative;
+    transition: background .2s; flex-shrink: 0;
+  }
+  .toggle.on { background: var(--accent); }
+  .toggle::after {
+    content: ''; position: absolute; top: 2px; left: 2px;
+    width: 16px; height: 16px; border-radius: 50%; background: #fff;
+    transition: transform .2s;
+  }
+  .toggle.on::after { transform: translateX(16px); }
+
+  .btn {
+    padding: 7px 14px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500;
+    cursor: pointer; border: 1px solid transparent; transition: all .15s;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-h); }
+  .btn-ghost { background: transparent; color: var(--text2); border-color: var(--border); }
+  .btn-ghost:hover { background: var(--bg-card-hover); color: var(--text); }
+  .btn-danger { background: rgba(239,68,68,0.08); color: var(--red); border-color: rgba(239,68,68,0.15); }
+
+  .usage-table { width: 100%; font-size: 13px; border-collapse: collapse; }
+  .usage-table th { text-align: left; color: var(--text3); font-weight: 500; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  .usage-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  .bar-wrap { height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; flex: 1; }
+  .bar { height: 100%; background: var(--accent); border-radius: 2px; }
+
+  ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="wrapper">
+
+  <!-- ====== MAIN PAGE ====== -->
+  <div id="main-page">
+    <div class="header">
+      <div>
+        <h2>🔌 模型 API 管理</h2>
+        <p>统一管理所有 AI 提供商的 API Key，一键调用任意模型</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost">🔄 测试全部连通性</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat-card">
+        <div class="num" style="color: var(--green);">5</div>
+        <div class="label">已配置提供商</div>
+      </div>
+      <div class="stat-card">
+        <div class="num" style="color: var(--accent);">23</div>
+        <div class="label">可用模型</div>
+      </div>
+      <div class="stat-card">
+        <div class="num">127.5K</div>
+        <div class="label">今日 Token 用量</div>
+      </div>
+      <div class="stat-card">
+        <div class="num" style="color: var(--green);">$0.38</div>
+        <div class="label">今日费用估算</div>
+      </div>
+    </div>
+
+    <!-- Providers -->
+    <div class="section-title">🔑 已配置的 API 提供商</div>
+    <div class="provider-grid">
+      <!-- DeepSeek -->
+      <div class="provider-card" onclick="showSub('deepseek')">
+        <div class="provider-status online"></div>
+        <div class="provider-card-header">
+          <div class="provider-icon" style="background: rgba(79,70,229,0.12);">🔵</div>
+          <div>
+            <div class="provider-name">DeepSeek</div>
+            <div class="provider-stat">sk-****a1b2 · 已连接</div>
+          </div>
+        </div>
+        <div class="provider-models">
+          <span class="model-tag">deepseek-chat</span>
+          <span class="model-tag">deepseek-reasoner</span>
+        </div>
+      </div>
+
+      <!-- OpenAI -->
+      <div class="provider-card" onclick="showSub('openai')">
+        <div class="provider-status offline"></div>
+        <div class="provider-card-header">
+          <div class="provider-icon" style="background: rgba(16,163,127,0.12);">🟢</div>
+          <div>
+            <div class="provider-name">OpenAI</div>
+            <div class="provider-stat">sk-****xyz · 未配置</div>
+          </div>
+        </div>
+        <div class="provider-models">
+          <span class="model-tag">gpt-4o</span>
+          <span class="model-tag">gpt-4-turbo</span>
+          <span class="model-tag">dall-e-3</span>
+        </div>
+      </div>
+
+      <!-- Claude -->
+      <div class="provider-card" onclick="showSub('claude')">
+        <div class="provider-status online"></div>
+        <div class="provider-card-header">
+          <div class="provider-icon" style="background: rgba(217,119,6,0.12);">🟠</div>
+          <div>
+            <div class="provider-name">Anthropic Claude</div>
+            <div class="provider-stat">sk-ant-**** · 已连接</div>
+          </div>
+        </div>
+        <div class="provider-models">
+          <span class="model-tag">claude-3.5-sonnet</span>
+          <span class="model-tag">claude-3-opus</span>
+          <span class="model-tag">claude-3-haiku</span>
+        </div>
+      </div>
+
+      <!-- Google -->
+      <div class="provider-card" onclick="showSub('google')">
+        <div class="provider-status offline"></div>
+        <div class="provider-card-header">
+          <div class="provider-icon" style="background: rgba(66,133,244,0.12);">🔴</div>
+          <div>
+            <div class="provider-name">Google Gemini</div>
+            <div class="provider-stat">AIza**** · 未配置</div>
+          </div>
+        </div>
+        <div class="provider-models">
+          <span class="model-tag">gemini-1.5-pro</span>
+          <span class="model-tag">gemini-1.5-flash</span>
+        </div>
+      </div>
+
+      <!-- OpenRouter -->
+      <div class="provider-card" onclick="showSub('openrouter')">
+        <div class="provider-status online"></div>
+        <div class="provider-card-header">
+          <div class="provider-icon" style="background: rgba(139,92,246,0.12);">🟣</div>
+          <div>
+            <div class="provider-name">OpenRouter</div>
+            <div class="provider-stat">sk-or-**** · 已连接</div>
+          </div>
+        </div>
+        <div class="provider-models">
+          <span class="model-tag">openai/gpt-4o</span>
+          <span class="model-tag">anthropic/claude-3</span>
+          <span class="model-tag">meta/llama-3</span>
+          <span class="model-tag">google/gemini</span>
+        </div>
+      </div>
+
+      <!-- 新建 -->
+      <div class="provider-card" style="border-style: dashed; border-color: var(--border); display: flex; align-items: center; justify-content: center; min-height: 140px; cursor: pointer; color: var(--text3);" onclick="alert('打开添加提供商弹窗')">
+        <div style="text-align: center;">
+          <div style="font-size: 28px; margin-bottom: 8px;">+</div>
+          <div style="font-size: 13px;">添加新提供商</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Usage -->
+    <div class="section-title">📊 近期用量概览</div>
+    <div class="config-section">
+      <table class="usage-table">
+        <thead>
+          <tr><th>提供商</th><th>模型</th><th>请求数</th><th>Token 用量</th><th>占比</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>🔵 DeepSeek</td><td>deepseek-chat</td><td>87</td>
+            <td style="display:flex;align-items:center;gap:8px;"><div class="bar-wrap"><div class="bar" style="width:65%"></div></div> 82.3K</td>
+            <td>64.6%</td>
+          </tr>
+          <tr>
+            <td>🟠 Claude</td><td>claude-3.5-sonnet</td><td>23</td>
+            <td style="display:flex;align-items:center;gap:8px;"><div class="bar-wrap"><div class="bar" style="width:22%"></div></div> 28.1K</td>
+            <td>22.0%</td>
+          </tr>
+          <tr>
+            <td>🟣 OpenRouter</td><td>openai/gpt-4o</td><td>12</td>
+            <td style="display:flex;align-items:center;gap:8px;"><div class="bar-wrap"><div class="bar" style="width:14%"></div></div> 17.1K</td>
+            <td>13.4%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ====== SUB PAGE: DeepSeek ====== -->
+  <div class="sub-page" id="sub-deepseek">
+    <div class="back-btn" onclick="showMain()">← 返回 API 管理</div>
+    <div class="header">
+      <div>
+        <h2><span style="background:rgba(79,70,229,0.12);padding:4px 10px;border-radius:6px;font-size:14px;">🔵</span> DeepSeek</h2>
+        <p>配置 DeepSeek API 连接和可用模型</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost">🔄 测试连接</button>
+        <button class="btn btn-primary">💾 保存配置</button>
+      </div>
+    </div>
+
+    <div class="config-section">
+      <h4>🔑 API 连接配置</h4>
+      <div class="row">
+        <div style="flex:2;">
+          <label class="label">API Key</label>
+          <input class="input" type="password" value="sk-xxxxxxxxxxxxxxxxxxxxa1b2" placeholder="sk-...">
+        </div>
+        <div>
+          <label class="label">API 地址</label>
+          <input class="input" value="https://api.deepseek.com/v1" placeholder="https://api.deepseek.com/v1">
+        </div>
+      </div>
+    </div>
+
+    <div class="config-section">
+      <h4>📦 可用模型管理</h4>
+      <div class="model-list">
+        <div class="model-item">
+          <div class="model-item-left">
+            <span class="model-item-name">deepseek-chat</span>
+            <span class="model-item-tag text">对话</span>
+            <span class="model-item-desc">通用对话模型，128K 上下文</span>
+          </div>
+          <div class="toggle on"></div>
+        </div>
+        <div class="model-item">
+          <div class="model-item-left">
+            <span class="model-item-name">deepseek-reasoner</span>
+            <span class="model-item-tag text">推理</span>
+            <span class="model-item-desc">深度推理模型，CoT 思维链</span>
+          </div>
+          <div class="toggle on"></div>
+        </div>
+      </div>
+      <div style="margin-top: 10px; display: flex; gap: 8px;">
+        <button class="btn btn-ghost">+ 添加自定义模型</button>
+      </div>
+    </div>
+
+    <div class="config-section">
+      <h4>📊 用量统计</h4>
+      <table class="usage-table">
+        <thead><tr><th>日期</th><th>模型</th><th>请求数</th><th>Token 输入</th><th>Token 输出</th></tr></thead>
+        <tbody>
+          <tr><td>06-07</td><td>deepseek-chat</td><td>87</td><td>45.2K</td><td>37.1K</td></tr>
+          <tr><td>06-06</td><td>deepseek-chat</td><td>63</td><td>32.1K</td><td>28.3K</td></tr>
+          <tr><td>06-05</td><td>deepseek-reasoner</td><td>12</td><td>8.9K</td><td>15.4K</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ====== SUB PAGE: OpenAI ====== -->
+  <div class="sub-page" id="sub-openai">
+    <div class="back-btn" onclick="showMain()">← 返回 API 管理</div>
+    <div class="header">
+      <div>
+        <h2><span style="background:rgba(16,163,127,0.12);padding:4px 10px;border-radius:6px;font-size:14px;">🟢</span> OpenAI</h2>
+        <p>配置 OpenAI API 连接和可用模型</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost">🔄 测试连接</button>
+        <button class="btn btn-primary">💾 保存配置</button>
+      </div>
+    </div>
+
+    <div class="config-section">
+      <h4>🔑 API 连接配置</h4>
+      <div class="row">
+        <div style="flex:2;">
+          <label class="label">API Key</label>
+          <input class="input" type="password" value="" placeholder="sk-proj-...">
+        </div>
+        <div>
+          <label class="label">API 地址</label>
+          <input class="input" value="https://api.openai.com/v1" placeholder="https://api.openai.com/v1">
+        </div>
+      </div>
+    </div>
+
+    <div class="config-section">
+      <h4>📦 可用模型管理</h4>
+      <div class="model-list">
+        <div class="model-item">
+          <div class="model-item-left">
+            <span class="model-item-name">gpt-4o</span>
+            <span class="model-item-tag text">对话</span>
+            <span class="model-item-tag image">生图</span>
+            <span class="model-item-desc">多模态旗舰模型</span>
+          </div>
+          <div class="toggle on"></div>
+        </div>
+        <div class="model-item">
+          <div class="model-item-left">
+            <span class="model-item-name">gpt-4-turbo</span>
+            <span class="model-item-tag text">对话</span>
+            <span class="model-item-desc">128K 上下文</span>
+          </div>
+          <div class="toggle on"></div>
+        </div>
+        <div class="model-item">
+          <div class="model-item-left">
+            <span class="model-item-name">dall-e-3</span>
+            <span class="model-item-tag image">生图</span>
+            <span class="model-item-desc">AI 图像生成</span>
+          </div>
+          <div class="toggle"></div>
+        </div>
+        <div class="model-item">
+          <div class="model-item-left">
+            <span class="model-item-name">gpt-4o-mini</span>
+            <span class="model-item-tag text">对话</span>
+            <span class="model-item-desc">轻量快速模型</span>
+          </div>
+          <div class="toggle"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== SUB PAGE: Claude ====== -->
+  <div class="sub-page" id="sub-claude">
+    <div class="back-btn" onclick="showMain()">← 返回 API 管理</div>
+    <div class="header">
+      <div>
+        <h2><span style="background:rgba(217,119,6,0.12);padding:4px 10px;border-radius:6px;font-size:14px;">🟠</span> Anthropic Claude</h2>
+        <p>配置 Anthropic API 连接和可用模型</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost">🔄 测试连接</button>
+        <button class="btn btn-primary">💾 保存配置</button>
+      </div>
+    </div>
+    <div class="config-section">
+      <h4>🔑 API 连接配置</h4>
+      <div class="row">
+        <div style="flex:2;"><label class="label">API Key</label><input class="input" type="password" value="sk-ant-xxxxxxxxxxxx" placeholder="sk-ant-..."></div>
+        <div><label class="label">API 地址</label><input class="input" value="https://api.anthropic.com/v1" placeholder="https://api.anthropic.com/v1"></div>
+      </div>
+    </div>
+    <div class="config-section">
+      <h4>📦 可用模型管理</h4>
+      <div class="model-list">
+        <div class="model-item">
+          <div class="model-item-left"><span class="model-item-name">claude-3.5-sonnet</span><span class="model-item-tag text">对话</span><span class="model-item-desc">最佳性价比</span></div>
+          <div class="toggle on"></div>
+        </div>
+        <div class="model-item">
+          <div class="model-item-left"><span class="model-item-name">claude-3-opus</span><span class="model-item-tag text">对话</span><span class="model-item-desc">最强推理能力</span></div>
+          <div class="toggle on"></div>
+        </div>
+        <div class="model-item">
+          <div class="model-item-left"><span class="model-item-name">claude-3-haiku</span><span class="model-item-tag text">对话</span><span class="model-item-desc">最快响应速度</span></div>
+          <div class="toggle"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function showSub(name) {
+  document.getElementById('main-page').style.display = 'none';
+  document.querySelectorAll('.sub-page').forEach(el => el.style.display = 'none');
+  document.getElementById('sub-' + name).style.display = 'block';
+}
+function showMain() {
+  document.getElementById('main-page').style.display = 'block';
+  document.querySelectorAll('.sub-page').forEach(el => el.style.display = 'none');
+}
+</script>
+
+</body>
+</html>

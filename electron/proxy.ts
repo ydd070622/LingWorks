@@ -23,6 +23,15 @@ function loadProviders(): ProviderConfig[] {
   } catch { return [] }
 }
 
+function loadMasterKey(): string {
+  try {
+    const p = path.join(app.getPath('userData'), 'config.json')
+    if (!fs.existsSync(p)) return ''
+    const data = JSON.parse(fs.readFileSync(p, 'utf-8'))
+    return data.apiMasterKey || ''
+  } catch { return '' }
+}
+
 function parseUrl(raw: string): { host: string; port: number; path: string; https: boolean } {
   const u = new URL(raw)
   return {
@@ -50,6 +59,14 @@ export function startProxy() {
     if (req.method === 'GET' && req.url === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ status: 'ok', providers: loadProviders().filter(p => p.apiKey).map(p => p.id) }))
+      return
+    }
+
+    // Auth check
+    const masterKey = loadMasterKey()
+    if (masterKey && req.headers.authorization !== `Bearer ${masterKey}`) {
+      res.writeHead(401, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ error: { message: 'invalid api key' } }))
       return
     }
 
