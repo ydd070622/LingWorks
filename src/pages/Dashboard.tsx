@@ -258,33 +258,6 @@ export default function Dashboard() {
               </div>
             ) : <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 16, fontSize: 12 }}>{platformToken ? '暂无本月数据，请确认已产生用量' : '请先配置 Token'}</div>}
           </div>
-
-          {/* Cost curve */}
-          <div className="api-config-section" style={{ padding: 18 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>💹 本月消费趋势（金额）</div>
-            {recentDays.length > 0 ? (
-              <div>
-                <svg viewBox="0 0 580 120" style={{ width: '100%', height: 110 }}>
-                  <line x1="0" y1="30" x2="580" y2="30" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
-                  <line x1="0" y1="60" x2="580" y2="60" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
-                  <line x1="0" y1="90" x2="580" y2="90" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
-                  <text x="3" y="14" fill="var(--text-muted)" fontSize="8">¥{maxDailyCost.toFixed(1)}</text>
-                  <text x="3" y="44" fill="var(--text-muted)" fontSize="8">¥{(maxDailyCost * 0.66).toFixed(1)}</text>
-                  <text x="3" y="74" fill="var(--text-muted)" fontSize="8">¥{(maxDailyCost * 0.33).toFixed(1)}</text>
-                  <text x="3" y="104" fill="var(--text-muted)" fontSize="8">¥0</text>
-                  {costPoints && <polyline points={costPoints} fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" />}
-                  {cumPoints && <polyline points={cumPoints} fill="none" stroke="#f59e0b" strokeWidth="2" strokeDasharray="5,3" strokeLinecap="round" />}
-                  {recentDays.map((d, i) => (
-                    <text key={i} x={10 + (i / Math.max(recentDays.length - 1, 1)) * 560} y="116" fill="var(--text-muted)" fontSize="8" textAnchor="middle">{mmdd(d.date)}</text>
-                  ))}
-                </svg>
-                <div style={{ display: 'flex', gap: 14, fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 2, background: 'var(--accent)', borderRadius: 1 }} /> 当日</span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 2, border: '1px dashed #f59e0b', background: 'transparent', borderRadius: 1 }} /> 累计</span>
-                </div>
-              </div>
-            ) : <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 20, fontSize: 13 }}>暂无数据</div>}
-          </div>
         </div>
 
         {/* ===== RIGHT ===== */}
@@ -311,26 +284,6 @@ export default function Dashboard() {
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>月均消费</div>
               </div>
             </div>
-          </div>
-
-          {/* Monthly comparison */}
-          <div className="api-config-section" style={{ padding: 18 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-              <BarChart3 size={14} color="var(--accent)" /> 月度费用对比
-            </div>
-            {history.length > 0 ? history.map((h, i) => {
-              const colors = ['#4c1d95', '#5b21b6', '#6d28d9', '#7c3aed', '#8b5cf6', '#6366f1']
-              const isCurrent = i === history.length - 1
-              return (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '9px 0', borderBottom: i < history.length - 1 ? '1px solid var(--border-color)' : 'none' }}>
-                  <span style={{ width: 70, fontSize: 12, fontWeight: 600, flexShrink: 0, color: isCurrent ? 'var(--green)' : 'var(--text)' }}>{h.month}</span>
-                  <div style={{ flex: 1, height: 20, background: 'rgba(255,255,255,0.03)', borderRadius: 3, overflow: 'hidden', margin: '0 10px' }}>
-                    <div style={{ height: '100%', width: `${Math.max(2, (h.cost / histMaxCost) * 100)}%`, borderRadius: 3, background: `linear-gradient(90deg,${isCurrent ? 'var(--green)' : colors[i % 6]},${isCurrent ? '#4ade80' : colors[(i + 1) % 6]})`, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 8, fontSize: 10, fontWeight: 600, color: '#fff' }}>{fmtMoney(h.cost)}</div>
-                  </div>
-                  <span style={{ width: 50, textAlign: 'right', fontSize: 12, fontWeight: 600, flexShrink: 0, color: isCurrent ? 'var(--green)' : 'var(--text)' }}>{isCurrent ? '本月' : fmtMoney(h.cost)}</span>
-                </div>
-              )
-            }) : <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 20, fontSize: 13 }}>暂无历史数据</div>}
           </div>
 
           {/* Monthly trend bars */}
