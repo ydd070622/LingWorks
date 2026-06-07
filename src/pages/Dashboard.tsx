@@ -251,7 +251,7 @@ export default function Dashboard() {
           ))}
 
           {/* Token trend */}
-          <div className="api-config-section" style={{ padding: 18 }}>
+          <div className="api-config-section" style={{ padding: 18, marginTop: 'auto' }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
               <BarChart3 size={14} color="var(--accent)" /> 本月 Token 消耗趋势
               {!platformToken && <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 400 }}>（需配置用量 Token）</span>}
@@ -304,7 +304,7 @@ export default function Dashboard() {
           </div>
 
           {/* Monthly trend bars */}
-          <div className="api-config-section" style={{ padding: 18 }}>
+          <div className="api-config-section" style={{ padding: 18, marginTop: 'auto' }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
               📈 月度消费趋势
             </div>
