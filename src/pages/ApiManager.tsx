@@ -233,6 +233,17 @@ export default function ApiManager() {
         <div className="api-stat-card"><div className="api-stat-num">{providers.length}</div><div>支持提供商</div></div>
       </div>
 
+      {enabledProviders.length > 0 && (
+        <div className="api-config-section" style={{ marginBottom: 20 }}>
+          <h4>🚀 本地代理服务</h4>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.8 }}>
+            端点：<code style={{ background: 'rgba(34,197,94,0.1)', color: 'var(--success)', padding: '2px 8px', borderRadius: 4 }}>http://127.0.0.1:19384/v1</code> <span style={{ color: 'var(--success)', fontSize: 11 }}>● 运行中</span><br />
+            统一 Key：<code style={{ background: 'rgba(99,102,241,0.1)', color: 'var(--accent)', padding: '2px 8px', borderRadius: 4 }}>ai-web-tools</code>（本地代理无需真实 Key，填这个即可）<br />
+            可连接的模型：{providers.filter(p => p.apiKey).flatMap(p => p.models.filter(m => m.enabled).map(m => m.id)).join('、')}
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
         {providers.map(p => (
           <div key={p.id} className="api-provider-card" onClick={() => p.apiKey ? setActiveProvider(p.id) : handleEdit(p)}>
