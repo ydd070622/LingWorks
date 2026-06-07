@@ -30,7 +30,7 @@ const navItems: NavItem[] = [
   { type: 'tool', id: 'prompts', label: 'Prompt 管理', icon: 'tool' },
   { type: 'aggregator', id: 'platforms', label: '开放平台', icon: 'tool' },
   { type: 'aggregator', id: 'recharge', label: '充值平台', icon: 'tool' },
-  { type: 'aggregator', id: 'apimgr', label: '模型 API', icon: 'tool' },
+  { type: 'aggregator', id: 'apimgr', label: '数据看板', icon: 'tool' },
   { type: 'account', id: 'accounts', label: '常用账号', icon: 'tool' },
   { type: 'vpn', id: 'skyun', label: 'Skyun', url: 'https://skyun.top/', icon: 'globe' },
   { type: 'vpn', id: 'mitce', label: 'Mitce', url: 'https://mitce.net/', icon: 'globe' },
