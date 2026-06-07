@@ -199,7 +199,7 @@ export default function Dashboard() {
 
   return (
     <div style={{ height: '100%', overflow: 'auto', background: 'var(--bg-primary)', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, maxWidth: 1080, margin: '0 auto', padding: '20px 20px 12px 20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, maxWidth: 1080, width: '100%', margin: '0 auto', padding: '20px 20px 12px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 700 }}>
           🔵 DeepSeek Monitor
         </div>
