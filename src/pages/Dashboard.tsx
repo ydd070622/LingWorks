@@ -201,7 +201,7 @@ export default function Dashboard() {
     <div style={{ height: '100%', overflow: 'auto', background: 'var(--bg-primary)' }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, maxWidth: 1080, margin: '0 auto', padding: 20 }}>
         {/* ===== LEFT ===== */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, height: '100%' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 700 }}>🔵 DeepSeek Monitor</div>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -278,7 +278,7 @@ export default function Dashboard() {
         </div>
 
         {/* ===== RIGHT ===== */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, height: '100%' }}>
           <div style={{ fontSize: 15, fontWeight: 700, padding: '0 4px' }}>📅 历史月用量</div>
 
           {/* History stats */}
