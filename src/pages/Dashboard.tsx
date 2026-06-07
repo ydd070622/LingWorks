@@ -31,6 +31,7 @@ export default function Dashboard() {
   const [balanceState, setBalanceState] = useState<'loading' | 'ok' | 'error' | 'nokey'>('loading')
   const [usage, setUsage] = useState<UsageResult | null>(null)
   const [usageState, setUsageState] = useState<'loading' | 'ok' | 'error' | 'nokey'>('loading')
+  const [platformToken, setPlatformToken] = useState('')
   const [configPath, setConfigPath] = useState('')
   const timerRef = useRef<ReturnType<typeof setInterval>>()
 
@@ -41,6 +42,8 @@ export default function Dashboard() {
         const ds = models.find((m: any) => m.name && m.name.toLowerCase().includes('deepseek'))
         if (ds?.apiKey) setApiKey(ds.apiKey)
       }
+      const pt = await window.electronAPI.getStore('dsPlatformToken')
+      if (typeof pt === 'string') setPlatformToken(pt)
       try { setConfigPath((await window.electronAPI.getStore('configPath')) || '') } catch {}
     }
   }, [])
@@ -61,26 +64,29 @@ export default function Dashboard() {
   }, [apiKey])
 
   const fetchUsage = useCallback(async () => {
-    if (!apiKey) { setUsageState('nokey'); return }
+    if (!platformToken) { setUsageState('nokey'); return }
     setUsageState('loading')
     try {
-      const res = await fetch('https://api.deepseek.com/user/usage', { headers: { Authorization: `Bearer ${apiKey}` } })
+      const res = await fetch('https://platform.deepseek.com/api/v1/usage/summary', {
+        headers: { Authorization: `Bearer ${platformToken}` }
+      })
       if (!res.ok) throw new Error('查询失败')
       const data = await res.json()
       const models: UsageModel[] = (data.models || []).map((m: any) => ({
-        key: m.model?.toLowerCase().includes('flash') ? 'flash' : 'pro',
-        name: m.model || '', totalTokens: (m.total_tokens || 0) + (m.completion_tokens || 0),
+        key: (m.model || '').toLowerCase().includes('pro') ? 'pro' : 'flash',
+        name: m.model || '', totalTokens: (m.total_tokens || 0),
         requestCount: m.request_count || 0, cost: m.cost || 0,
-        cacheHitTokens: m.cache_hit_tokens || 0, cacheMissTokens: m.cache_miss_tokens || 0, responseTokens: m.completion_tokens || 0,
+        cacheHitTokens: m.cache_hit_tokens || 0, cacheMissTokens: m.cache_miss_tokens || 0,
+        responseTokens: m.completion_tokens || 0,
       }))
-      const days: UsageDay[] = (data.days || []).map((d: any) => ({
-        date: d.date, flashTokens: d.flash_tokens || 0, proTokens: d.pro_tokens || 0,
-        totalTokens: (d.flash_tokens || 0) + (d.pro_tokens || 0), totalCost: d.total_cost || 0,
+      const days: UsageDay[] = (data.days || data.daily || []).map((d: any) => ({
+        date: d.date || d.day, flashTokens: d.flash_tokens || 0, proTokens: d.pro_tokens || 0,
+        totalTokens: (d.total_tokens || 0), totalCost: d.total_cost || d.cost || 0,
       }))
-      setUsage({ models, days, monthCost: data.month_cost || 0 })
+      setUsage({ models, days, monthCost: data.month_cost || data.total_cost || 0 })
       setUsageState('ok')
     } catch { setUsageState('error') }
-  }, [apiKey])
+  }, [platformToken])
 
   const refreshAll = useCallback(() => { fetchBalance(); fetchUsage() }, [fetchBalance, fetchUsage])
 
@@ -171,10 +177,23 @@ export default function Dashboard() {
 
         <div className="api-config-section" style={{ padding: 20 }}>
           <h4 style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}><BarChart3 size={14} /> 用量同步 Token</h4>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>DeepSeek 用量详情需网页登录 token（与 API Key 不同）。点击下方按钮在浏览器中登录 DeepSeek 平台查看。</p>
-          <button className="btn btn-ghost" style={{ width: '100%' }} onClick={() => {
-            if (window.electronAPI) window.electronAPI.openExternal('https://platform.deepseek.com/usage')
-          }}>打开 DeepSeek 平台</button>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>DeepSeek 用量详情需网页登录 token（与 API Key 不同）。</p>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>获取方式：浏览器登录 <a href="#" onClick={e => { e.preventDefault(); if (window.electronAPI) window.electronAPI.openExternal('https://platform.deepseek.com/usage') }} style={{ color: 'var(--accent)' }}>platform.deepseek.com</a>，F12 控制台输入：<code style={{ background: 'rgba(99,102,241,0.1)', padding: '2px 6px', borderRadius: 4, fontSize: 11 }}>JSON.parse(localStorage.userToken).value</code></p>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            <input className="input-base" style={{ flex: 1 }} type="password" value={platformToken} onChange={async e => {
+              setPlatformToken(e.target.value)
+              if (window.electronAPI) await window.electronAPI.setStore('dsPlatformToken', e.target.value)
+            }} placeholder={platformToken ? '••••••••••••••••••••••••••••••••••' : '粘贴 token...'} />
+            <button className="btn btn-primary btn-sm" onClick={async () => {
+              if (!platformToken) return
+              setPage('dashboard')
+              await fetchUsage()
+            }}>保存并刷新</button>
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 4 }}>
+            <span style={{ fontSize: 11, color: platformToken ? 'var(--success)' : 'var(--text-muted)' }}>{platformToken ? '已配置' : '未配置（仅可查看余额）'}</span>
+            {platformToken && <button className="btn btn-ghost btn-sm" style={{ fontSize: 11 }} onClick={async () => { setPlatformToken(''); if (window.electronAPI) await window.electronAPI.setStore('dsPlatformToken', ''); setUsage(null); setUsageState('nokey') }}>清除 Token</button>}
+          </div>
         </div>
       </div>
     )
