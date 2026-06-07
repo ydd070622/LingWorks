@@ -119,7 +119,7 @@ export default function Dashboard() {
   const pro = usage?.models.find(m => m.key === 'pro') || null
   const maxTokens = Math.max(flash?.totalTokens || 0, pro?.totalTokens || 0, 1)
   const today = usage?.days.find(d => d.date === new Date().toISOString().slice(0, 10)) || null
-  const recentDays = usage?.days.slice(-7) || []
+  const recentDays = (usage?.days || []).slice(-Math.min((usage?.days || []).length, 7))
   const maxDailyToken = Math.max(...recentDays.map(d => d.totalTokens), 1)
   const maxDailyCost = Math.max(...recentDays.map(d => d.totalCost), 0.01)
   const histMaxCost = Math.max(...history.map(h => h.cost), 1)
@@ -182,7 +182,7 @@ export default function Dashboard() {
 
   return (
     <div style={{ height: '100%', overflow: 'auto', background: 'var(--bg-primary)' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, maxWidth: 1080, margin: '0 auto', padding: 20, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, maxWidth: 1080, margin: '0 auto', padding: 20 }}>
         {/* ===== LEFT ===== */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px' }}>
