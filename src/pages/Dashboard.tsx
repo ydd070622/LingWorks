@@ -213,7 +213,7 @@ export default function Dashboard() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, height: '100%' }}>
 
           {/* Balance */}
-          <div className="api-config-section" style={{ padding: 18, minHeight: 190 }}>
+          <div className="api-config-section" style={{ padding: 18, height: 190 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 12, color: 'var(--text-muted)', alignItems: 'center' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><CreditCard size={14} /> 账户余额</span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, padding: '2px 10px', borderRadius: 10, background: balance?.isAvailable ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)', color: balance?.isAvailable ? 'var(--success)' : '#ef4444' }}>
@@ -283,7 +283,7 @@ export default function Dashboard() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, height: '100%' }}>
 
           {/* History stats */}
-          <div className="api-config-section" style={{ padding: 18 }}>
+          <div className="api-config-section" style={{ padding: 18, height: 190 }}>
             <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>📅 历史月用量</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div style={{ background: 'var(--bg-card)', borderRadius: 8, padding: 10, textAlign: 'center' }}>
