@@ -1,7 +1,6 @@
 import { app, BrowserWindow, ipcMain, dialog, Menu, shell, net, nativeTheme } from 'electron'
 import * as path from 'path'
 import * as fs from 'fs'
-import { startProxy } from './proxy'
 
 app.commandLine.appendSwitch('disable-gpu-sandbox')
 app.commandLine.appendSwitch('disable-software-rasterizer')
@@ -262,7 +261,6 @@ app.whenReady().then(() => {
   } catch {}
   createWindow()
   checkForUpdates()
-  startProxy()
 })
 
 app.on('web-contents-created', (_e, contents) => {

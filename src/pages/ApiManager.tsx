@@ -200,16 +200,8 @@ export default function ApiManager() {
                 <button className="btn btn-primary btn-sm" onClick={ensureToken} style={{ whiteSpace: 'nowrap' }}>🪄 自动生成</button>
                 {masterKey && <button className="btn btn-ghost btn-sm" onClick={() => { navigator.clipboard.writeText(masterKey); showToast('已复制') }}><Copy size={13} /></button>}
               </div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{masterKey ? '已设置，下方复制接入信息即可使用' : '点击「自动生成」创建一个安全密钥'}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{masterKey ? '用于对接 New API / One API 等中转平台' : '点击「自动生成」创建一个安全密钥'}</div>
             </div>
-            {masterKey && (
-              <div className="api-config-section" style={{ padding: 20 }}>
-                <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 2 }}>
-                  <div>接入地址：<code style={{ background: 'rgba(34,197,94,0.1)', color: 'var(--success)', padding: '2px 8px', borderRadius: 4 }}>http://127.0.0.1:19384/v1</code></div>
-                  <div>模型列表：{allModels.length > 0 ? allModels.join('、') : <span style={{ color: 'var(--text-muted)' }}>请先在渠道管理中添加</span>}</div>
-                </div>
-              </div>
-            )}
           </>
         )}
 
