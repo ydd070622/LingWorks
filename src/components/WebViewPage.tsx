@@ -144,7 +144,10 @@ export default function WebViewPage({ site, visible }: WebViewPageProps) {
   const closeCtx = () => { setCtxTab(null); setCtxPos(null) }
 
   const handleCopyUrl = () => {
-    if (ctxTab) navigator.clipboard.writeText(ctxTab.url).catch(() => {})
+    if (!ctxTab) return
+    const wv = webviewMap.current.get(ctxTab.id)
+    const url = wv ? ((wv as any).getURL?.() || wv.src) : ctxTab.url
+    navigator.clipboard.writeText(url).catch(() => {})
     closeCtx()
   }
 
