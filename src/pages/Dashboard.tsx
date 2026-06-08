@@ -90,6 +90,7 @@ export default function Dashboard() {
   const [history, setHistory] = useState<HistoryMonth[]>([])
   const [loading, setLoading] = useState(false)
   const timerRef = useRef<ReturnType<typeof setInterval>>()
+  const [chartH, setChartH] = useState(200)
 
   const loadConfig = useCallback(async () => {
     if (window.electronAPI) {
@@ -131,6 +132,12 @@ export default function Dashboard() {
   useEffect(() => { loadConfig() }, [loadConfig])
   useEffect(() => { if (apiKey) { fetchBalance(); timerRef.current = setInterval(fetchBalance, 300000) }; return () => { if (timerRef.current) clearInterval(timerRef.current) } }, [apiKey])
   useEffect(() => { if (platformToken) fetchAllData() }, [platformToken])
+  useEffect(() => {
+    const calc = () => setChartH(Math.max(60, window.innerHeight - 580))
+    calc()
+    window.addEventListener('resize', calc)
+    return () => window.removeEventListener('resize', calc)
+  }, [])
 
   const flash = usage?.models.find(m => m.key === 'flash') || null
   const pro = usage?.models.find(m => m.key === 'pro') || null
@@ -198,7 +205,7 @@ export default function Dashboard() {
   }, [] as string[]).join(' ')
 
   return (
-    <div style={{ height: '100%', overflow: 'auto', background: 'var(--bg-primary)', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ height: '100%', overflow: 'hidden', background: 'var(--bg-primary)', display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, maxWidth: 1080, width: '100%', margin: '0 auto', padding: '20px 20px 12px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 700 }}>
           🔵 DeepSeek Monitor
@@ -213,7 +220,7 @@ export default function Dashboard() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, height: '100%' }}>
 
           {/* Balance */}
-          <div className="api-config-section" style={{ padding: 18, height: 210 }}>
+          <div className="api-config-section" style={{ padding: 18, height: 210, marginBottom: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 12, color: 'var(--text-muted)', alignItems: 'center' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><CreditCard size={14} /> 账户余额</span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, padding: '2px 10px', borderRadius: 10, background: balance?.isAvailable ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)', color: balance?.isAvailable ? 'var(--success)' : '#ef4444' }}>
@@ -235,7 +242,7 @@ export default function Dashboard() {
 
           {/* Models */}
           {[flash, pro].map((m, i) => m && (
-            <div key={i} className="api-config-section" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div key={i} className="api-config-section" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, marginBottom: 0 }}>
               <div style={{ width: 38, height: 38, borderRadius: 10, background: i === 0 ? 'rgba(245,158,11,0.12)' : 'rgba(99,102,241,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
                 {i === 0 ? <Zap size={20} fill="#f59e0b" color="#f59e0b" /> : <Brain size={18} color="#6366f1" />}
               </div>
@@ -253,7 +260,7 @@ export default function Dashboard() {
           ))}
 
           {/* Token trend */}
-          <div className="api-config-section" style={{ padding: 18, marginTop: 'auto', display: 'flex', flexDirection: 'column', flex: 1 }}>
+          <div className="api-config-section" style={{ padding: 18, marginTop: 'auto', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, marginBottom: 0 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, flexShrink: 0 }}>
               <BarChart3 size={14} color="var(--accent)" /> 本月 Token 消耗趋势
               {!platformToken && <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 400 }}>（需配置用量 Token）</span>}
@@ -266,11 +273,11 @@ export default function Dashboard() {
             ) : loading ? (
               <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 16, fontSize: 13 }}>加载中…</div>
             ) : recentDays.length > 0 ? (
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, flex: 1, minHeight: 0, overflow: 'hidden' }}>
                 {recentDays.map((d, i) => (
                   <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                     <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, whiteSpace: 'nowrap' }}>{d.totalTokens > 0 ? fmtShort(d.totalTokens) : ''}</span>
-                    <div style={{ width: '100%', height: `${Math.max(8, (d.totalTokens / maxDailyToken) * 400)}px`, background: i === recentDays.length - 1 ? 'linear-gradient(180deg,#22c55e,rgba(34,197,94,0.1))' : 'linear-gradient(180deg,#6366f1,rgba(99,102,241,0.1))', borderRadius: '3px 3px 0 0' }} />
+                     <div style={{ width: '100%', height: `${Math.max(8, (d.totalTokens / maxDailyToken) * chartH)}px`, background: i === recentDays.length - 1 ? 'linear-gradient(180deg,#22c55e,rgba(34,197,94,0.1))' : 'linear-gradient(180deg,#6366f1,rgba(99,102,241,0.1))', borderRadius: '3px 3px 0 0' }} />
                     <span style={{ fontSize: 10, fontWeight: 600, color: i === recentDays.length - 1 ? '#22c55e' : 'var(--text-secondary)' }}>{mmdd(d.date)}</span>
                   </div>
                 ))}
@@ -283,7 +290,7 @@ export default function Dashboard() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, height: '100%' }}>
 
           {/* History stats */}
-          <div className="api-config-section" style={{ padding: 18, height: 210 }}>
+          <div className="api-config-section" style={{ padding: 18, height: 210, marginBottom: 0 }}>
             <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>📅 历史月用量</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div style={{ background: 'var(--bg-card)', borderRadius: 8, padding: 10, textAlign: 'center' }}>
@@ -306,16 +313,16 @@ export default function Dashboard() {
           </div>
 
           {/* Monthly trend bars */}
-          <div className="api-config-section" style={{ padding: 18, marginTop: 'auto', display: 'flex', flexDirection: 'column', flex: 1 }}>
+          <div className="api-config-section" style={{ padding: 18, marginTop: 'auto', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, marginBottom: 0 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
               📈 月度消费趋势
             </div>
             {history.length > 0 ? (
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, flex: 1, minHeight: 0, overflow: 'hidden' }}>
                 {history.map((h, i) => (
                   <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                     <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600 }}>{fmtMoney(h.cost)}</span>
-                    <div style={{ width: '100%', height: `${Math.max(8, (h.cost / histMaxCost) * 400)}px`, background: i === history.length - 1 ? 'linear-gradient(180deg,#22c55e,rgba(34,197,94,0.15))' : 'linear-gradient(180deg,#6366f1,rgba(99,102,241,0.1))', borderRadius: '3px 3px 0 0' }} />
+                    <div style={{ width: '100%', height: `${Math.max(8, (h.cost / histMaxCost) * chartH)}px`, background: i === history.length - 1 ? 'linear-gradient(180deg,#22c55e,rgba(34,197,94,0.15))' : 'linear-gradient(180deg,#6366f1,rgba(99,102,241,0.1))', borderRadius: '3px 3px 0 0' }} />
                     <span style={{ fontSize: 10, fontWeight: 600, color: i === history.length - 1 ? '#22c55e' : 'var(--text-secondary)' }}>{h.month.slice(5)}月</span>
                   </div>
                 ))}
