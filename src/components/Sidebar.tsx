@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Globe, Brush, Settings, Sun, Moon, ChevronLeft, ChevronRight, Wrench, Layers, CreditCard, Wifi, User, ChevronDown, Sparkles, Images, HistoryIcon, LayoutGrid, Wallet, Contact, Download, FolderOpen } from 'lucide-react'
+import { Globe, Brush, Settings, Sun, Moon, ChevronLeft, ChevronRight, Wrench, Layers, CreditCard, Wifi, User, ChevronDown, Sparkles, Images, HistoryIcon, LayoutGrid, Wallet, Contact, Download, FolderOpen, LayoutDashboard } from 'lucide-react'
 import type { NavItem, DownloadItem } from '../types'
 
 interface SidebarProps {
@@ -29,6 +29,7 @@ const toolIcons: Record<string, React.ReactNode> = {
 const aggregatorIcons: Record<string, React.ReactNode> = {
   platforms: <LayoutGrid size={16} color="#6366f1" />,
   recharge: <Wallet size={16} color="#22c55e" />,
+  dashboard: <LayoutDashboard size={16} color="#06b6d4" />,
 }
 
 const favicons: Record<string, string> = {
@@ -50,7 +51,7 @@ const iconLabel: Record<string, React.ReactNode> = {
   prompts: <Sparkles size={16} color="#a78bfa" />,
   platforms: <LayoutGrid size={16} color="#6366f1" />,
   recharge: <Wallet size={16} color="#22c55e" />,
-  dashboard: <HistoryIcon size={16} color="#06b6d4" />,
+  dashboard: <LayoutDashboard size={16} color="#06b6d4" />,
   accounts: <Contact size={16} color="#f97316" />,
   skyun: 'SK', mitce: 'MC',
 }
