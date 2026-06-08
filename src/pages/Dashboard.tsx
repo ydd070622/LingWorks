@@ -247,15 +247,17 @@ export default function Dashboard() {
     return (
       <div className="api-config-section" style={{ padding: 20, marginBottom: 0, flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16, flexShrink: 0 }}>{title}</div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, flex: 1, minHeight: 0, overflow: 'hidden', padding: '0 8px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, flex: 1, minHeight: 0, overflowX: 'auto', overflowY: 'hidden', padding: '0 4px' }}>
           {days.map((d, i) => {
             const val = getVal(d)
-            const h = val > 0 ? Math.max(6, (val / maxVal) * barH) : 0
+            const hasData = val > 0
+            const h = hasData ? Math.max(6, (val / maxVal) * barH) : 0
             const isToday = d.date === todayStr
+            const barBg = hasData ? (isToday ? 'linear-gradient(180deg,#22c55e,rgba(34,197,94,0.1))' : 'linear-gradient(180deg,#6366f1,rgba(99,102,241,0.1))') : '#2a2a3e'
             return (
-              <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, height: '100%', justifyContent: 'flex-end' }}>
+              <div key={i} style={{ flex: '1 0 0', minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, height: '100%', justifyContent: 'flex-end' }}>
                 <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, whiteSpace: 'nowrap', minHeight: 16 }}>{val > 0 ? fmt(val) : ''}</span>
-                <div style={{ width: '100%', height: h, background: isToday ? 'linear-gradient(180deg,#22c55e,rgba(34,197,94,0.1))' : 'linear-gradient(180deg,#6366f1,rgba(99,102,241,0.1))', borderRadius: '4px 4px 0 0' }} />
+                <div style={{ width: '100%', height: h, background: barBg, borderRadius: '4px 4px 0 0' }} />
                 <span style={{ fontSize: 10, fontWeight: 600, color: isToday ? '#22c55e' : 'var(--text-secondary)' }}>{`${new Date(d.date).getDate()}日`}</span>
               </div>
             )
@@ -280,10 +282,20 @@ export default function Dashboard() {
         ...history.filter(h => h.month !== currentMonth).map(h => ({ month: h.month, label: h.month, days: h.days, monthCost: h.cost })),
       ]
       const selected = allMonths.find(m => m.month === dp.month) || allMonths[0]
-      const maxCost = Math.max(...selected.days.map(d => d.totalCost), 0.01)
-      const activeDays = selected.days.filter(d => d.totalCost > 0).length
+      // fill missing days to show complete month
+      const [yy, mm] = selected.month.split('-').map(Number)
+      const totalDays = new Date(yy, mm, 0).getDate()
+      const isCurrentMonth = selected.month === currentMonth
+      const maxDay = isCurrentMonth ? new Date().getDate() : totalDays
+      const dayMap = new Map(selected.days.map(d => [parseInt(d.date.split('-')[2], 10), d]))
+      const fullDays: UsageDay[] = []
+      for (let d = 1; d <= maxDay; d++) {
+        fullDays.push(dayMap.get(d) || { date: `${selected.month}-${String(d).padStart(2, '0')}`, flashTokens: 0, proTokens: 0, totalTokens: 0, totalCost: 0, flashCost: 0, proCost: 0 })
+      }
+      const maxCost = Math.max(...fullDays.map(d => d.totalCost), 0.01)
+      const activeDays = fullDays.filter(d => d.totalCost > 0).length
       const avgCost = activeDays > 0 ? selected.monthCost / activeDays : 0
-      const maxDayCost = Math.max(...selected.days.map(d => d.totalCost), 0)
+      const maxDayCost = Math.max(...fullDays.map(d => d.totalCost), 0)
       const [ym, mo] = selected.month.split('-')
       return (
         <div style={{ height: '100%', overflow: 'hidden', background: 'var(--bg-primary)', display: 'flex', flexDirection: 'column' }}>
@@ -313,7 +325,7 @@ export default function Dashboard() {
               { value: fmtMoney(maxDayCost), label: '最高单日' },
               { value: String(activeDays), label: '活跃天数' },
             ]} />
-            <BarChartCard title="📊 每日消费金额" days={selected.days} maxVal={maxCost} getVal={d => d.totalCost} barH={cH} />
+            <BarChartCard title="📊 每日消费金额" days={fullDays} maxVal={maxCost} getVal={d => d.totalCost} barH={cH} />
           </div>
         </div>
       )
