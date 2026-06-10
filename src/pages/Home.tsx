@@ -65,7 +65,20 @@ export default function Home({ onSelect, searchQuery, searchEngineId, searchUrl,
 
   // --- Search logic ---
   useEffect(() => {
-    if (!searchUrl || !containerRef.current) return
+    if (!searchUrl || !containerRef.current) {
+      // Clean up persisted webview when searchUrl becomes null or container unavailable
+      if (persistWv) {
+        if (persistContainer && persistContainer.parentNode) {
+          persistContainer.parentNode.removeChild(persistContainer)
+        }
+        try { persistWv.remove() } catch {}
+        persistWv = null
+        persistContainer = null
+        persistUrl = null
+        searchWvRef.current = null
+      }
+      return
+    }
 
     // Re-attach persisted webview if same search context
     if (persistWv && persistContainer && persistUrl === searchUrl) {
@@ -324,7 +337,20 @@ export default function Home({ onSelect, searchQuery, searchEngineId, searchUrl,
     if (e.key === 'Enter') handleSearch()
   }
 
-  const handleBack = () => onSetSearchUrl(null)
+  const handleBack = () => {
+    // Proactively remove webview from DOM before React re-renders to homepage
+    if (persistContainer && persistContainer.parentNode) {
+      persistContainer.parentNode.removeChild(persistContainer)
+    }
+    if (persistWv) {
+      try { persistWv.remove() } catch {}
+    }
+    persistWv = null
+    persistContainer = null
+    persistUrl = null
+    searchWvRef.current = null
+    onSetSearchUrl(null)
+  }
 
   const handleGoBack = () => {
     const wv = searchWvRef.current
