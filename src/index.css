@@ -100,6 +100,9 @@ body {
   flex-shrink: 0;
   user-select: none;
 }
+.theme-light .window-titlebar {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
 .titlebar-label {
   font-size: 12px; color: var(--text-secondary); margin-left: 12px; font-weight: 600; opacity: 0.8;
 }
@@ -946,11 +949,205 @@ textarea.input-base {
 }
 .bookmark-action-btn:hover { color: var(--text-primary); background: var(--bg-card-hover); }
 
+/* ===== Home Background Effects ===== */
+.home-bg-layer {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+}
+.home-bg-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(99,102,241,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99,102,241,0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 20%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 20%, transparent 70%);
+}
+.theme-light .home-bg-grid {
+  background-image:
+    linear-gradient(rgba(99,102,241,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99,102,241,0.03) 1px, transparent 1px);
+}
+.home-bg-floor {
+  position: absolute; bottom: 0; left: -20%; right: -20%; height: 45%;
+  background-image:
+    linear-gradient(rgba(99,102,241,0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99,102,241,0.07) 1px, transparent 1px);
+  background-size: 80px 40px;
+  transform: perspective(500px) rotateX(55deg);
+  transform-origin: bottom center;
+  mask-image: linear-gradient(to top, black 0%, transparent 80%);
+  -webkit-mask-image: linear-gradient(to top, black 0%, transparent 80%);
+  animation: homeFloorPulse 4s ease-in-out infinite alternate;
+}
+.theme-light .home-bg-floor {
+  background-image:
+    linear-gradient(rgba(99,102,241,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99,102,241,0.05) 1px, transparent 1px);
+}
+@keyframes homeFloorPulse { 0% { opacity: 0.5; } 100% { opacity: 0.8; } }
+
+.home-bg-gradient {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 100%, rgba(99,102,241,0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 70% 100%, rgba(236,72,153,0.12) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 45% at 50% 100%, rgba(34,211,238,0.1) 0%, transparent 50%);
+}
+.theme-light .home-bg-gradient {
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 100%, rgba(139,92,246,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 70% 100%, rgba(244,114,182,0.07) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 45% at 50% 100%, rgba(56,189,248,0.06) 0%, transparent 50%);
+}
+
+/* Floating blobs */
+.home-blob {
+  position: absolute; border-radius: 50%; will-change: transform;
+}
+.home-blob-1 {
+  width: 500px; height: 500px; filter: blur(80px); mix-blend-mode: screen;
+  background: radial-gradient(circle, rgba(99,102,241,0.25) 0%, rgba(139,92,246,0.12) 40%, transparent 70%);
+  top: 10%; left: 5%; animation: homeBlob1 12s ease-in-out infinite alternate;
+}
+.home-blob-2 {
+  width: 450px; height: 450px; filter: blur(80px); mix-blend-mode: screen;
+  background: radial-gradient(circle, rgba(236,72,153,0.2) 0%, rgba(244,114,182,0.1) 40%, transparent 70%);
+  top: 50%; right: 5%; animation: homeBlob2 14s ease-in-out infinite alternate;
+}
+.home-blob-3 {
+  width: 400px; height: 400px; filter: blur(80px); mix-blend-mode: screen;
+  background: radial-gradient(circle, rgba(34,211,238,0.2) 0%, rgba(56,189,248,0.1) 40%, transparent 70%);
+  bottom: 5%; left: 30%; animation: homeBlob3 10s ease-in-out infinite alternate;
+}
+.home-blob-4 {
+  width: 350px; height: 350px; filter: blur(80px); mix-blend-mode: screen;
+  background: radial-gradient(circle, rgba(168,85,247,0.18) 0%, rgba(192,132,252,0.08) 40%, transparent 70%);
+  top: 30%; left: 40%; animation: homeBlob4 16s ease-in-out infinite alternate;
+}
+.home-blob-5 {
+  width: 300px; height: 300px; filter: blur(80px); mix-blend-mode: screen;
+  background: radial-gradient(circle, rgba(14,165,233,0.15) 0%, rgba(56,189,248,0.08) 40%, transparent 70%);
+  top: 15%; right: 20%; animation: homeBlob5 11s ease-in-out infinite alternate;
+}
+@keyframes homeBlob1 { 0% { transform: translate(0,0) scale(1); } 33% { transform: translate(80px,40px) scale(1.1); } 66% { transform: translate(-30px,80px) scale(0.95); } 100% { transform: translate(50px,-20px) scale(1.05); } }
+@keyframes homeBlob2 { 0% { transform: translate(0,0) scale(1); } 33% { transform: translate(-60px,-50px) scale(1.08); } 66% { transform: translate(40px,30px) scale(0.92); } 100% { transform: translate(-80px,60px) scale(1.02); } }
+@keyframes homeBlob3 { 0% { transform: translate(0,0) scale(1); } 33% { transform: translate(60px,-40px) scale(1.12); } 66% { transform: translate(-50px,-20px) scale(0.9); } 100% { transform: translate(30px,40px) scale(1); } }
+@keyframes homeBlob4 { 0% { transform: translate(0,0) scale(1) rotate(0deg); } 50% { transform: translate(-100px,60px) scale(1.15) rotate(15deg); } 100% { transform: translate(80px,-40px) scale(0.95) rotate(-10deg); } }
+@keyframes homeBlob5 { 0% { transform: translate(0,0) scale(1); } 50% { transform: translate(70px,50px) scale(1.1); } 100% { transform: translate(-40px,-30px) scale(0.95); } }
+
+/* Light theme blobs */
+.theme-light .home-blob { mix-blend-mode: normal; filter: blur(90px); }
+.theme-light .home-blob-1 { background: radial-gradient(circle, rgba(139,92,246,0.12) 0%, rgba(167,139,250,0.06) 40%, transparent 70%); }
+.theme-light .home-blob-2 { background: radial-gradient(circle, rgba(244,114,182,0.1) 0%, rgba(251,146,180,0.05) 40%, transparent 70%); }
+.theme-light .home-blob-3 { background: radial-gradient(circle, rgba(56,189,248,0.1) 0%, rgba(125,211,252,0.05) 40%, transparent 70%); }
+.theme-light .home-blob-4 { background: radial-gradient(circle, rgba(168,85,247,0.09) 0%, rgba(192,132,252,0.04) 40%, transparent 70%); }
+.theme-light .home-blob-5 { background: radial-gradient(circle, rgba(14,165,233,0.08) 0%, rgba(56,189,248,0.04) 40%, transparent 70%); }
+
+/* Particle canvas */
+.home-particles { position: absolute; inset: 0; }
+
+/* Mouse glow layers */
+.home-glow-layer {
+  position: fixed; border-radius: 50%; pointer-events: none;
+  transform: translate(-50%, -50%); transition: opacity 0.4s; opacity: 0;
+}
+.home-glow-layer.visible { opacity: 1; }
+.home-glow-core {
+  width: 200px; height: 200px; filter: blur(20px);
+  animation: homeCoreColor 4s ease-in-out infinite;
+}
+@keyframes homeCoreColor {
+  0% { background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, rgba(139,92,246,0.18) 20%, transparent 60%); }
+  25% { background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(59,130,246,0.2) 20%, transparent 60%); }
+  50% { background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, rgba(236,72,153,0.18) 20%, transparent 60%); }
+  75% { background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(34,211,238,0.2) 20%, transparent 60%); }
+  100% { background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, rgba(139,92,246,0.18) 20%, transparent 60%); }
+}
+.home-glow-ring-1 {
+  width: 400px; height: 400px; filter: blur(50px);
+  animation: homeRing1Color 6s ease-in-out infinite;
+}
+@keyframes homeRing1Color {
+  0% { background: radial-gradient(circle, rgba(139,92,246,0.15) 0%, rgba(99,102,241,0.05) 40%, transparent 70%); }
+  33% { background: radial-gradient(circle, rgba(236,72,153,0.18) 0%, rgba(244,114,182,0.06) 40%, transparent 70%); }
+  66% { background: radial-gradient(circle, rgba(34,211,238,0.15) 0%, rgba(56,189,248,0.05) 40%, transparent 70%); }
+  100% { background: radial-gradient(circle, rgba(139,92,246,0.15) 0%, rgba(99,102,241,0.05) 40%, transparent 70%); }
+}
+.home-glow-ring-2 {
+  width: 550px; height: 550px; filter: blur(70px);
+  animation: homeRing2Color 8s ease-in-out infinite;
+}
+@keyframes homeRing2Color {
+  0% { background: radial-gradient(circle, rgba(56,189,248,0.1) 0%, rgba(14,165,233,0.04) 40%, transparent 65%); }
+  25% { background: radial-gradient(circle, rgba(168,85,247,0.12) 0%, rgba(139,92,246,0.05) 40%, transparent 65%); }
+  50% { background: radial-gradient(circle, rgba(244,114,182,0.1) 0%, rgba(236,72,153,0.04) 40%, transparent 65%); }
+  75% { background: radial-gradient(circle, rgba(34,211,238,0.12) 0%, rgba(6,182,212,0.05) 40%, transparent 65%); }
+  100% { background: radial-gradient(circle, rgba(56,189,248,0.1) 0%, rgba(14,165,233,0.04) 40%, transparent 65%); }
+}
+.home-glow-ring-3 {
+  width: 700px; height: 700px; filter: blur(90px);
+  animation: homeRing3Color 10s ease-in-out infinite;
+}
+@keyframes homeRing3Color {
+  0% { background: radial-gradient(circle, rgba(236,72,153,0.08) 0%, rgba(192,132,252,0.03) 35%, transparent 60%); }
+  33% { background: radial-gradient(circle, rgba(99,102,241,0.1) 0%, rgba(129,140,248,0.04) 35%, transparent 60%); }
+  66% { background: radial-gradient(circle, rgba(14,165,233,0.08) 0%, rgba(56,189,248,0.03) 35%, transparent 60%); }
+  100% { background: radial-gradient(circle, rgba(236,72,153,0.08) 0%, rgba(192,132,252,0.03) 35%, transparent 60%); }
+}
+
+/* Light theme glow */
+.theme-light .home-glow-core {
+  animation: homeCoreColorLight 4s ease-in-out infinite;
+}
+@keyframes homeCoreColorLight {
+  0% { background: radial-gradient(circle, rgba(139,92,246,0.1) 0%, rgba(139,92,246,0.04) 40%, transparent 60%); }
+  25% { background: radial-gradient(circle, rgba(59,130,246,0.12) 0%, rgba(59,130,246,0.05) 40%, transparent 60%); }
+  50% { background: radial-gradient(circle, rgba(236,72,153,0.1) 0%, rgba(236,72,153,0.04) 40%, transparent 60%); }
+  75% { background: radial-gradient(circle, rgba(34,211,238,0.12) 0%, rgba(34,211,238,0.05) 40%, transparent 60%); }
+  100% { background: radial-gradient(circle, rgba(139,92,246,0.1) 0%, rgba(139,92,246,0.04) 40%, transparent 60%); }
+}
+.theme-light .home-glow-ring-1 {
+  animation: homeRing1ColorLight 6s ease-in-out infinite;
+}
+@keyframes homeRing1ColorLight {
+  0% { background: radial-gradient(circle, rgba(139,92,246,0.08) 0%, rgba(99,102,241,0.03) 40%, transparent 70%); }
+  33% { background: radial-gradient(circle, rgba(236,72,153,0.1) 0%, rgba(244,114,182,0.04) 40%, transparent 70%); }
+  66% { background: radial-gradient(circle, rgba(34,211,238,0.08) 0%, rgba(56,189,248,0.03) 40%, transparent 70%); }
+  100% { background: radial-gradient(circle, rgba(139,92,246,0.08) 0%, rgba(99,102,241,0.03) 40%, transparent 70%); }
+}
+.theme-light .home-glow-ring-2 {
+  animation: homeRing2ColorLight 8s ease-in-out infinite;
+}
+@keyframes homeRing2ColorLight {
+  0% { background: radial-gradient(circle, rgba(56,189,248,0.06) 0%, rgba(14,165,233,0.02) 40%, transparent 65%); }
+  25% { background: radial-gradient(circle, rgba(168,85,247,0.07) 0%, rgba(139,92,246,0.03) 40%, transparent 65%); }
+  50% { background: radial-gradient(circle, rgba(244,114,182,0.06) 0%, rgba(236,72,153,0.02) 40%, transparent 65%); }
+  75% { background: radial-gradient(circle, rgba(34,211,238,0.07) 0%, rgba(6,182,212,0.03) 40%, transparent 65%); }
+  100% { background: radial-gradient(circle, rgba(56,189,248,0.06) 0%, rgba(14,165,233,0.02) 40%, transparent 65%); }
+}
+.theme-light .home-glow-ring-3 {
+  animation: homeRing3ColorLight 10s ease-in-out infinite;
+}
+@keyframes homeRing3ColorLight {
+  0% { background: radial-gradient(circle, rgba(236,72,153,0.05) 0%, rgba(192,132,252,0.02) 35%, transparent 60%); }
+  33% { background: radial-gradient(circle, rgba(99,102,241,0.06) 0%, rgba(129,140,248,0.02) 35%, transparent 60%); }
+  66% { background: radial-gradient(circle, rgba(14,165,233,0.05) 0%, rgba(56,189,248,0.02) 35%, transparent 60%); }
+  100% { background: radial-gradient(circle, rgba(236,72,153,0.05) 0%, rgba(192,132,252,0.02) 35%, transparent 60%); }
+}
+
+.home-bg-noise {
+  position: absolute; inset: 0; opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 128px;
+}
+.theme-light .home-bg-noise { opacity: 0.015; }
+
 .home-page {
   height: 100%; display: flex; align-items: center; justify-content: center;
+  position: relative;
 }
 .home-content {
-  text-align: center; max-width: 480px; padding: 40px;
+  text-align: center; max-width: 480px; padding: 40px; position: relative; z-index: 1;
 }
 .home-title {
   font-size: 48px; font-weight: 700; margin-bottom: 12px;

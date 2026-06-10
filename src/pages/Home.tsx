@@ -181,6 +181,131 @@ export default function Home({ onSelect, searchQuery, searchEngineId, searchUrl,
     }
   }, [searchUrl, searchEngineId, searchQuery])
 
+  // --- Background effects (particles + mouse glow) ---
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const glowLayersRef = useRef<HTMLDivElement[]>([])
+
+  useEffect(() => {
+    if (searchUrl) return // only on main homepage
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')!
+    let W = 0, H = 0
+    let offsetX = 0, offsetY = 0
+
+    const resize = () => {
+      const parent = canvas.parentElement
+      if (parent) {
+        const rect = parent.getBoundingClientRect()
+        W = canvas.width = rect.width
+        H = canvas.height = rect.height
+        offsetX = rect.left
+        offsetY = rect.top
+      } else {
+        W = canvas.width = window.innerWidth
+        H = canvas.height = window.innerHeight
+      }
+    }
+    // Delay initial resize to ensure DOM is laid out
+    const initTimer = setTimeout(() => {
+      resize()
+      // Re-scatter particles after getting real dimensions
+      for (const p of pts) {
+        p.x = Math.random() * W
+        p.y = Math.random() * H
+      }
+    }, 50)
+    resize()
+    window.addEventListener('resize', resize)
+
+    const N = 60, MAX_DIST = 150
+    const pts: { x: number; y: number; vx: number; vy: number; r: number; a: number }[] = []
+    for (let i = 0; i < N; i++) {
+      pts.push({ x: Math.random() * (W || window.innerWidth), y: Math.random() * (H || window.innerHeight), vx: (Math.random() - .5) * .4, vy: (Math.random() - .5) * .4, r: Math.random() * 1.5 + .5, a: Math.random() * .4 + .2 })
+    }
+
+    let mx = 0, my = 0, inside = false
+    const onMouse = (e: MouseEvent) => {
+      mx = e.clientX - offsetX
+      my = e.clientY - offsetY
+      inside = true
+    }
+    const onLeave = () => { inside = false }
+    const onEnter = () => { inside = true }
+    document.addEventListener('mousemove', onMouse)
+    document.addEventListener('mouseleave', onLeave)
+    document.addEventListener('mouseenter', onEnter)
+
+    let animId = 0
+    const draw = () => {
+      ctx.clearRect(0, 0, W, H)
+      for (let i = 0; i < N; i++) {
+        const p = pts[i]
+        p.x += p.vx; p.y += p.vy
+        if (p.x < 0) p.x = W; if (p.x > W) p.x = 0
+        if (p.y < 0) p.y = H; if (p.y > H) p.y = 0
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(129,140,248,${p.a})`; ctx.fill()
+        for (let j = i + 1; j < N; j++) {
+          const q = pts[j], dx = p.x - q.x, dy = p.y - q.y, d = Math.sqrt(dx * dx + dy * dy)
+          if (d < MAX_DIST) {
+            ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y)
+            ctx.strokeStyle = `rgba(129,140,248,${(1 - d / MAX_DIST) * .12})`; ctx.lineWidth = .5; ctx.stroke()
+          }
+        }
+        if (inside) {
+          const dx = p.x - mx, dy = p.y - my, d = Math.sqrt(dx * dx + dy * dy)
+          if (d < 200) {
+            ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(mx, my)
+            ctx.strokeStyle = `rgba(167,139,250,${(1 - d / 200) * .2})`; ctx.lineWidth = .8; ctx.stroke()
+          }
+        }
+      }
+      animId = requestAnimationFrame(draw)
+    }
+    draw()
+
+    // Mouse glow (uses viewport coords since layers are position:fixed)
+    let vmx = window.innerWidth / 2, vmy = window.innerHeight / 2
+    const onMouseViewport = (e: MouseEvent) => { vmx = e.clientX; vmy = e.clientY }
+    document.addEventListener('mousemove', onMouseViewport)
+
+    const speeds = [0.05, 0.07, 0.10, 0.15]
+    const layerPos = glowLayersRef.current.map(() => ({ x: vmx, y: vmy }))
+    let glowId = 0
+    const glowLoop = () => {
+      const layers = glowLayersRef.current
+      for (let i = 0; i < layers.length; i++) {
+        if (!layers[i]) continue
+        layerPos[i].x += (vmx - layerPos[i].x) * speeds[i]
+        layerPos[i].y += (vmy - layerPos[i].y) * speeds[i]
+        layers[i].style.left = layerPos[i].x + 'px'
+        layers[i].style.top = layerPos[i].y + 'px'
+      }
+      glowId = requestAnimationFrame(glowLoop)
+    }
+    glowLoop()
+
+    // Toggle visibility
+    const showGlow = () => { glowLayersRef.current.forEach(l => l && l.classList.add('visible')) }
+    const hideGlow = () => { glowLayersRef.current.forEach(l => l && l.classList.remove('visible')) }
+    document.addEventListener('mouseenter', showGlow)
+    document.addEventListener('mouseleave', hideGlow)
+
+    return () => {
+      clearTimeout(initTimer)
+      cancelAnimationFrame(animId)
+      cancelAnimationFrame(glowId)
+      window.removeEventListener('resize', resize)
+      document.removeEventListener('mousemove', onMouse)
+      document.removeEventListener('mousemove', onMouseViewport)
+      document.removeEventListener('mouseleave', onLeave)
+      document.removeEventListener('mouseenter', onEnter)
+      document.removeEventListener('mouseenter', showGlow)
+      document.removeEventListener('mouseleave', hideGlow)
+    }
+  }, [searchUrl])
+
   const handleSearch = () => {
     const q = query.trim()
     if (!q) return
@@ -401,6 +526,23 @@ export default function Home({ onSelect, searchQuery, searchEngineId, searchUrl,
 
   return (
     <div className="home-page">
+      {/* Background effects */}
+      <div className="home-bg-layer">
+        <div className="home-bg-grid" />
+        <div className="home-bg-floor" />
+        <div className="home-bg-gradient" />
+        <div className="home-blob home-blob-1" />
+        <div className="home-blob home-blob-2" />
+        <div className="home-blob home-blob-3" />
+        <div className="home-blob home-blob-4" />
+        <div className="home-blob home-blob-5" />
+        <canvas ref={canvasRef} className="home-particles" />
+        <div className="home-glow-layer home-glow-ring-3" ref={el => { if (el) glowLayersRef.current[0] = el }} />
+        <div className="home-glow-layer home-glow-ring-2" ref={el => { if (el) glowLayersRef.current[1] = el }} />
+        <div className="home-glow-layer home-glow-ring-1" ref={el => { if (el) glowLayersRef.current[2] = el }} />
+        <div className="home-glow-layer home-glow-core" ref={el => { if (el) glowLayersRef.current[3] = el }} />
+        <div className="home-bg-noise" />
+      </div>
       <div className="home-content">
         <h1 className="home-title">AI Web Tools</h1>
         <p className="home-subtitle">所有 AI 工具，一站汇聚</p>
