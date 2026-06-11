@@ -283,7 +283,7 @@ export default function Sidebar({ items, activeId, theme, collapsed, collapsedSe
             className={`sidebar-item ${activeId === item.id ? 'active' : ''}`}
             onClick={() => onSelect(item.id)}
           >
-            <span className="sidebar-item-icon"><Contact size={16} color="#f97316" /></span>
+            <span className="sidebar-item-icon">{iconLabel[item.id] || <Contact size={16} color="#f97316" />}</span>
             <span>{item.label}</span>
           </div>
         ))}
