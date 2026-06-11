@@ -21,15 +21,15 @@ interface SidebarProps {
 }
 
 const toolIcons: Record<string, React.ReactNode> = {
-  txt2img: <Sparkles size={16} color="#f59e0b" />,
-  img2img: <Images size={16} color="#8b5cf6" />,
-  history: <HistoryIcon size={16} color="#06b6d4" />,
+  txt2img: <img src="./icons/txt2img.png" alt="文生图" style={{width: 16, height: 16}} />,
+  img2img: <img src="./icons/img2img.png" alt="图生图" style={{width: 16, height: 16}} />,
+  history: <img src="./icons/history.png" alt="生成历史" style={{width: 16, height: 16}} />,
 }
 
 const aggregatorIcons: Record<string, React.ReactNode> = {
-  platforms: <LayoutGrid size={16} color="#6366f1" />,
-  recharge: <Wallet size={16} color="#22c55e" />,
-  dashboard: <LayoutDashboard size={16} color="#06b6d4" />,
+  platforms: <img src="./icons/platforms.png" alt="开放平台" style={{width: 16, height: 16}} />,
+  recharge: <img src="./icons/recharge.png" alt="充值平台" style={{width: 16, height: 16}} />,
+  dashboard: <img src="./icons/dashboard.png" alt="数据面板" style={{width: 16, height: 16}} />,
 }
 
 const favicons: Record<string, string> = {
@@ -46,14 +46,14 @@ const favicons: Record<string, string> = {
 
 const iconLabel: Record<string, React.ReactNode> = {
   liblib: 'Lib', runninghub: 'RH', tapnow: 'TN', chatgpt: 'CG', github: 'GH', gemini: 'GE',
-  txt2img: <Sparkles size={16} color="#f59e0b" />,
-  img2img: <Images size={16} color="#8b5cf6" />,
-  history: <HistoryIcon size={16} color="#06b6d4" />,
-  prompts: <Sparkles size={16} color="#a78bfa" />,
-  platforms: <LayoutGrid size={16} color="#6366f1" />,
-  recharge: <Wallet size={16} color="#22c55e" />,
-  dashboard: <LayoutDashboard size={16} color="#06b6d4" />,
-  accounts: <Contact size={16} color="#f97316" />,
+  txt2img: <img src="./icons/txt2img.png" alt="文生图" style={{width: 16, height: 16}} />,
+  img2img: <img src="./icons/img2img.png" alt="图生图" style={{width: 16, height: 16}} />,
+  history: <img src="./icons/history.png" alt="生成历史" style={{width: 16, height: 16}} />,
+  prompts: <img src="./icons/prompts.png" alt="Prompt管理" style={{width: 16, height: 16}} />,
+  platforms: <img src="./icons/platforms.png" alt="开放平台" style={{width: 16, height: 16}} />,
+  recharge: <img src="./icons/recharge.png" alt="充值平台" style={{width: 16, height: 16}} />,
+  dashboard: <img src="./icons/dashboard.png" alt="数据面板" style={{width: 16, height: 16}} />,
+  accounts: <img src="./icons/accounts.png" alt="常用账号" style={{width: 16, height: 16}} />,
   skyun: 'SK', mitce: 'MC',
 }
 
