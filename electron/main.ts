@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, Menu, shell, net, nativeTheme } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, Menu, shell, net, nativeTheme, globalShortcut } from 'electron'
 import * as path from 'path'
 import * as fs from 'fs'
 
@@ -135,6 +135,53 @@ function createWindow() {
 
   mainWindow.on('maximize', () => mainWindow?.webContents.send('window-maximize-change', true))
   mainWindow.on('unmaximize', () => mainWindow?.webContents.send('window-maximize-change', false))
+
+  // Track active downloads (across webviews and main window sessions)
+  const activeDownloads = new Set<string>()
+  const trackedSessions = new WeakSet()
+
+  const trackSession = (sess: Electron.Session) => {
+    if (trackedSessions.has(sess)) return
+    trackedSessions.add(sess)
+    sess.on('will-download', (_e, item) => {
+      const id = `${Date.now()}-${Math.random()}`
+      activeDownloads.add(id)
+      item.once('done', () => activeDownloads.delete(id))
+    })
+  }
+
+  // Track main window session
+  trackSession(mainWindow.webContents.session)
+
+  // Track all future webContents (webviews, etc.)
+  app.on('web-contents-created', (_, contents) => {
+    if (contents.getType() === 'webview') {
+      trackSession(contents.session)
+    }
+  })
+
+  // Download protection on close (X button, Alt+F4, etc.)
+  let downloadCloseOverride = false
+  mainWindow.on('close', (e) => {
+    if (downloadCloseOverride) return
+    if (activeDownloads.size > 0) {
+      e.preventDefault()
+      dialog.showMessageBox(mainWindow!, {
+        type: 'warning',
+        title: '下载进行中',
+        message: `有 ${activeDownloads.size} 个下载任务正在进行中，确定要关闭窗口吗？`,
+        detail: '关闭窗口将丢失所有未完成的下载。',
+        buttons: ['取消', '确定关闭'],
+        defaultId: 0,
+        cancelId: 0,
+      }).then(({ response }) => {
+        if (response === 1) {
+          downloadCloseOverride = true
+          mainWindow?.close()
+        }
+      })
+    }
+  })
 }
 
 ipcMain.handle('store-get', (_e, key: string) => {
@@ -170,6 +217,30 @@ ipcMain.handle('store-clear', () => {
   const p = path.join(app.getPath('userData'), 'config.json')
   fs.writeFileSync(p, JSON.stringify({}))
 })
+
+ipcMain.handle('save-history-image', async (_e, base64: string, id: string) => {
+  const dir = path.join(app.getPath('userData'), 'history-images')
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+  const filePath = path.join(dir, `${id}.png`)
+  const data = base64.replace(/^data:image\/\w+;base64,/, '')
+  fs.writeFileSync(filePath, Buffer.from(data, 'base64'))
+  return filePath
+})
+
+ipcMain.handle('read-history-image', async (_e, filePath: string) => {
+  try {
+    const data = fs.readFileSync(filePath)
+    return 'data:image/png;base64,' + data.toString('base64')
+  } catch { return null }
+})
+
+ipcMain.handle('delete-history-image', async (_e, filePath: string) => {
+  try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath) } catch {}
+})
+
+ipcMain.handle('get-history-image-dir', () =>
+  path.join(app.getPath('userData'), 'history-images')
+)
 
 ipcMain.handle('save-image', async (_e, dataUrl: string, defaultName: string) => {
   const result = await dialog.showSaveDialog(mainWindow!, {
@@ -232,6 +303,20 @@ ipcMain.handle('window-close', () => mainWindow?.close())
 ipcMain.handle('window-is-maximized', () => mainWindow?.isMaximized() ?? false)
 ipcMain.handle('window-set-position', (_e, x: number, y: number) => {
   mainWindow?.setPosition(x, y)
+})
+
+// Register shortcuts from renderer: { "Alt+1": "chatgpt", ... }
+ipcMain.handle('register-shortcuts', async (_e, bindings: Record<string, string>) => {
+  globalShortcut.unregisterAll()
+  for (const [combo, targetId] of Object.entries(bindings)) {
+    try {
+      globalShortcut.register(combo, () => {
+        mainWindow?.webContents.send('shortcut-trigger', targetId)
+      })
+    } catch (e) {
+      console.error('Failed to register shortcut:', combo, e)
+    }
+  }
 })
 
 function compareVersions(local: string, remote: string): boolean {
@@ -474,4 +559,8 @@ app.on('web-contents-created', (_e, contents) => {
 
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow()
+})
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll()
 })

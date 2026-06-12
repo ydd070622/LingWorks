@@ -2,7 +2,7 @@ export interface HistoryItem {
   id: string
   type: 'text-to-image' | 'image-to-image'
   prompt: string
-  imageBase64: string
+  imagePath: string
   timestamp: number
   modelName: string
   parameters?: Record<string, any>
@@ -28,31 +28,79 @@ async function storeSet(key: string, value: any) {
   }
 }
 
+// Resolve image URL from a path stored in history item
+// In Electron: reads file and returns data URL via IPC
+// In browser: returns imagePath directly (it's already a data URL from localStorage)
+export async function getImageUrl(item: HistoryItem): Promise<string> {
+  if (window.electronAPI && item.imagePath && !item.imagePath.startsWith('data:')) {
+    const dataUrl = await window.electronAPI.readHistoryImage(item.imagePath)
+    return dataUrl || item.imagePath
+  }
+  return item.imagePath
+}
+
 class HistoryService {
   async getAll(): Promise<HistoryItem[]> {
     const items = await storeGet<HistoryItem[]>(STORAGE_KEY)
     return items || []
   }
 
-  async addItem(item: Omit<HistoryItem, 'id' | 'timestamp'>) {
-    const items = await this.getAll()
+  async addItem(item: Omit<HistoryItem, 'id' | 'timestamp' | 'imagePath'> & { imageBase64: string }) {
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
+
+    // Save image to disk (Electron) or keep base64 (browser fallback)
+    let imagePath: string
+    if (window.electronAPI) {
+      imagePath = await window.electronAPI.saveHistoryImage(item.imageBase64, id)
+    } else {
+      imagePath = item.imageBase64
+    }
+
     const newItem: HistoryItem = {
-      ...item,
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+      type: item.type,
+      prompt: item.prompt,
+      imagePath,
+      modelName: item.modelName,
+      parameters: item.parameters,
+      id,
       timestamp: Date.now(),
     }
+
+    const items = await this.getAll()
     items.unshift(newItem)
-    if (items.length > MAX_ITEMS) items.length = MAX_ITEMS
+    if (items.length > MAX_ITEMS) {
+      // Clean up images for removed items
+      if (window.electronAPI) {
+        for (const old of items.slice(MAX_ITEMS)) {
+          if (old.imagePath && !old.imagePath.startsWith('data:')) {
+            window.electronAPI.deleteHistoryImage(old.imagePath)
+          }
+        }
+      }
+      items.length = MAX_ITEMS
+    }
     await storeSet(STORAGE_KEY, items)
     return newItem
   }
 
   async deleteItem(id: string) {
     const items = await this.getAll()
+    const item = items.find(i => i.id === id)
+    if (item && window.electronAPI && item.imagePath && !item.imagePath.startsWith('data:')) {
+      window.electronAPI.deleteHistoryImage(item.imagePath)
+    }
     await storeSet(STORAGE_KEY, items.filter(i => i.id !== id))
   }
 
   async clearAll() {
+    const items = await this.getAll()
+    if (window.electronAPI) {
+      for (const item of items) {
+        if (item.imagePath && !item.imagePath.startsWith('data:')) {
+          window.electronAPI.deleteHistoryImage(item.imagePath)
+        }
+      }
+    }
     await storeSet(STORAGE_KEY, [])
   }
 }

@@ -29,6 +29,7 @@ export default function WebViewPage({ site, visible }: WebViewPageProps) {
   const [translatedTabs, setTranslatedTabs] = useState<Set<string>>(new Set())
   const [ctxTab, setCtxTab] = useState<Tab | null>(null)
   const [ctxPos, setCtxPos] = useState<{ x: number; y: number } | null>(null)
+  const [linkMenu, setLinkMenu] = useState<{ url: string; text: string; x: number; y: number } | null>(null)
   const webviewMap = useRef<Map<string, WebviewElement>>(new Map())
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -81,12 +82,23 @@ export default function WebViewPage({ site, visible }: WebViewPageProps) {
       `)
     })
 
+    // Right-click on links → show custom context menu
+    wv.addEventListener('context-menu', ((e: any) => {
+      const p = e.params
+      if (p.linkURL && p.linkURL.startsWith('http')) {
+        e.preventDefault()
+        setLinkMenu({ url: p.linkURL, text: p.linkText || p.linkURL, x: p.x, y: p.y })
+      } else {
+        setLinkMenu(null)
+      }
+    }) as EventListener)
+
     return wv
   }, [site.id])
 
   useEffect(() => {
     const container = containerRef.current
-    if (!container) return
+    if (!container || !visible) return
 
     const tab = tabs.find(t => t.id === activeId)
     if (!tab) return
@@ -103,7 +115,10 @@ export default function WebViewPage({ site, visible }: WebViewPageProps) {
     }
     webviewMap.current.forEach((w, id) => {
       if (container.contains(w)) {
-        (w.style as any).display = id === tab.id ? '' : 'none'
+        Object.assign(w.style, {
+          visibility: id === tab.id ? 'visible' : 'hidden',
+          pointerEvents: id === tab.id ? 'auto' : 'none',
+        })
       }
     })
 
@@ -249,8 +264,32 @@ export default function WebViewPage({ site, visible }: WebViewPageProps) {
     }
   }
 
+  const handleLinkNewTab = () => {
+    if (!linkMenu) return
+    const newId = `tab-${++tabCounter}-${Date.now()}`
+    setTabs(prev => [...prev, { id: newId, url: linkMenu.url, title: linkMenu.text || '加载中...' }])
+    setActiveId(newId)
+    setLinkMenu(null)
+  }
+
+  const handleLinkCopy = () => {
+    if (linkMenu) navigator.clipboard.writeText(linkMenu.url).catch(() => {})
+    setLinkMenu(null)
+  }
+
+  const handleLinkExternal = () => {
+    if (linkMenu) {
+      if (window.electronAPI) window.electronAPI.openExternal(linkMenu.url)
+      else window.open(linkMenu.url, '_blank')
+    }
+    setLinkMenu(null)
+  }
+
   return (
-    <div style={{ display: visible ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
+    <div style={{
+      display: 'flex', flexDirection: 'column', height: '100%',
+      ...(visible ? {} : { position: 'absolute', visibility: 'hidden', pointerEvents: 'none', width: '100%', height: '100%' }),
+    }}>
       <div className="tab-bar">
         <div className="nav-btns">
           <div className="nav-btn" onClick={handleGoBack} title="后退">
@@ -309,6 +348,30 @@ export default function WebViewPage({ site, visible }: WebViewPageProps) {
             <div className="webview-ctx-item" onClick={handleClose.bind(null, ctxTab.id)}>关闭标签</div>
             <div className="webview-ctx-item" onClick={handleCloseOthers}>关闭其他标签</div>
             <div className="webview-ctx-item" onClick={handleCloseRight}>关闭右侧标签</div>
+          </div>
+        </div>
+      )}
+
+      {linkMenu && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000 }} onClick={() => setLinkMenu(null)} onContextMenu={e => { e.preventDefault(); setLinkMenu(null) }}>
+          <div style={{
+            position: 'absolute', left: linkMenu.x, top: linkMenu.y,
+            background: 'var(--bg-secondary)', border: '1px solid var(--border-color)',
+            borderRadius: 8, padding: 4, minWidth: 180,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+          }}>
+            <div style={{ padding: '6px 10px', fontSize: 11, color: 'var(--text-muted)', borderBottom: '1px solid var(--border-color)', marginBottom: 2, maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {linkMenu.text}
+            </div>
+            <div className="webview-ctx-item" onClick={handleLinkNewTab}>
+              <ExternalLink size={12} /> 在新标签页打开
+            </div>
+            <div className="webview-ctx-item" onClick={handleLinkCopy}>
+              <Copy size={12} /> 复制链接地址
+            </div>
+            <div className="webview-ctx-item" onClick={handleLinkExternal}>
+              <ExternalLink size={12} /> 在浏览器中打开
+            </div>
           </div>
         </div>
       )}

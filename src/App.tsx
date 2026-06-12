@@ -12,7 +12,7 @@ import Home from './pages/Home'
 import Prompts from './pages/Prompts'
 import Dashboard from './pages/Dashboard'
 import XiaoHongShuCards from './pages/XiaoHongShuCards'
-import type { NavItem, CustomModel, DownloadItem } from './types'
+import type { NavItem, CustomModel, DownloadItem, ShortcutBindings } from './types'
 
 const defaultModels: CustomModel[] = [
   { name: 'Pollinations AI', apiKey: '', endpoint: 'https://pollinations.ai', modelName: 'pollinations' },
@@ -45,6 +45,7 @@ export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set())
   const [showSettings, setShowSettings] = useState(false)
+  const [shortcuts, setShortcuts] = useState<ShortcutBindings>({})
 
   const [searchQuery, setSearchQuery] = useState('')
   const [searchEngineId, setSearchEngineId] = useState('baidu')
@@ -84,6 +85,22 @@ export default function App() {
   useEffect(() => {
     document.documentElement.className = theme === 'dark' ? 'theme-dark' : 'theme-light'
   }, [theme])
+
+  // Keyboard shortcut handler — via main process globalShortcut
+  useEffect(() => {
+    const api = window.electronAPI
+    if (!api) return
+    api.registerShortcuts(shortcuts)
+  }, [shortcuts])
+
+  useEffect(() => {
+    const api = window.electronAPI
+    if (!api) return
+    const unsub = api.onShortcutTrigger((targetId: string) => {
+      setActiveId(targetId)
+    })
+    return unsub
+  }, [])
 
   const autoCollapseTimer = useRef<ReturnType<typeof setTimeout>>()
   const resetAutoCollapse = useCallback(() => {
@@ -145,16 +162,23 @@ export default function App() {
   useEffect(() => {
     const load = async () => {
       if (window.electronAPI) {
-        const [saved, savedTheme] = await Promise.all([
+        const [saved, savedTheme, savedShortcuts] = await Promise.all([
           window.electronAPI.getStore('customModels'),
           window.electronAPI.getStore('theme'),
+          window.electronAPI.getStore('shortcutBindings'),
         ])
+        const DEFAULT_SHORTCUTS = {
+          'Alt+1': 'chatgpt', 'Alt+2': 'github', 'Alt+3': 'liblib',
+          'Alt+4': 'runninghub', 'Alt+5': 'gemini', 'Alt+6': 'tapnow',
+          'Ctrl+Shift+T': 'txt2img', 'Ctrl+Shift+I': 'img2img',
+        }
         if (saved !== null && Array.isArray(saved)) {
           setModels(saved)
         }
         if (savedTheme === 'light' || savedTheme === 'dark') {
           setTheme(savedTheme)
         }
+        setShortcuts(savedShortcuts && Object.keys(savedShortcuts).length > 0 ? savedShortcuts : DEFAULT_SHORTCUTS)
       } else {
         const saved = localStorage.getItem('customModels')
         if (saved !== null) {
@@ -200,7 +224,7 @@ export default function App() {
   return (
     <div className={`app-layout${isMaximized ? '' : ' app-rounded'}`}>
       <div className="window-titlebar" onMouseDown={onTitleMouseDown}>
-        <span className="titlebar-label">AI Web Tools</span>
+        <span className="titlebar-label"><img src="./titlebar-icon.png" alt="" className="titlebar-icon" />AI Web Tools</span>
         <span className="titlebar-drag-area" onDoubleClick={() => window.electronAPI?.maximizeWindow()} />
         <div className="titlebar-btns">
           <button className="traffic-btn traffic-minimize" onClick={() => window.electronAPI?.minimizeWindow()} title="最小化">─</button>
@@ -249,7 +273,7 @@ export default function App() {
       </div>
 
       {showSettings && (
-        <Settings models={models} onSave={saveModels} onClose={() => setShowSettings(false)} />
+        <Settings models={models} onSave={saveModels} onClose={() => setShowSettings(false)} onNavigate={setActiveId} />
       )}
       </div>
     </div>

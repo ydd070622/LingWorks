@@ -1,7 +1,22 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Clock, Download, Copy, Trash2, X, ImageIcon, List, CheckSquare, FolderOpen } from 'lucide-react'
-import { historyService } from '../services/history'
+import { historyService, getImageUrl } from '../services/history'
 import type { HistoryItem } from '../services/history'
+
+// Lazy-loading image: fetches data URL from file path on mount
+function HistoryImage({ item, className, style }: { item: HistoryItem; className?: string; style?: React.CSSProperties }) {
+  const [src, setSrc] = useState<string>('')
+  const loading = useRef(false)
+
+  useEffect(() => {
+    if (loading.current) return
+    loading.current = true
+    getImageUrl(item).then(url => setSrc(url || ''))
+  }, [item.id])
+
+  if (!src) return <div style={{ ...style, aspectRatio: '3/4', background: 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span className="spinner" /></div>
+  return <img src={src} alt={item.prompt} className={className} style={style} />
+}
 
 export default function History() {
   const [items, setItems] = useState<HistoryItem[]>([])
@@ -10,6 +25,7 @@ export default function History() {
   const [columns, setColumns] = useState(4)
   const [manageMode, setManageMode] = useState(false)
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set())
+  const [selectedImageSrc, setSelectedImageSrc] = useState<string>('')
 
   useEffect(() => {
     historyService.getAll().then(data => {
@@ -17,6 +33,13 @@ export default function History() {
       setLoading(false)
     })
   }, [])
+
+  // Load selected image URL
+  useEffect(() => {
+    if (!selectedId) { setSelectedImageSrc(''); return }
+    const item = items.find(i => i.id === selectedId)
+    if (item) getImageUrl(item).then(url => setSelectedImageSrc(url || ''))
+  }, [selectedId, items])
 
   const selected = items.find(i => i.id === selectedId)
 
@@ -43,11 +66,14 @@ export default function History() {
   const selectAll = () => setCheckedIds(new Set(items.map(i => i.id)))
   const deselectAll = () => setCheckedIds(new Set())
 
-  const handleBatchDownload = () => {
-    checkedIds.forEach(id => {
+  const handleBatchDownload = async () => {
+    for (const id of checkedIds) {
       const item = items.find(i => i.id === id)
-      if (item) handleSave(item.imageBase64)
-    })
+      if (item) {
+        const dataUrl = await getImageUrl(item)
+        if (dataUrl) handleSave(dataUrl)
+      }
+    }
   }
 
   const handleBatchDelete = async () => {
@@ -59,9 +85,9 @@ export default function History() {
     setCheckedIds(new Set())
   }
 
-  const handleSave = async (dataUrl: string) => {
+  const handleSave = (dataUrl: string) => {
     if (window.electronAPI) {
-      await window.electronAPI.saveImage(dataUrl, `history-${Date.now()}.png`)
+      window.electronAPI.saveImage(dataUrl, `history-${Date.now()}.png`)
     } else {
       const link = document.createElement('a')
       link.href = dataUrl
@@ -70,7 +96,16 @@ export default function History() {
     }
   }
 
-  const handleCopy = async (dataUrl: string) => {
+  const handleSaveSelected = async () => {
+    if (!selected) return
+    const dataUrl = await getImageUrl(selected)
+    if (dataUrl) handleSave(dataUrl)
+  }
+
+  const handleCopySelected = async () => {
+    if (!selected) return
+    const dataUrl = await getImageUrl(selected)
+    if (!dataUrl) return
     try {
       const blob = await (await fetch(dataUrl)).blob()
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
@@ -165,7 +200,7 @@ export default function History() {
                 }}
               >
                 <div style={{ position: 'relative' }}>
-                  <img src={item.imageBase64} alt={item.prompt} style={{ aspectRatio: '3/4', objectFit: 'cover', width: '100%' }} />
+                  <HistoryImage item={item} style={{ aspectRatio: '3/4', objectFit: 'cover', width: '100%', display: 'block', borderRadius: 'var(--radius-sm)' }} />
                   {manageMode && (
                     <div style={{ position: 'absolute', top: 4, left: 4, width: 20, height: 20, borderRadius: 4, background: checkedIds.has(item.id) ? 'var(--accent)' : 'rgba(0,0,0,0.4)', border: '2px solid rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: 'white' }}>
                       {checkedIds.has(item.id) ? '✓' : ''}
@@ -199,7 +234,7 @@ export default function History() {
             </div>
             <div style={{ flex: 1, overflow: 'auto', padding: 12 }}>
               <img
-                src={selected.imageBase64}
+                src={selectedImageSrc}
                 alt={selected.prompt}
                 style={{ width: '100%', borderRadius: 'var(--radius-sm)', display: 'block' }}
               />
@@ -216,10 +251,10 @@ export default function History() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 6, padding: 12, borderTop: '1px solid var(--border-color)' }}>
-              <button className="btn btn-ghost btn-sm" onClick={() => handleSave(selected.imageBase64)}>
+              <button className="btn btn-ghost btn-sm" onClick={handleSaveSelected}>
                 <Download size={14} /> 保存
               </button>
-              <button className="btn btn-ghost btn-sm" onClick={() => handleCopy(selected.imageBase64)}>
+              <button className="btn btn-ghost btn-sm" onClick={handleCopySelected}>
                 <Copy size={14} /> 复制
               </button>
               <button className="btn btn-danger btn-sm" onClick={() => handleDelete(selected.id)} style={{ marginLeft: 'auto' }}>

@@ -23,7 +23,7 @@ interface SidebarProps {
 const favicons: Record<string, string> = {
   liblib: './favicons/liblib.png',
   runninghub: './favicons/runninghub.png',
-  tapnow: './favicons/tapnow.jpg',
+  tapnow: './favicons/tapnow.png',
   chatgpt: './favicons/chatgpt.png',
   github: './favicons/github.png',
   gemini: './favicons/gemini.png',

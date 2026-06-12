@@ -7,6 +7,10 @@ window.electronAPI = {
   deleteStore: (key: string) => ipcRenderer.invoke('store-delete', key),
   clearStore: () => ipcRenderer.invoke('store-clear'),
   saveImage: (dataUrl: string, defaultName: string) => ipcRenderer.invoke('save-image', dataUrl, defaultName),
+    saveHistoryImage: (base64: string, id: string) => ipcRenderer.invoke('save-history-image', base64, id),
+    readHistoryImage: (filePath: string) => ipcRenderer.invoke('read-history-image', filePath),
+    deleteHistoryImage: (filePath: string) => ipcRenderer.invoke('delete-history-image', filePath),
+    getHistoryImageDir: () => ipcRenderer.invoke('get-history-image-dir'),
   openImageWindow: (url: string) => ipcRenderer.invoke('open-image-window', url),
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
   setThemeSource: (source: string) => ipcRenderer.invoke('set-theme-source', source),
@@ -59,4 +63,11 @@ window.electronAPI = {
     return () => { ipcRenderer.removeListener('popup-navigate', h) }
   },
   dsLogin: () => ipcRenderer.invoke('ds-login'),
+
+  registerShortcuts: (bindings: Record<string, string>) => ipcRenderer.invoke('register-shortcuts', bindings),
+  onShortcutTrigger: (cb: (targetId: string) => void) => {
+    const h = (_e: any, targetId: string) => cb(targetId)
+    ipcRenderer.on('shortcut-trigger', h)
+    return () => { ipcRenderer.removeListener('shortcut-trigger', h) }
+  },
 }

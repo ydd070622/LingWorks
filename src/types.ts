@@ -51,6 +51,10 @@ export interface PromptItem {
   fromAI: boolean
 }
 
+export interface ShortcutBindings {
+  [keyCombo: string]: string  // "Alt+1" -> "chatgpt"
+}
+
 declare global {
   interface Window {
     electronAPI?: {
@@ -59,6 +63,10 @@ declare global {
       deleteStore: (key: string) => Promise<void>
       clearStore: () => Promise<void>
       saveImage: (dataUrl: string, defaultName: string) => Promise<void>
+      saveHistoryImage: (base64: string, id: string) => Promise<string>
+      readHistoryImage: (filePath: string) => Promise<string | null>
+      deleteHistoryImage: (filePath: string) => Promise<void>
+      getHistoryImageDir: () => Promise<string>
       openImageWindow: (url: string) => Promise<void>
       openExternal: (url: string) => Promise<void>
       setThemeSource: (source: string) => Promise<void>
