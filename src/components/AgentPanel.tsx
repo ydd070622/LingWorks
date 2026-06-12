@@ -268,14 +268,10 @@ export default function AgentPanel({ isOpen, onClose, currentUrl, initialContext
   const sessionSearchEnabled = useRef<Map<string, boolean>>(new Map())
   const scrollPositions = useRef<Map<string, number>>(new Map())
   const prevActiveSessionId = useRef<string | null>(null)
+  const handleSendRef = useRef<((t?: string) => Promise<void>) | null>(null)
+  const activeSessionIdRef = useRef<string | null>(null)
   const [, setInputTick] = useState(0)
   const [streamTick, setStreamTick] = useState(0)
-
-  // Refs for auto-submit to avoid stale closure issues
-  const handleSendRef = useRef(handleSend)
-  handleSendRef.current = handleSend
-  const activeSessionIdRef = useRef(activeSessionId)
-  activeSessionIdRef.current = activeSessionId
 
   const activeSession = sessions.find(s => s.id === activeSessionId)
   const messages = activeSession?.messages || []
@@ -638,6 +634,10 @@ export default function AgentPanel({ isOpen, onClose, currentUrl, initialContext
       abortRefs.current.delete(sid)
     }
   }, [input, activeModel, loadingSessions, activeSessionId, sessions])
+
+  // Keep refs in sync (must be after handleSend declaration to avoid TDZ)
+  handleSendRef.current = handleSend
+  activeSessionIdRef.current = activeSessionId
 
   const handleStop = useCallback(() => {
     if (activeSessionId) {
