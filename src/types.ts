@@ -88,6 +88,8 @@ declare global {
       onNewTab: (cb: (data: { url: string; siteId: string }) => void) => () => void
       onPopupNavigate: (cb: (data: { url: string }) => void) => () => void
       dsLogin: () => Promise<string | null>
+      registerShortcuts: (bindings: Record<string, string>) => Promise<void>
+      onShortcutTrigger: (cb: (targetId: string) => void) => () => void
     }
   }
 }
