@@ -271,6 +271,12 @@ export default function AgentPanel({ isOpen, onClose, currentUrl, initialContext
   const [, setInputTick] = useState(0)
   const [streamTick, setStreamTick] = useState(0)
 
+  // Refs for auto-submit to avoid stale closure issues
+  const handleSendRef = useRef(handleSend)
+  handleSendRef.current = handleSend
+  const activeSessionIdRef = useRef(activeSessionId)
+  activeSessionIdRef.current = activeSessionId
+
   const activeSession = sessions.find(s => s.id === activeSessionId)
   const messages = activeSession?.messages || []
   const activeModelId = activeSession?.modelId || null
@@ -432,15 +438,15 @@ export default function AgentPanel({ isOpen, onClose, currentUrl, initialContext
     }
   }, [activeSession?.messages.length])
 
-  // Handle initialContext: pre-fill a user message when context is passed in
+  // Handle initialContext: pre-fill and optionally auto-submit
   useEffect(() => {
-    if (!initialContext || !activeSessionId) return
-    const sid = activeSessionId
+    if (!initialContext || !activeSessionIdRef.current) return
+    const sid = activeSessionIdRef.current
     let content: string
     if (initialContext.kind === 'image') {
       content = `分析这张生成的图片。原始提示词: ${initialContext.prompt || '无'}`
     } else if (initialContext.kind === 'text') {
-      content = `分析以下文本: ${initialContext.text}`
+      content = initialContext.text
     } else {
       return // intent type handled in P3
     }
@@ -451,14 +457,19 @@ export default function AgentPanel({ isOpen, onClose, currentUrl, initialContext
       s.id === sid ? { ...s, messages: [...s.messages, userMsg] } : s
     ))
     onContextConsumed?.()
+
+    // Auto-submit if requested (use refs to avoid stale closure)
+    if (initialContext.autoSubmit) {
+      setTimeout(() => handleSendRef.current(content), 100)
+    }
   }, [initialContext])
 
   // Send message (Agent Loop with tool calling)
-  const handleSend = useCallback(async () => {
+  const handleSend = useCallback(async (overrideText?: string) => {
     const sid = activeSessionId
-    if (!input.trim() || !activeModel || !sid || loadingSessions.has(sid)) return
-    const text = input.trim()
-    setInput('')
+    const text = (overrideText ?? input).trim()
+    if (!text || !activeModel || !sid || loadingSessions.has(sid)) return
+    if (!overrideText) setInput('')
     setError(null)
 
     const userMsg: AgentMessage = {

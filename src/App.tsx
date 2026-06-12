@@ -120,7 +120,7 @@ export default function App() {
     const api = window.electronAPI
     if (!api) return
     const unsub = api.onContextMenuSendToAgent((data: { text: string; sourceUrl: string }) => {
-      handleSendToAgent({ kind: 'text', text: data.text, sourceUrl: data.sourceUrl })
+      handleSendToAgent({ kind: 'text', text: data.text, sourceUrl: data.sourceUrl, autoSubmit: true })
     })
     return unsub
   }, [])
