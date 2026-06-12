@@ -17,11 +17,12 @@ type WebviewElement = HTMLElement & {
 interface WebViewPageProps {
   site: NavItem & { url: string }
   visible: boolean
+  onUrlChange?: (url: string) => void
 }
 
 let tabCounter = 0
 
-export default function WebViewPage({ site, visible }: WebViewPageProps) {
+export default function WebViewPage({ site, visible, onUrlChange }: WebViewPageProps) {
   const [tabs, setTabs] = useState<Tab[]>(() => [
     { id: 'init', url: site.url, title: site.label },
   ])
@@ -67,6 +68,10 @@ export default function WebViewPage({ site, visible }: WebViewPageProps) {
     })
 
     wv.addEventListener('did-finish-load', () => {
+      if (onUrlChange) {
+        const url = (wv as any).getURL?.() || tabUrl
+        try { onUrlChange(url) } catch {}
+      }
       ;(wv as any).executeJavaScript(`
         Object.defineProperty(navigator,'webdriver',{get:function(){return false}});
         Object.defineProperty(navigator,'plugins',{get:function(){return {length:3,item:function(){return null},namedItem:function(){return null},refresh:function(){return false}}});
@@ -81,6 +86,13 @@ export default function WebViewPage({ site, visible }: WebViewPageProps) {
         },true);
       `)
     })
+
+    // Report URL on SPA navigation (pushState / hash changes)
+    wv.addEventListener('did-navigate-in-page', ((e: any) => {
+      if (onUrlChange && e.url) {
+        try { onUrlChange(e.url) } catch {}
+      }
+    }) as EventListener)
 
     // Right-click on links → show custom context menu
     wv.addEventListener('context-menu', ((e: any) => {
@@ -98,7 +110,18 @@ export default function WebViewPage({ site, visible }: WebViewPageProps) {
 
   useEffect(() => {
     const container = containerRef.current
-    if (!container || !visible) return
+    if (!container) return
+
+    // Hide all webviews when entire page is not visible (Electron webview native layer
+    // ignores parent CSS visibility, must directly style the webview element)
+    if (!visible) {
+      webviewMap.current.forEach(w => {
+        if (container.contains(w)) {
+          w.style.display = 'none'
+        }
+      })
+      return
+    }
 
     const tab = tabs.find(t => t.id === activeId)
     if (!tab) return
@@ -116,6 +139,7 @@ export default function WebViewPage({ site, visible }: WebViewPageProps) {
     webviewMap.current.forEach((w, id) => {
       if (container.contains(w)) {
         Object.assign(w.style, {
+          display: id === tab.id ? '' : 'none',
           visibility: id === tab.id ? 'visible' : 'hidden',
           pointerEvents: id === tab.id ? 'auto' : 'none',
         })
@@ -134,7 +158,18 @@ export default function WebViewPage({ site, visible }: WebViewPageProps) {
     }
   }, [site.id])
 
-  const handleSwitch = (id: string) => setActiveId(id)
+  const handleSwitch = (id: string) => {
+    setActiveId(id)
+    // Report URL of the newly active tab
+    if (onUrlChange) {
+      const tab = tabs.find(t => t.id === id)
+      if (tab) {
+        const wv = webviewMap.current.get(id)
+        const url = wv ? ((wv as any).getURL?.() || tab.url) : tab.url
+        try { onUrlChange(url) } catch {}
+      }
+    }
+  }
 
   const handleClose = (id: string) => {
     if (tabs.length <= 1) return

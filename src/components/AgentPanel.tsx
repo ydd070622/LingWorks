@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import type { AgentModel, AgentMessage } from '../types'
+import type { AgentModel, AgentMessage, AgentContext } from '../types'
 import { AGENT_PROVIDERS, loadModels, saveModels, streamChat, parseSSEStream, generateId, fetchProviderModels } from '../services/agent'
 import { agentChat } from '../services/agent-loop'
 import { Copy, X, Plus, ChevronDown, History, Trash2, Check, RefreshCw, Loader2 } from 'lucide-react'
@@ -242,7 +242,11 @@ interface Session {
 }
 
 // ===== Main Panel =====
-export default function AgentPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+export default function AgentPanel({ isOpen, onClose, currentUrl, initialContext, onContextConsumed, onNavigate }: {
+  isOpen: boolean; onClose: () => void; currentUrl?: string
+  initialContext?: AgentContext | null; onContextConsumed?: () => void
+  onNavigate?: (page: string) => void
+}) {
   const [models, setModels] = useState<AgentModel[]>([])
   const [sessions, setSessions] = useState<Session[]>([])
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
@@ -428,6 +432,27 @@ export default function AgentPanel({ isOpen, onClose }: { isOpen: boolean; onClo
     }
   }, [activeSession?.messages.length])
 
+  // Handle initialContext: pre-fill a user message when context is passed in
+  useEffect(() => {
+    if (!initialContext || !activeSessionId) return
+    const sid = activeSessionId
+    let content: string
+    if (initialContext.kind === 'image') {
+      content = `分析这张生成的图片。原始提示词: ${initialContext.prompt || '无'}`
+    } else if (initialContext.kind === 'text') {
+      content = `分析以下文本: ${initialContext.text}`
+    } else {
+      return // intent type handled in P3
+    }
+    const userMsg: AgentMessage = {
+      id: generateId(), role: 'user', content, timestamp: Date.now(),
+    }
+    setSessions(prev => prev.map(s =>
+      s.id === sid ? { ...s, messages: [...s.messages, userMsg] } : s
+    ))
+    onContextConsumed?.()
+  }, [initialContext])
+
   // Send message (Agent Loop with tool calling)
   const handleSend = useCallback(async () => {
     const sid = activeSessionId
@@ -460,7 +485,7 @@ export default function AgentPanel({ isOpen, onClose }: { isOpen: boolean; onClo
     const enableTools = sessionSearchEnabled.current.get(sid) ?? true
 
     try {
-      for await (const event of agentChat(activeModel, chatHistory, enableTools, controller.signal, { tavilyApiKey: tavilyKey || undefined })) {
+      for await (const event of agentChat(activeModel, chatHistory, enableTools, controller.signal, { tavilyApiKey: tavilyKey || undefined, currentUrl })) {
         switch (event.type) {
           case 'thinking':
             break
@@ -568,6 +593,12 @@ export default function AgentPanel({ isOpen, onClose }: { isOpen: boolean; onClo
             }))
             break
           }
+
+          case 'intent':
+            if (event.action === 'navigate') {
+              onNavigate?.(event.page)
+            }
+            break
 
           case 'error':
             setError(event.message)

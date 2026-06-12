@@ -1,13 +1,13 @@
 import { useState, useCallback } from 'react'
-import { Download, Copy, Sparkles } from 'lucide-react'
+import { Download, Copy, Sparkles, Send } from 'lucide-react'
 import { callTextToImage } from '../services/api'
 import { historyService } from '../services/history'
-import type { CustomModel, GenerationResult } from '../types'
+import type { CustomModel, GenerationResult, AgentContext } from '../types'
 
 const ratios = ['1:1', '4:3', '3:4', '16:9', '9:16', '3:2', '2:3']
 const resolutions = ['1K', '2K']
 
-export default function TextToImage({ models }: { models: CustomModel[] }) {
+export default function TextToImage({ models, onSendToAgent }: { models: CustomModel[]; onSendToAgent?: (ctx: AgentContext) => void }) {
   const [prompt, setPrompt] = useState('')
   const [negativePrompt, setNegativePrompt] = useState('')
   const [ratio, setRatio] = useState('1:1')
@@ -141,6 +141,9 @@ export default function TextToImage({ models }: { models: CustomModel[] }) {
               <div className="result-actions" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '10px 14px', display: 'flex', gap: 6, justifyContent: 'center', background: 'linear-gradient(transparent, rgba(0,0,0,0.6))' }}>
                 <button className="btn btn-ghost btn-sm" onClick={() => handleSave(result.images[0])}><Download size={14} /> 保存</button>
                 <button className="btn btn-ghost btn-sm" onClick={() => handleCopy(result.images[0])}><Copy size={14} /> 复制</button>
+                {onSendToAgent && (
+                  <button className="btn btn-ghost btn-sm" onClick={() => onSendToAgent({ kind: 'image', data: result.images[0], prompt: result.prompt, model: result.modelName })}><Send size={14} /> 智能体</button>
+                )}
               </div>
             </div>
           ) : (
@@ -155,6 +158,11 @@ export default function TextToImage({ models }: { models: CustomModel[] }) {
                     <button className="btn btn-ghost btn-sm" onClick={() => handleCopy(img)}>
                       <Copy size={14} />
                     </button>
+                    {onSendToAgent && (
+                      <button className="btn btn-ghost btn-sm" onClick={() => onSendToAgent({ kind: 'image', data: img, prompt: result.prompt, model: result.modelName })}>
+                        <Send size={14} />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

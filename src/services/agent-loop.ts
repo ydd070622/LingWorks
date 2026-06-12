@@ -20,6 +20,7 @@ import { searchWeb } from './search'
 // ===== Agent Chat Options =====
 export interface AgentChatOptions {
   tavilyApiKey?: string
+  currentUrl?: string
 }
 
 // ===== Tavily Search (one-step: search + answer + structured content) =====
@@ -147,6 +148,25 @@ const TOOL_DEFS = [
           replace: { type: 'string', description: '替换后的新内容' },
         },
         required: ['path', 'search', 'replace'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'navigate_to_page',
+      description:
+        '导航到应用的指定功能页面。当用户要求打开/跳转到某个页面时使用。' +
+        '可用页面: home(首页), txt2img(文生图), img2img(图生图), history(生成历史), ' +
+        'prompts(Prompt管理), platforms(开放平台), recharge(充值平台), dashboard(数据看板), ' +
+        'settings(设置), accounts(常用账号), chatgpt(ChatGPT), github(GitHub), gemini(Gemini), ' +
+        'liblib(Lib tv), runninghub(RunningHub), tapnow(TapNow)。',
+      parameters: {
+        type: 'object',
+        properties: {
+          page: { type: 'string', description: '目标页面ID' },
+        },
+        required: ['page'],
       },
     },
   },
@@ -442,6 +462,14 @@ async function executeTool(tc: ToolCall, options?: AgentChatOptions, signal?: Ab
       return JSON.stringify({ error: 'file_edit 不可用', path })
     }
 
+    case 'navigate_to_page': {
+      const page = args.page
+      if (!page || typeof page !== 'string') {
+        return JSON.stringify({ error: 'navigate_to_page 缺少 page 参数' })
+      }
+      return JSON.stringify({ success: true, message: `已导航到页面: ${page}`, page })
+    }
+
     default:
       return JSON.stringify({ error: `未知工具: ${name}` })
   }
@@ -460,7 +488,11 @@ export async function* agentChat(
   // Build full message list with system prompt (if tools enabled)
   const history: Array<{ role: string; content: string | null; tool_calls?: any[]; tool_call_id?: string }> = []
   if (enableTools) {
-    history.push({ role: 'system', content: await buildSystemPrompt() })
+    let systemPrompt = await buildSystemPrompt()
+    if (options?.currentUrl) {
+      systemPrompt += `\n\n用户当前正在浏览的网页: ${options.currentUrl}\n如果用户的提问与该页面内容相关，请主动使用 web_fetch 抓取该URL内容进行分析和回答。`
+    }
+    history.push({ role: 'system', content: systemPrompt })
   }
   for (const m of messages) {
     history.push({ role: m.role, content: m.content })
@@ -592,6 +624,15 @@ export async function* agentChat(
           result = JSON.stringify({ error: `工具执行失败: ${e.message}` })
         }
         yield { type: 'tool_result', toolCallId: tc.id, toolName: tc.function.name, result }
+
+        // For navigate_to_page, also yield intent event to trigger UI navigation
+        if (tc.function.name === 'navigate_to_page') {
+          let args: Record<string, any> = {}
+          try { args = JSON.parse(tc.function.arguments) } catch {}
+          if (args.page) {
+            yield { type: 'intent', action: 'navigate', page: String(args.page) }
+          }
+        }
 
         // Truncate very long results to save tokens
         const truncated = result.length > 15000 ? result.slice(0, 15000) + '\n...(结果已截断)' : result

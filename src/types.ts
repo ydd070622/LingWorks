@@ -111,8 +111,15 @@ export type AgentEvent =
   | { type: 'text_chunk'; content: string }
   | { type: 'text_end' }
   | { type: 'text_revoke' }
+  | { type: 'intent'; action: string; page: string; prefill?: Record<string, any> }
   | { type: 'error'; message: string }
   | { type: 'done' }
+
+// ===== Agent Integration Context =====
+export type AgentContext =
+  | { kind: 'text'; text: string; sourceUrl?: string; autoSubmit?: boolean }
+  | { kind: 'image'; data: string; prompt?: string; model?: string; autoSubmit?: boolean }
+  | { kind: 'intent'; action: 'navigate'; page: string; prefill?: Record<string, any> }
 
 declare global {
   interface Window {
@@ -149,6 +156,7 @@ declare global {
       dsLogin: () => Promise<string | null>
       registerShortcuts: (bindings: Record<string, string>) => Promise<void>
       onShortcutTrigger: (cb: (targetId: string) => void) => () => void
+      onContextMenuSendToAgent: (cb: (data: { text: string; sourceUrl: string }) => void) => () => void
       webSearch: (query: string) => Promise<Array<{ title: string; snippet: string; url: string; source?: string }>>
       webFetch: (url: string, maxBytes?: number) => Promise<{ url?: string; title?: string; content?: string; error?: string }>
       fileList: (path: string) => Promise<{ path?: string; count?: number; items?: Array<{ name: string; isDir: boolean; size?: number; modified: string }>; error?: string }>

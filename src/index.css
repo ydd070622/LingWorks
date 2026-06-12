@@ -82,6 +82,7 @@ body {
   height: 100vh;
   overflow: hidden;
   background: var(--bg-primary);
+  position: relative;
 }
 .app-rounded {
   border-radius: 12px;
@@ -89,7 +90,16 @@ body {
 }
 
 .theme-light .app-rounded {
-  box-shadow: 0 0 0 2px rgba(0,0,0,0.08);
+  box-shadow: none;
+}
+.theme-light .app-rounded::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  border: 1px solid #e0e0e8;
+  pointer-events: none;
+  z-index: 9999;
 }
 
 /* Custom titlebar */

@@ -70,6 +70,11 @@ window.electronAPI = {
     ipcRenderer.on('shortcut-trigger', h)
     return () => { ipcRenderer.removeListener('shortcut-trigger', h) }
   },
+  onContextMenuSendToAgent: (cb: (data: { text: string; sourceUrl: string }) => void) => {
+    const h = (_e: any, data: { text: string; sourceUrl: string }) => cb(data)
+    ipcRenderer.on('context-menu:send-to-agent', h)
+    return () => { ipcRenderer.removeListener('context-menu:send-to-agent', h) }
+  },
 
   webSearch: (query: string) => ipcRenderer.invoke('web-search', query),
   webFetch: (url: string, maxBytes?: number) => ipcRenderer.invoke('web-fetch', url, maxBytes),

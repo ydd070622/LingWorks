@@ -1,10 +1,10 @@
 import { useState, useCallback, useRef } from 'react'
-import { Download, Copy, Sparkles, Upload } from 'lucide-react'
+import { Download, Copy, Sparkles, Upload, Send } from 'lucide-react'
 import { callImageToImage } from '../services/api'
 import { historyService } from '../services/history'
-import type { CustomModel, GenerationResult } from '../types'
+import type { CustomModel, GenerationResult, AgentContext } from '../types'
 
-export default function ImageToImage({ models }: { models: CustomModel[] }) {
+export default function ImageToImage({ models, onSendToAgent }: { models: CustomModel[]; onSendToAgent?: (ctx: AgentContext) => void }) {
   const [prompt, setPrompt] = useState('')
   const [strength, setStrength] = useState(0.8)
   const [modelId, setModelId] = useState(0)
@@ -145,6 +145,9 @@ export default function ImageToImage({ models }: { models: CustomModel[] }) {
                 <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
                   <button className="btn btn-ghost btn-sm" onClick={() => handleSave(result.images[0])}><Download size={14} /> 保存</button>
                   <button className="btn btn-ghost btn-sm" onClick={() => handleCopy(result.images[0])}><Copy size={14} /> 复制</button>
+                  {onSendToAgent && (
+                    <button className="btn btn-ghost btn-sm" onClick={() => onSendToAgent({ kind: 'image', data: result.images[0], prompt: result.prompt, model: result.modelName })}><Send size={14} /> 智能体</button>
+                  )}
                 </div>
               </div>
             ) : (

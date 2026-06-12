@@ -725,6 +725,31 @@ app.on('web-contents-created', (_e, contents) => {
     }
     return { action: 'deny' }
   })
+
+  // Right-click context menu → send selected text to Agent
+  contents.on('context-menu', (_event, params) => {
+    const selection = (params.selectionText || '').trim()
+    if (!selection) return
+
+    const sourceUrl = contents.getURL()
+    const menu = Menu.buildFromTemplate([
+      {
+        label: selection.length > 50 ? selection.slice(0, 50) + '...' : selection,
+        enabled: false,
+      },
+      { type: 'separator' },
+      {
+        label: '发给智能体',
+        click: () => {
+          mainWindow?.webContents.send('context-menu:send-to-agent', {
+            text: selection,
+            sourceUrl,
+          })
+        },
+      },
+    ])
+    menu.popup()
+  })
 })
 
 app.on('activate', () => {

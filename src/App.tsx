@@ -13,7 +13,7 @@ import Home from './pages/Home'
 import Prompts from './pages/Prompts'
 import Dashboard from './pages/Dashboard'
 import XiaoHongShuCards from './pages/XiaoHongShuCards'
-import type { NavItem, CustomModel, DownloadItem, ShortcutBindings } from './types'
+import type { NavItem, CustomModel, DownloadItem, ShortcutBindings, AgentContext } from './types'
 
 const defaultModels: CustomModel[] = [
   { name: 'Pollinations AI', apiKey: '', endpoint: 'https://pollinations.ai', modelName: 'pollinations' },
@@ -48,6 +48,13 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false)
   const [shortcuts, setShortcuts] = useState<ShortcutBindings>({})
   const [agentOpen, setAgentOpen] = useState(false)
+  const [browserUrl, setBrowserUrl] = useState('')
+  const [agentContext, setAgentContext] = useState<AgentContext | null>(null)
+
+  const handleSendToAgent = (ctx: AgentContext) => {
+    setAgentContext(ctx)
+    setAgentOpen(true)
+  }
 
   const [searchQuery, setSearchQuery] = useState('')
   const [searchEngineId, setSearchEngineId] = useState('baidu')
@@ -104,6 +111,16 @@ export default function App() {
       } else {
         setActiveId(targetId)
       }
+    })
+    return unsub
+  }, [])
+
+  // Right-click context menu → send to Agent
+  useEffect(() => {
+    const api = window.electronAPI
+    if (!api) return
+    const unsub = api.onContextMenuSendToAgent((data: { text: string; sourceUrl: string }) => {
+      handleSendToAgent({ kind: 'text', text: data.text, sourceUrl: data.sourceUrl })
     })
     return unsub
   }, [])
@@ -273,14 +290,14 @@ export default function App() {
         <div className="content-area">
           {activeId === 'home' && <Home onSelect={setActiveId} searchQuery={searchQuery} searchEngineId={searchEngineId} searchUrl={searchUrl} onSetSearchQuery={setSearchQuery} onSetSearchEngine={setSearchEngineId} onSetSearchUrl={setSearchUrl} />}
           {websiteSites.filter(s => s.id !== 'xhs_juguang').map(site => (
-            <WebViewPage key={site.id} site={site} visible={activeId === site.id} />
+            <WebViewPage key={site.id} site={site} visible={activeId === site.id} onUrlChange={setBrowserUrl} />
           ))}
           {activeId === 'xhs_juguang' && <XiaoHongShuCards />}
           {vpnSites.map(site => (
-            <WebViewPage key={site.id} site={site} visible={activeId === site.id} />
+            <WebViewPage key={site.id} site={site} visible={activeId === site.id} onUrlChange={setBrowserUrl} />
           ))}
-          {activeId === 'txt2img' && <TextToImage models={models} />}
-          {activeId === 'img2img' && <ImageToImage models={models} />}
+          {activeId === 'txt2img' && <TextToImage models={models} onSendToAgent={handleSendToAgent} />}
+          {activeId === 'img2img' && <ImageToImage models={models} onSendToAgent={handleSendToAgent} />}
           {activeId === 'history' && <History />}
           {activeId === 'prompts' && <Prompts />}
           {activeId === 'platforms' && <Platforms />}
@@ -290,7 +307,7 @@ export default function App() {
         </div>
       </div>
 
-        <AgentPanel isOpen={agentOpen} onClose={() => setAgentOpen(false)} />
+        <AgentPanel isOpen={agentOpen} onClose={() => setAgentOpen(false)} currentUrl={browserUrl} initialContext={agentContext} onContextConsumed={() => setAgentContext(null)} onNavigate={(page) => setActiveId(page)} />
 
       {showSettings && (
         <Settings models={models} onSave={saveModels} onClose={() => setShowSettings(false)} onNavigate={setActiveId} />
