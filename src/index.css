@@ -1861,6 +1861,32 @@ textarea.input-base {
   text-align: center; padding: 8px; color: var(--text-muted); font-size: 12px;
   border: 1px dashed var(--border-color); border-radius: 8px;
 }
+.agent-quoted-text {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 8px 12px; background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 8px;
+  border-left: 3px solid var(--accent, #6366f1);
+}
+.agent-quote-content {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;
+}
+.agent-quote-label {
+  font-size: 11px; color: var(--accent, #6366f1); font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.agent-quote-text {
+  font-size: 12px; color: var(--text-secondary); line-height: 1.5;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.agent-quote-close {
+  flex-shrink: 0; width: 22px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; border: none; color: var(--text-muted);
+  cursor: pointer; border-radius: 4px; transition: all 0.15s;
+}
+.agent-quote-close:hover {
+  background: rgba(255,255,255,0.1); color: var(--text-primary);
+}
 .agent-input-row { display: flex; gap: 8px; }
 .agent-input {
   flex: 1; padding: 12px 16px; font-size: 13px;

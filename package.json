@@ -1,6 +1,6 @@
 {
   "name": "ai-web-tools",
-  "version": "2.8.4",
+  "version": "2.8.8",
   "private": true,
   "main": "dist-electron/main.js",
   "scripts": {
@@ -47,11 +47,11 @@
       "target": "nsis",
       "icon": "build/icon.ico"
     },
-  "linux": {
-    "target": "deb",
-    "icon": "build/icon.png",
-    "category": "Utility",
-    "maintainer": "ydd070622 <ydd070622@gmail.com>"
-  }
+    "linux": {
+      "target": "deb",
+      "icon": "build/icon.png",
+      "category": "Utility",
+      "maintainer": "ydd070622 <ydd070622@gmail.com>"
+    }
   }
 }

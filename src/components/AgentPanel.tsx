@@ -260,6 +260,7 @@ export default function AgentPanel({ isOpen, onClose, currentUrl, initialContext
     const saved = localStorage.getItem('agent_font_size')
     return saved ? parseInt(saved) : 13
   })
+  const [quotedText, setQuotedText] = useState<string | null>(null)
 
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -434,30 +435,37 @@ export default function AgentPanel({ isOpen, onClose, currentUrl, initialContext
     }
   }, [activeSession?.messages.length])
 
-  // Handle initialContext: pre-fill and optionally auto-submit
+  // Handle initialContext: text → quote reference, image → auto-submit
   useEffect(() => {
     if (!initialContext || !activeSessionIdRef.current) return
     const sid = activeSessionIdRef.current
-    let content: string
-    if (initialContext.kind === 'image') {
-      content = `分析这张生成的图片。原始提示词: ${initialContext.prompt || '无'}`
-    } else if (initialContext.kind === 'text') {
-      content = initialContext.text
-    } else {
-      return // intent type handled in P3
-    }
-    const userMsg: AgentMessage = {
-      id: generateId(), role: 'user', content, timestamp: Date.now(),
-    }
-    setSessions(prev => prev.map(s =>
-      s.id === sid ? { ...s, messages: [...s.messages, userMsg] } : s
-    ))
-    onContextConsumed?.()
 
-    // Auto-submit if requested (use refs to avoid stale closure)
-    if (initialContext.autoSubmit) {
-      setTimeout(() => handleSendRef.current?.(content), 100)
+    if (initialContext.kind === 'text') {
+      // Set as quoted reference, user will type their question
+      setQuotedText(initialContext.text)
+      onContextConsumed?.()
+      // Focus input
+      setTimeout(() => inputRef.current?.focus(), 100)
+      return
     }
+
+    if (initialContext.kind === 'image') {
+      const content = `分析这张生成的图片。原始提示词: ${initialContext.prompt || '无'}`
+      if (initialContext.autoSubmit) {
+        onContextConsumed?.()
+        setTimeout(() => handleSendRef.current?.(content), 100)
+        return
+      }
+      const userMsg: AgentMessage = {
+        id: generateId(), role: 'user', content, timestamp: Date.now(),
+      }
+      setSessions(prev => prev.map(s =>
+        s.id === sid ? { ...s, messages: [...s.messages, userMsg] } : s
+      ))
+      onContextConsumed?.()
+      return
+    }
+    // intent type handled elsewhere
   }, [initialContext])
 
   // Send message (Agent Loop with tool calling)
@@ -468,8 +476,15 @@ export default function AgentPanel({ isOpen, onClose, currentUrl, initialContext
     if (!overrideText) setInput('')
     setError(null)
 
+    // Prepend quoted text if present
+    let finalText = text
+    if (quotedText) {
+      finalText = `> ${quotedText}\n\n${text}`
+      setQuotedText(null)
+    }
+
     const userMsg: AgentMessage = {
-      id: generateId(), role: 'user', content: text, timestamp: Date.now(),
+      id: generateId(), role: 'user', content: finalText, timestamp: Date.now(),
     }
     setSessions(prev => prev.map(s =>
       s.id === sid ? { ...s, messages: [...s.messages, userMsg] } : s
@@ -487,7 +502,7 @@ export default function AgentPanel({ isOpen, onClose, currentUrl, initialContext
         chatHistory.push({ role: m.role, content: m.content })
       }
     }
-    chatHistory.push({ role: 'user', content: text })
+    chatHistory.push({ role: 'user', content: finalText })
 
     const enableTools = sessionSearchEnabled.current.get(sid) ?? true
 
@@ -682,11 +697,9 @@ export default function AgentPanel({ isOpen, onClose, currentUrl, initialContext
                   <div className="agent-history-title">{s.title}</div>
                   <div className="agent-history-meta">
                     <span>{s.messages.filter(m => m.role === 'user').length} 条消息</span>
-                    {sessions.length > 1 && (
-                      <span className="agent-history-del" onClick={e => { e.stopPropagation(); deleteSession(s.id) }}>
-                        <Trash2 size={12} />
-                      </span>
-                    )}
+                    <span className="agent-history-del" onClick={e => { e.stopPropagation(); deleteSession(s.id) }}>
+                      <Trash2 size={12} />
+                    </span>
                   </div>
                 </div>
               ))}
@@ -717,11 +730,9 @@ export default function AgentPanel({ isOpen, onClose, currentUrl, initialContext
                   title={s.title}
                 >
                   <span className="agent-tab-title">{s.title}</span>
-                  {sessions.length > 1 && (
-                    <span className="agent-tab-close" onClick={e => { e.stopPropagation(); deleteSession(s.id) }} title="关闭">
-                      <X size={10} />
-                    </span>
-                  )}
+                  <span className="agent-tab-close" onClick={e => { e.stopPropagation(); deleteSession(s.id) }} title="关闭">
+                    <X size={10} />
+                  </span>
                 </div>
               ))}
             </div>
@@ -772,6 +783,17 @@ export default function AgentPanel({ isOpen, onClose, currentUrl, initialContext
             <div className="agent-input-area">
               {!activeModel && (
                 <div className="agent-no-model">⚠️ 尚未添加模型，请在下方添加后使用</div>
+              )}
+              {quotedText && (
+                <div className="agent-quoted-text">
+                  <div className="agent-quote-content">
+                    <span className="agent-quote-label">引用</span>
+                    <span className="agent-quote-text">{quotedText.length > 100 ? quotedText.slice(0, 100) + '...' : quotedText}</span>
+                  </div>
+                  <button className="agent-quote-close" onClick={() => setQuotedText(null)} title="取消引用">
+                    <X size={14} />
+                  </button>
+                </div>
               )}
               <div className="agent-input-row">
                 <textarea
