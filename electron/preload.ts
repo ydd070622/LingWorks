@@ -12,6 +12,7 @@ window.electronAPI = {
     deleteHistoryImage: (filePath: string) => ipcRenderer.invoke('delete-history-image', filePath),
     getHistoryImageDir: () => ipcRenderer.invoke('get-history-image-dir'),
   openImageWindow: (url: string) => ipcRenderer.invoke('open-image-window', url),
+  downloadImage: (url: string) => ipcRenderer.invoke('download-image', url),
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
   setThemeSource: (source: string) => ipcRenderer.invoke('set-theme-source', source),
   getDesktopPath: () => ipcRenderer.invoke('get-desktop-path'),

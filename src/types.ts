@@ -134,6 +134,7 @@ declare global {
       deleteHistoryImage: (filePath: string) => Promise<void>
       getHistoryImageDir: () => Promise<string>
       openImageWindow: (url: string) => Promise<void>
+      downloadImage: (url: string) => Promise<string | null>
       openExternal: (url: string) => Promise<void>
       setThemeSource: (source: string) => Promise<void>
       getDesktopPath: () => Promise<string>

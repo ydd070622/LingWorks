@@ -29,12 +29,12 @@ async function storeSet(key: string, value: any) {
 }
 
 // Resolve image URL from a path stored in history item
-// In Electron: reads file and returns data URL via IPC
+// In Electron: IPC returns base64 data URL from disk
 // In browser: returns imagePath directly (it's already a data URL from localStorage)
 export async function getImageUrl(item: HistoryItem): Promise<string> {
   if (window.electronAPI && item.imagePath && !item.imagePath.startsWith('data:')) {
     const dataUrl = await window.electronAPI.readHistoryImage(item.imagePath)
-    return dataUrl || item.imagePath
+    return dataUrl || ''
   }
   return item.imagePath
 }

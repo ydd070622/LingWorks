@@ -306,6 +306,14 @@ function createWindow() {
   mainWindow.on('maximize', () => mainWindow?.webContents.send('window-maximize-change', true))
   mainWindow.on('unmaximize', () => mainWindow?.webContents.send('window-maximize-change', false))
 
+  // DevTools shortcut (F12 or Ctrl+Shift+I) for production builds
+  globalShortcut.register('F12', () => {
+    mainWindow?.webContents.toggleDevTools()
+  })
+  globalShortcut.register('CommandOrControl+Shift+I', () => {
+    mainWindow?.webContents.toggleDevTools()
+  })
+
   // Track active downloads (across webviews and main window sessions)
   const activeDownloads = new Set<string>()
   const trackedSessions = new WeakSet()
@@ -399,13 +407,50 @@ ipcMain.handle('save-history-image', async (_e, base64: string, id: string) => {
 
 ipcMain.handle('read-history-image', async (_e, filePath: string) => {
   try {
-    const data = fs.readFileSync(filePath)
-    return 'data:image/png;base64,' + data.toString('base64')
-  } catch { return null }
+    if (!fs.existsSync(filePath)) {
+      console.log('[read-history-image] file not found:', filePath)
+      return null
+    }
+    const stat = fs.statSync(filePath)
+    if (stat.size === 0) {
+      console.log('[read-history-image] file is empty:', filePath)
+      return null
+    }
+    // Return base64 data URL
+    const buffer = fs.readFileSync(filePath)
+    const ext = path.extname(filePath).toLowerCase().slice(1) || 'png'
+    const mimeType = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`
+    return `data:${mimeType};base64,${buffer.toString('base64')}`
+  } catch (e: any) {
+    console.error('[read-history-image] error:', e.message)
+    return null
+  }
 })
 
 ipcMain.handle('delete-history-image', async (_e, filePath: string) => {
   try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath) } catch {}
+})
+
+// Download image from URL in main process (bypasses renderer Node.js pollution)
+ipcMain.handle('download-image', async (_e, url: string) => {
+  try {
+    // Use global fetch (Node.js 18+, available in Electron 33)
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      signal: AbortSignal.timeout(60000),
+    })
+    if (!res.ok) {
+      console.error('[download-image] HTTP error:', res.status)
+      return null
+    }
+    const arrayBuffer = await res.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+    const contentType = res.headers.get('content-type') || 'image/png'
+    return `data:${contentType};base64,${buffer.toString('base64')}`
+  } catch (e: any) {
+    console.error('[download-image] error:', e.message)
+    return null
+  }
 })
 
 ipcMain.handle('get-history-image-dir', () =>
@@ -478,6 +523,16 @@ ipcMain.handle('window-set-position', (_e, x: number, y: number) => {
 // Register shortcuts from renderer: { "Alt+1": "chatgpt", ... }
 ipcMain.handle('register-shortcuts', async (_e, bindings: Record<string, string>) => {
   globalShortcut.unregisterAll()
+  
+  // Always register DevTools shortcuts first
+  globalShortcut.register('F12', () => {
+    mainWindow?.webContents.toggleDevTools()
+  })
+  globalShortcut.register('CommandOrControl+Shift+I', () => {
+    mainWindow?.webContents.toggleDevTools()
+  })
+  
+  // Register user-defined shortcuts
   for (const [combo, targetId] of Object.entries(bindings)) {
     try {
       globalShortcut.register(combo, () => {

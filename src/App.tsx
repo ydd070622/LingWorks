@@ -15,9 +15,9 @@ import Dashboard from './pages/Dashboard'
 import XiaoHongShuCards from './pages/XiaoHongShuCards'
 import type { NavItem, CustomModel, DownloadItem, ShortcutBindings, AgentContext } from './types'
 
-const defaultModels: CustomModel[] = [
-  { name: 'Pollinations AI', apiKey: '', endpoint: 'https://pollinations.ai', modelName: 'pollinations' },
-]
+// No default free image generation model (Pollinations AI now requires payment/API key)
+// Users need to configure their own API in Settings
+const defaultModels: CustomModel[] = []
 
 const navItems: NavItem[] = [
   { type: 'website', id: 'liblib', label: 'Lib tv', url: 'https://www.liblib.tv', icon: 'globe' },
@@ -183,6 +183,17 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    // Filter out invalid Pollinations models (now requires payment/API key)
+    const filterModels = (models: CustomModel[]): CustomModel[] => {
+      return models.filter(m => {
+        // Remove default Pollinations without API key
+        if (m.modelName === 'pollinations' && !m.apiKey) return false
+        // Remove models using old pollinations endpoint
+        if (m.endpoint?.includes('pollinations.ai') && !m.apiKey) return false
+        return true
+      })
+    }
+
     const load = async () => {
       if (window.electronAPI) {
         const [saved, savedTheme, savedShortcuts] = await Promise.all([
@@ -197,18 +208,24 @@ export default function App() {
           'Ctrl+Space': 'agent-panel',
         }
         if (saved !== null && Array.isArray(saved)) {
-          setModels(saved)
+          const filtered = filterModels(saved)
+          setModels(filtered)
         }
         if (savedTheme === 'light' || savedTheme === 'dark') {
           setTheme(savedTheme)
         }
-        setShortcuts(savedShortcuts && Object.keys(savedShortcuts).length > 0 ? savedShortcuts : DEFAULT_SHORTCUTS)
+        // Always ensure agent-panel shortcut exists
+        const mergedShortcuts = { ...DEFAULT_SHORTCUTS, ...(savedShortcuts || {}) }
+        setShortcuts(mergedShortcuts)
       } else {
         const saved = localStorage.getItem('customModels')
         if (saved !== null) {
           try {
             const parsed = JSON.parse(saved)
-            if (Array.isArray(parsed)) setModels(parsed)
+            if (Array.isArray(parsed)) {
+              const filtered = filterModels(parsed)
+              setModels(filtered)
+            }
           } catch {}
         }
         const savedTheme = localStorage.getItem('theme')

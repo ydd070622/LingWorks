@@ -456,7 +456,7 @@ export default function AgentPanel({ isOpen, onClose, currentUrl, initialContext
 
     // Auto-submit if requested (use refs to avoid stale closure)
     if (initialContext.autoSubmit) {
-      setTimeout(() => handleSendRef.current(content), 100)
+      setTimeout(() => handleSendRef.current?.(content), 100)
     }
   }, [initialContext])
 
@@ -876,7 +876,7 @@ export default function AgentPanel({ isOpen, onClose, currentUrl, initialContext
                 {isCurrentLoading ? (
                   <button className="agent-send-btn agent-stop-btn" onClick={handleStop}>⏹ 停止</button>
                 ) : (
-                  <button className="agent-send-btn" onClick={handleSend} disabled={!activeModel || !input.trim()}>
+                  <button className="agent-send-btn" onClick={() => handleSend()} disabled={!activeModel || !input.trim()}>
                     ↑
                   </button>
                 )}

@@ -5,6 +5,19 @@ function isPollinationsModel(model: CustomModel): boolean {
   return model.modelName === 'pollinations' || model.endpoint.includes('pollinations.ai')
 }
 
+// Pollinations new unified API (gen.pollinations.ai) uses OpenAI-compatible format
+function getPollinationsEndpoint(model: CustomModel): string {
+  // If user configured gen.pollinations.ai, use it directly
+  if (model.endpoint.includes('gen.pollinations.ai')) {
+    return model.endpoint.replace(/\/+$/, '')
+  }
+  // For old pollinations endpoint, redirect to new one
+  if (model.endpoint.includes('pollinations.ai')) {
+    return 'https://gen.pollinations.ai'
+  }
+  return model.endpoint.replace(/\/+$/, '')
+}
+
 function buildApiUrl(endpoint: string, suffix: string): string {
   const base = endpoint.replace(/\/+$/, '')
   const hasImg = /\/images\/generations/.test(base)
@@ -25,12 +38,26 @@ function getChatEndpoint(model: CustomModel): string {
 }
 
 async function fetchImageAsBase64(url: string): Promise<string> {
+  // Use main process IPC to download image (bypasses renderer Node.js pollution)
+  if (window.electronAPI?.downloadImage) {
+    const result = await window.electronAPI.downloadImage(url)
+    if (result && result.startsWith('data:image')) return result
+  }
+  // Fallback: try in renderer (for browser mode)
   const res = await fetch(url)
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+  }
+  const contentType = res.headers.get('content-type') || ''
+  if (!contentType.startsWith('image/')) {
+    const text = await res.text()
+    throw new Error(`API returned non-image response: ${contentType}`)
+  }
   const blob = await res.blob()
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onloadend = () => resolve(reader.result as string)
-    reader.onerror = reject
+    reader.onerror = (e) => reject(e)
     reader.readAsDataURL(blob)
   })
 }
@@ -119,12 +146,13 @@ export async function callTextToImage(
   const [w, h] = size.split('x')
 
   if (isPollinationsModel(model)) {
+    // Use new Pollinations unified API (gen.pollinations.ai)
+    // Old endpoint (image.pollinations.ai) returns 402 Payment Required
     const fullPrompt = negativePrompt ? `${prompt} ### ${negativePrompt}` : prompt
-    const params = new URLSearchParams({ width: w, height: h, nologo: 'true' })
     const results: string[] = []
     for (let i = 0; i < imageCount; i++) {
-      const seed = Math.floor(Math.random() * 1000000)
-      const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?${params.toString()}&seed=${seed}`
+      // New free endpoint: https://gen.pollinations.ai/image/{prompt}
+      const url = `https://gen.pollinations.ai/image/${encodeURIComponent(fullPrompt)}?width=${w}&height=${h}`
       const dataUrl = await fetchImageAsBase64(url)
       results.push(dataUrl)
     }
@@ -221,12 +249,11 @@ export async function callImageToImage(
 }
 
 export function getDefaultModels(): CustomModel[] {
-  return [
-    {
-      name: 'Pollinations AI',
-      apiKey: '',
-      endpoint: 'https://pollinations.ai',
-      modelName: 'pollinations',
-    },
-  ]
+  // No default free image generation model available
+  // Users need to configure their own API:
+  // - SiliconFlow: https://api.siliconflow.cn/v1 (free tier available)
+  // - OpenAI DALL-E: https://api.openai.com
+  // - Stability AI: https://api.stability.ai
+  // - Any OpenAI-compatible image generation API
+  return []
 }

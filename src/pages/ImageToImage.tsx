@@ -180,9 +180,15 @@ export default function ImageToImage({ models, onSendToAgent }: { models: Custom
             </div>
             <div className="form-group">
               <label className="label">模型</label>
-              <select className="select-base" value={modelId} onChange={e => setModelId(Number(e.target.value))} style={{ minWidth: 140 }}>
-                {models.map((m, i) => <option key={i} value={i}>{m.name}</option>)}
-              </select>
+              {models.length === 0 ? (
+                <div style={{ padding: '12px', background: 'rgba(255,200,0,0.1)', borderRadius: 'var(--radius-sm)', fontSize: 12, color: 'var(--text-muted)' }}>
+                  请先在「API 设置」中添加图片生成模型
+                </div>
+              ) : (
+                <select className="select-base" value={modelId} onChange={e => setModelId(Number(e.target.value))} style={{ minWidth: 140 }}>
+                  {models.map((m, i) => <option key={i} value={i}>{m.name}</option>)}
+                </select>
+              )}
             </div>
             <button
               className="btn btn-primary"
