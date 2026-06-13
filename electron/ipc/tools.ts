@@ -132,12 +132,17 @@ export function registerTools(mainWindow: BrowserWindow | null) {
   ipcMain.handle('register-shortcuts', async (_e, bindings: Record<string, string>) => {
     globalShortcut.unregisterAll()
 
-    // Always register DevTools shortcuts first
+    // Always register DevTools shortcuts
     globalShortcut.register('F12', () => {
       mainWindow?.webContents.toggleDevTools()
     })
     globalShortcut.register('CommandOrControl+Shift+I', () => {
       mainWindow?.webContents.toggleDevTools()
+    })
+
+    // Permanent agent shortcut (not user-configurable)
+    globalShortcut.register('Ctrl+Space', () => {
+      mainWindow?.webContents.send('shortcut-trigger', 'agent-panel')
     })
 
     // Register user-defined shortcuts

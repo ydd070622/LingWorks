@@ -29,7 +29,6 @@ const SHORTCUT_TARGETS: { id: string; label: string }[] = [
   { id: 'dashboard', label: '数据面板' },
   { id: 'accounts', label: '常用账号' },
   { id: 'home', label: '主页' },
-  { id: 'agent-panel', label: '智能体助手' },
 ]
 
 const STORAGE_KEY = 'shortcutBindings'
@@ -43,7 +42,6 @@ const DEFAULT_SHORTCUTS: ShortcutBindings = {
   'Alt+6': 'tapnow',
   'Ctrl+Shift+T': 'txt2img',
   'Ctrl+Shift+I': 'img2img',
-  'Ctrl+Space': 'agent-panel',
 }
 
 // Convert KeyboardEvent to combo string
@@ -354,7 +352,7 @@ export default function Settings({ models, onSave, onClose }: SettingsProps) {
                     >取消</button>
                   </div>
                 )}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                   {SHORTCUT_TARGETS.map(target => {
                     const entry = Object.entries(shortcuts).find(([, v]) => v === target.id)
                     const currentCombo = entry ? entry[0] : null
