@@ -242,8 +242,8 @@ interface Session {
 }
 
 // ===== Main Panel =====
-export default function AgentPanel({ isOpen, onClose, currentUrl, initialContext, onContextConsumed, onNavigate }: {
-  isOpen: boolean; onClose: () => void; currentUrl?: string
+export default function AgentPanel({ isOpen, onClose, currentUrl, currentContent, initialContext, onContextConsumed, onNavigate }: {
+  isOpen: boolean; onClose: () => void; currentUrl?: string; currentContent?: string
   initialContext?: AgentContext | null; onContextConsumed?: () => void
   onNavigate?: (page: string) => void
 }) {
@@ -507,7 +507,7 @@ export default function AgentPanel({ isOpen, onClose, currentUrl, initialContext
     const enableTools = sessionSearchEnabled.current.get(sid) ?? true
 
     try {
-      for await (const event of agentChat(activeModel, chatHistory, enableTools, controller.signal, { tavilyApiKey: tavilyKey || undefined, currentUrl })) {
+      for await (const event of agentChat(activeModel, chatHistory, enableTools, controller.signal, { tavilyApiKey: tavilyKey || undefined, currentUrl, currentContent })) {
         switch (event.type) {
           case 'thinking':
             break
@@ -903,7 +903,6 @@ export default function AgentPanel({ isOpen, onClose, currentUrl, initialContext
                   </button>
                 )}
               </div>
-              <div className="agent-bottom-hint">AI 生成的内容可能不准确，请注意甄别</div>
             </div>
           </>
         )}

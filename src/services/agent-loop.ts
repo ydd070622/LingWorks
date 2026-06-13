@@ -21,6 +21,7 @@ import { searchWeb } from './search'
 export interface AgentChatOptions {
   tavilyApiKey?: string
   currentUrl?: string
+  currentContent?: string
 }
 
 // ===== Tavily Search (one-step: search + answer + structured content) =====
@@ -490,7 +491,13 @@ export async function* agentChat(
   if (enableTools) {
     let systemPrompt = await buildSystemPrompt()
     if (options?.currentUrl) {
-      systemPrompt += `\n\n用户当前正在浏览的网页: ${options.currentUrl}\n如果用户的提问与该页面内容相关，请主动使用 web_fetch 抓取该URL内容进行分析和回答。`
+      if (options?.currentContent) {
+        // Page content already extracted from webview DOM — use it directly
+        systemPrompt += `\n\n用户当前正在浏览的网页: ${options.currentUrl}\n\n该页面的文本内容（已从浏览器渲染后的DOM中提取）:\n${options.currentContent}\n\n请基于以上页面内容直接分析和回答用户的问题。如果页面内容不足以回答，再考虑使用 web_fetch 或 web_search 补充信息。`
+      } else {
+        // No pre-extracted content — fall back to web_fetch
+        systemPrompt += `\n\n用户当前正在浏览的网页: ${options.currentUrl}\n如果用户的提问与该页面内容相关，请主动使用 web_fetch 抓取该URL内容进行分析和回答。`
+      }
     }
     history.push({ role: 'system', content: systemPrompt })
   }

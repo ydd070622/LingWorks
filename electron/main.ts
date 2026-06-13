@@ -10,6 +10,7 @@ import { registerSearch } from './ipc/search'
 import { registerAuth } from './ipc/auth'
 import { registerDownload, attachWebviewDownloads } from './ipc/download'
 import { registerTools } from './ipc/tools'
+import { registerTranslate } from './ipc/translate'
 
 // Agent tool IPC handlers (web_fetch, file_*)
 import './tool-handlers'
@@ -75,6 +76,7 @@ function createWindow() {
   registerSearch()
   registerAuth()
   registerTools(mainWindow)
+  registerTranslate()
 
   // Download management
   const { activeDownloads, trackSession } = registerDownload(mainWindow)
@@ -206,13 +208,13 @@ app.on('web-contents-created', (_e, contents) => {
       {
         label: '搜索选中内容',
         click: () => {
-          shell.openExternal(`https://cn.bing.com/search?q=${encodeURIComponent(selection)}`)
+          mainWindow?.webContents.send('context-menu:search', { text: selection })
         },
       },
       {
         label: '翻译',
         click: () => {
-          shell.openExternal(`https://translate.google.com/?sl=auto&tl=auto&text=${encodeURIComponent(selection)}`)
+          mainWindow?.webContents.send('context-menu:translate', { text: selection })
         },
       },
       { type: 'separator' },

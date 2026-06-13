@@ -158,7 +158,10 @@ declare global {
       registerShortcuts: (bindings: Record<string, string>) => Promise<void>
       onShortcutTrigger: (cb: (targetId: string) => void) => () => void
       onContextMenuSendToAgent: (cb: (data: { text: string; sourceUrl: string }) => void) => () => void
+      onContextMenuSearch: (cb: (data: { text: string }) => void) => () => void
+      onContextMenuTranslate: (cb: (data: { text: string }) => void) => () => void
       webSearch: (query: string) => Promise<Array<{ title: string; snippet: string; url: string; source?: string }>>
+      translate: (text: string) => Promise<string | null>
       webFetch: (url: string, maxBytes?: number) => Promise<{ url?: string; title?: string; content?: string; error?: string }>
       fileList: (path: string) => Promise<{ path?: string; count?: number; items?: Array<{ name: string; isDir: boolean; size?: number; modified: string }>; error?: string }>
       fileRead: (path: string, maxLines?: number) => Promise<{ path?: string; size?: number; sizeKB?: string; totalLines?: number; content?: string; truncated?: boolean; error?: string }>

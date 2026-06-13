@@ -14,6 +14,8 @@ import Prompts from './pages/Prompts'
 import Dashboard from './pages/Dashboard'
 import XiaoHongShuCards from './pages/XiaoHongShuCards'
 import type { NavItem, CustomModel, DownloadItem, ShortcutBindings, AgentContext } from './types'
+import type { SearchResult } from './services/multi-search'
+import { X, Loader2 } from 'lucide-react'
 
 // No default free image generation model (Pollinations AI now requires payment/API key)
 // Users need to configure their own API in Settings
@@ -49,7 +51,38 @@ export default function App() {
   const [shortcuts, setShortcuts] = useState<ShortcutBindings>({})
   const [agentOpen, setAgentOpen] = useState(false)
   const [browserUrl, setBrowserUrl] = useState('')
+  const [browserContent, setBrowserContent] = useState('')
   const [agentContext, setAgentContext] = useState<AgentContext | null>(null)
+
+  // Floating card for search / translate results
+  type FloatingCard = { kind: 'search' | 'translate'; text: string }
+  const [floatingCard, setFloatingCard] = useState<FloatingCard | null>(null)
+  const [floatingCardPos, setFloatingCardPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+  const dragRef = useRef<{ sx: number; sy: number; cx: number; cy: number } | null>(null)
+
+  const onFloatingCardDrag = useCallback((e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('button')) return
+    dragRef.current = { sx: e.screenX, sy: e.screenY, cx: floatingCardPos.x, cy: floatingCardPos.y }
+    const onMove = (ev: MouseEvent) => {
+      const d = dragRef.current
+      if (!d) return
+      setFloatingCardPos({ x: d.cx + ev.screenX - d.sx, y: d.cy + ev.screenY - d.sy })
+    }
+    const onUp = () => {
+      dragRef.current = null
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }, [floatingCardPos])
+
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([])
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [searchError, setSearchError] = useState<string | null>(null)
+  const [translateResult, setTranslateResult] = useState<string | null>(null)
+  const [translateLoading, setTranslateLoading] = useState(false)
+  const [translateError, setTranslateError] = useState<string | null>(null)
 
   const handleSendToAgent = (ctx: AgentContext) => {
     setAgentContext(ctx)
@@ -121,6 +154,59 @@ export default function App() {
     if (!api) return
     const unsub = api.onContextMenuSendToAgent((data: { text: string; sourceUrl: string }) => {
       handleSendToAgent({ kind: 'text', text: data.text, sourceUrl: data.sourceUrl, autoSubmit: true })
+    })
+    return unsub
+  }, [])
+
+  // Right-click → search floating card
+  useEffect(() => {
+    const api = window.electronAPI
+    if (!api) return
+    const unsub = api.onContextMenuSearch(async (data: { text: string }) => {
+      setSearchResults([])
+      setSearchError(null)
+      setSearchLoading(true)
+      setTranslateResult(null)
+      setTranslateError(null)
+      setFloatingCard({ kind: 'search', text: data.text })
+      setFloatingCardPos({ x: window.innerWidth - 420, y: window.innerHeight - 380 })
+      try {
+        const results = await api.webSearch(data.text)
+        setSearchResults(results)
+        if (results.length === 0) setSearchError('未找到搜索结果')
+      } catch (e: any) {
+        setSearchError(e.message || '搜索失败')
+      } finally {
+        setSearchLoading(false)
+      }
+    })
+    return unsub
+  }, [])
+
+  // Right-click → translate floating card
+  useEffect(() => {
+    const api = window.electronAPI
+    if (!api) return
+    const unsub = api.onContextMenuTranslate(async (data: { text: string }) => {
+      setTranslateResult(null)
+      setTranslateError(null)
+      setTranslateLoading(true)
+      setSearchResults([])
+      setSearchError(null)
+      setFloatingCard({ kind: 'translate', text: data.text })
+      setFloatingCardPos({ x: window.innerWidth - 420, y: window.innerHeight - 380 })
+      try {
+        const result = await api.translate(data.text)
+        if (result) {
+          setTranslateResult(result)
+        } else {
+          setTranslateError('翻译服务暂不可用')
+        }
+      } catch (e: any) {
+        setTranslateError(e.message || '翻译失败')
+      } finally {
+        setTranslateLoading(false)
+      }
     })
     return unsub
   }, [])
@@ -307,11 +393,11 @@ export default function App() {
         <div className="content-area">
           {activeId === 'home' && <Home onSelect={setActiveId} searchQuery={searchQuery} searchEngineId={searchEngineId} searchUrl={searchUrl} onSetSearchQuery={setSearchQuery} onSetSearchEngine={setSearchEngineId} onSetSearchUrl={setSearchUrl} />}
           {websiteSites.filter(s => s.id !== 'xhs_juguang').map(site => (
-            <WebViewPage key={site.id} site={site} visible={activeId === site.id} onUrlChange={setBrowserUrl} />
+            <WebViewPage key={site.id} site={site} visible={activeId === site.id} onUrlChange={(url, content) => { setBrowserUrl(url); setBrowserContent(content || '') }} />
           ))}
-          {activeId === 'xhs_juguang' && <XiaoHongShuCards />}
+          {activeId === 'xhs_juguang' && <XiaoHongShuCards onUrlChange={(url, content) => { setBrowserUrl(url); setBrowserContent(content || '') }} />}
           {vpnSites.map(site => (
-            <WebViewPage key={site.id} site={site} visible={activeId === site.id} onUrlChange={setBrowserUrl} />
+            <WebViewPage key={site.id} site={site} visible={activeId === site.id} onUrlChange={(url, content) => { setBrowserUrl(url); setBrowserContent(content || '') }} />
           ))}
           {activeId === 'txt2img' && <TextToImage models={models} onSendToAgent={handleSendToAgent} />}
           {activeId === 'img2img' && <ImageToImage models={models} onSendToAgent={handleSendToAgent} />}
@@ -324,7 +410,76 @@ export default function App() {
         </div>
       </div>
 
-        <AgentPanel isOpen={agentOpen} onClose={() => setAgentOpen(false)} currentUrl={browserUrl} initialContext={agentContext} onContextConsumed={() => setAgentContext(null)} onNavigate={(page) => setActiveId(page)} />
+        <AgentPanel isOpen={agentOpen} onClose={() => setAgentOpen(false)} currentUrl={browserUrl} currentContent={browserContent} initialContext={agentContext} onContextConsumed={() => setAgentContext(null)} onNavigate={(page) => setActiveId(page)} />
+
+      {/* Floating Search / Translate Card — draggable mini card */}
+      {floatingCard && (
+        <div
+          className="floating-card"
+          style={{ left: floatingCardPos.x, top: floatingCardPos.y }}
+        >
+          <div className="floating-card-header" onMouseDown={onFloatingCardDrag}>
+            <span className="floating-card-title">
+              {floatingCard.kind === 'search' ? '🔍 搜索' : '🌐 翻译'}
+            </span>
+            <button className="floating-card-close" onClick={() => setFloatingCard(null)}>
+              <X size={14} />
+            </button>
+          </div>
+          <div className="floating-card-body">
+            {floatingCard.kind === 'search' ? (
+              <>
+                {searchLoading && (
+                  <div className="floating-card-loading">
+                    <Loader2 size={14} className="spinning" /> 搜索中...
+                  </div>
+                )}
+                {searchError && (
+                  <div className="floating-card-error">{searchError}</div>
+                )}
+                {!searchLoading && !searchError && searchResults.length > 0 && (
+                  <div className="floating-card-results">
+                    {searchResults.map((r, i) => (
+                      <a
+                        key={i}
+                        className="floating-card-result"
+                        href={r.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={e => {
+                          e.preventDefault()
+                          window.electronAPI?.openExternal(r.url)
+                        }}
+                      >
+                        <div className="floating-card-result-title">{r.title}</div>
+                        {r.snippet && <div className="floating-card-result-snippet">{r.snippet}</div>}
+                        <div className="floating-card-result-source">
+                          {r.source && <span>{r.source}</span>}
+                          <span className="floating-card-result-url">{r.url.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}</span>
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                {translateLoading && (
+                  <div className="floating-card-loading">
+                    <Loader2 size={14} className="spinning" /> 翻译中...
+                  </div>
+                )}
+                {translateError && (
+                  <div className="floating-card-error">{translateError}</div>
+                )}
+                {!translateLoading && !translateError && translateResult && (
+                  <div className="floating-card-translate">{translateResult}</div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {showSettings && (
         <Settings models={models} onSave={saveModels} onClose={() => setShowSettings(false)} onNavigate={setActiveId} />

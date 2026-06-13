@@ -65,7 +65,7 @@ function defaultAccounts(): AccountConfig[] {
 
 let tabCounter = 0
 
-export default function XiaoHongShuCards() {
+export default function XiaoHongShuCards({ onUrlChange }: { onUrlChange?: (url: string, pageContent?: string) => void }) {
   const [accounts, setAccounts] = useState<AccountConfig[]>(defaultAccounts())
   const [loaded, setLoaded] = useState(false)
   const [manageMode, setManageMode] = useState(false)
@@ -133,18 +133,52 @@ export default function XiaoHongShuCards() {
       }
     })
 
+    // Report URL + rendered DOM content for agent context
     wv.addEventListener('did-finish-load', () => {
-      ;(wv as any).executeJavaScript(`
-        Object.defineProperty(navigator,'webdriver',{get:function(){return false}});
-        document.addEventListener('click',function(e){
-          var a=e.target.closest('a');
-          if(a&&a.target==='_blank'&&a.href){
-            e.preventDefault();e.stopPropagation();
-            window.location.href=a.href;
-          }
-        },true);
-      `)
+      if (onUrlChange) {
+        const url = (wv as any).getURL?.() || tabUrl
+        try {
+          ;(wv as any).executeJavaScript('document.body?document.body.innerText:document.documentElement.innerText').then((content: string) => {
+            const trimmed = content?.slice(0, 8000) || ''
+            onUrlChange(url, trimmed ? `页面内容（前8000字符）:\n${trimmed}` : undefined)
+          }).catch(() => {
+            onUrlChange(url)
+          })
+        } catch {
+          onUrlChange(url)
+        }
+      }
+      try {
+        ;(wv as any).executeJavaScript(`
+          Object.defineProperty(navigator,'webdriver',{get:function(){return false}});
+          document.addEventListener('click',function(e){
+            var a=e.target.closest('a');
+            if(a&&a.target==='_blank'&&a.href){
+              e.preventDefault();e.stopPropagation();
+              window.location.href=a.href;
+            }
+          },true);
+        `)
+      } catch (_) { /* ignore */ }
     })
+
+    wv.addEventListener('did-navigate-in-page', ((e: any) => {
+      if (onUrlChange && e.url) {
+        // Delay extraction to wait for SPA content to render after navigation
+        setTimeout(() => {
+          try {
+            ;(wv as any).executeJavaScript('document.body?document.body.innerText:document.documentElement.innerText').then((content: string) => {
+              const trimmed = content?.slice(0, 8000) || ''
+              onUrlChange(e.url, trimmed ? `页面内容（前8000字符）:\n${trimmed}` : undefined)
+            }).catch(() => {
+              onUrlChange(e.url)
+            })
+          } catch {
+            onUrlChange(e.url)
+          }
+        }, 1200)
+      }
+    }) as EventListener)
 
     wv.addEventListener('new-window', (e: any) => {
       e.preventDefault()

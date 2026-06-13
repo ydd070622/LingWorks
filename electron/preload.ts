@@ -76,8 +76,19 @@ window.electronAPI = {
     ipcRenderer.on('context-menu:send-to-agent', h)
     return () => { ipcRenderer.removeListener('context-menu:send-to-agent', h) }
   },
+  onContextMenuSearch: (cb: (data: { text: string }) => void) => {
+    const h = (_e: any, data: { text: string }) => cb(data)
+    ipcRenderer.on('context-menu:search', h)
+    return () => { ipcRenderer.removeListener('context-menu:search', h) }
+  },
+  onContextMenuTranslate: (cb: (data: { text: string }) => void) => {
+    const h = (_e: any, data: { text: string }) => cb(data)
+    ipcRenderer.on('context-menu:translate', h)
+    return () => { ipcRenderer.removeListener('context-menu:translate', h) }
+  },
 
   webSearch: (query: string) => ipcRenderer.invoke('web-search', query),
+  translate: (text: string) => ipcRenderer.invoke('translate', text),
   webFetch: (url: string, maxBytes?: number) => ipcRenderer.invoke('web-fetch', url, maxBytes),
   fileList: (path: string) => ipcRenderer.invoke('file-list', path),
   fileRead: (path: string, maxLines?: number) => ipcRenderer.invoke('file-read', path, maxLines),

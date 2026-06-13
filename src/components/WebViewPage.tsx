@@ -17,7 +17,7 @@ type WebviewElement = HTMLElement & {
 interface WebViewPageProps {
   site: NavItem & { url: string }
   visible: boolean
-  onUrlChange?: (url: string) => void
+  onUrlChange?: (url: string, pageContent?: string) => void
 }
 
 let tabCounter = 0
@@ -70,7 +70,17 @@ export default function WebViewPage({ site, visible, onUrlChange }: WebViewPageP
     wv.addEventListener('did-finish-load', () => {
       if (onUrlChange) {
         const url = (wv as any).getURL?.() || tabUrl
-        try { onUrlChange(url) } catch {}
+        try {
+          // Extract rendered page text for agent context (SPA pages need DOM, not HTTP fetch)
+          ;(wv as any).executeJavaScript('document.body?document.body.innerText:document.documentElement.innerText').then((content: string) => {
+            const trimmed = content?.slice(0, 8000) || ''
+            onUrlChange(url, trimmed ? `页面内容（前8000字符）:\n${trimmed}` : undefined)
+          }).catch(() => {
+            onUrlChange(url)
+          })
+        } catch {
+          onUrlChange(url)
+        }
       }
       ;(wv as any).executeJavaScript(`
         Object.defineProperty(navigator,'webdriver',{get:function(){return false}});
@@ -87,10 +97,21 @@ export default function WebViewPage({ site, visible, onUrlChange }: WebViewPageP
       `)
     })
 
-    // Report URL on SPA navigation (pushState / hash changes)
+    // Report URL on SPA navigation (pushState / hash changes) — delayed to let content render
     wv.addEventListener('did-navigate-in-page', ((e: any) => {
       if (onUrlChange && e.url) {
-        try { onUrlChange(e.url) } catch {}
+        setTimeout(() => {
+          try {
+            ;(wv as any).executeJavaScript('document.body?document.body.innerText:document.documentElement.innerText').then((content: string) => {
+              const trimmed = content?.slice(0, 8000) || ''
+              onUrlChange(e.url, trimmed ? `页面内容（前8000字符）:\n${trimmed}` : undefined)
+            }).catch(() => {
+              onUrlChange(e.url)
+            })
+          } catch {
+            onUrlChange(e.url)
+          }
+        }, 1200)
       }
     }) as EventListener)
 
@@ -160,13 +181,24 @@ export default function WebViewPage({ site, visible, onUrlChange }: WebViewPageP
 
   const handleSwitch = (id: string) => {
     setActiveId(id)
-    // Report URL of the newly active tab
+    // Report URL of the newly active tab (with DOM content if available)
     if (onUrlChange) {
       const tab = tabs.find(t => t.id === id)
       if (tab) {
         const wv = webviewMap.current.get(id)
         const url = wv ? ((wv as any).getURL?.() || tab.url) : tab.url
-        try { onUrlChange(url) } catch {}
+        try {
+          if (wv) {
+            ;(wv as any).executeJavaScript('document.body?document.body.innerText:document.documentElement.innerText').then((content: string) => {
+              const trimmed = content?.slice(0, 8000) || ''
+              onUrlChange(url, trimmed ? `页面内容（前8000字符）:\n${trimmed}` : undefined)
+            }).catch(() => { onUrlChange(url) })
+          } else {
+            onUrlChange(url)
+          }
+        } catch {
+          onUrlChange(url)
+        }
       }
     }
   }
