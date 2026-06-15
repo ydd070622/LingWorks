@@ -108,7 +108,7 @@ async function fetchMonthUsage(token: string, month: number, year: number): Prom
   } catch { return null }
 }
 
-export default function Dashboard() {
+export default function Dashboard({ onSelect }: { onSelect?: (id: string) => void }) {
   const [page, setPage] = useState<Page>('dashboard')
   const [detailPage, setDetailPage] = useState<DetailPage>(null)
   const [detailModelTab, setDetailModelTab] = useState<'flash' | 'pro'>('flash')
@@ -490,9 +490,7 @@ export default function Dashboard() {
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 12, color: 'var(--text-muted)', alignItems: 'center' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><CreditCard size={14} /> 账户余额</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <button className="btn btn-ghost btn-sm" style={{ fontSize: 11, padding: '2px 10px' }} onClick={() => {
-                  if (window.electronAPI) window.electronAPI.openExternal('https://platform.deepseek.com/top_up')
-                }}>💰 充值</button>
+                <button className="btn btn-ghost btn-sm" style={{ fontSize: 11, padding: '2px 10px' }} onClick={() => onSelect?.('platforms')}>💰 充值</button>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, padding: '2px 10px', borderRadius: 10, background: balance?.isAvailable ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)', color: balance?.isAvailable ? 'var(--success)' : '#ef4444' }}>
                   <span style={{ width: 5, height: 5, borderRadius: '50%', background: balance?.isAvailable ? 'var(--success)' : '#ef4444' }} />{balance?.isAvailable ? '可用' : '不足'}
                 </span>

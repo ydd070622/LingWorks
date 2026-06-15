@@ -448,7 +448,7 @@ export default function App() {
           {activeId === 'prompts' && <Prompts />}
           {activeId === 'platforms' && <Platforms />}
           {activeId === 'recharge' && <Recharge />}
-          {activeId === 'dashboard' && <Dashboard />}
+          {activeId === 'dashboard' && <Dashboard onSelect={setActiveId} />}
           {activeId === 'accounts' && <Accounts />}
         </div>
       </div>
