@@ -494,6 +494,12 @@ export default function Dashboard() {
               </span>
             </div>
             <div style={{ fontSize: 26, fontWeight: 700, marginBottom: 12 }}>{balance ? `${balance.currency === 'USD' ? '$' : '¥'}${balance.totalBalance}` : '查询中…'}</div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+              <button className="btn btn-accent btn-sm" onClick={() => {
+                if (window.electronAPI) window.electronAPI.openExternal('https://platform.deepseek.com/top_up')
+                else window.open('https://platform.deepseek.com/top_up', '_blank')
+              }}>💰 充值</button>
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div style={{ background: 'var(--bg-card)', borderRadius: 8, padding: 10, textAlign: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, fontSize: 11, color: '#f59e0b', marginBottom: 2 }}><SunMedium size={13} /> 当日</div>
