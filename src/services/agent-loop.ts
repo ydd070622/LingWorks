@@ -197,7 +197,18 @@ const EN2ZH: Record<string, string> = {
 async function detectCity(): Promise<string> {
   if (_cachedCity) return _cachedCity
 
-  // Try ip-api.com with Chinese language
+  // 1. User override from settings (highest priority, VPN-proof)
+  try {
+    if (window.electronAPI?.getStore) {
+      const preferred = await window.electronAPI.getStore('preferredCity')
+      if (typeof preferred === 'string' && preferred.trim()) {
+        _cachedCity = preferred.trim()
+        return _cachedCity
+      }
+    }
+  } catch { /* ignore */ }
+
+  // 2. Try ip-api.com with Chinese language
   try {
     const resp = await fetch('http://ip-api.com/json/?lang=zh-CN&fields=city,country', { signal: AbortSignal.timeout(5000) })
     if (resp.ok) {

@@ -73,6 +73,7 @@ export default function Settings({ models, onSave, onClose }: SettingsProps) {
   const [showHome, setShowHome] = useState(true)
   const [checkUpdate, setCheckUpdate] = useState(true)
   const [downloadPath, setDownloadPath] = useState('')
+  const [preferredCity, setPreferredCity] = useState('')
 
   const [list, setList] = useState<CustomModel[]>(() => JSON.parse(JSON.stringify(models)))
   const [editing, setEditing] = useState<CustomModel>({ ...emptyModel })
@@ -86,16 +87,18 @@ export default function Settings({ models, onSave, onClose }: SettingsProps) {
   useEffect(() => {
     const load = async () => {
       if (window.electronAPI) {
-        const [savedHome, savedUpdate, savedPath, savedShortcuts] = await Promise.all([
+        const [savedHome, savedUpdate, savedPath, savedCity, savedShortcuts] = await Promise.all([
           window.electronAPI.getStore('showHomeOnStartup'),
           window.electronAPI.getStore('checkUpdate'),
           window.electronAPI.getStore('downloadPath'),
+          window.electronAPI.getStore('preferredCity'),
           window.electronAPI.getStore(STORAGE_KEY),
         ])
         if (typeof savedHome === 'boolean') setShowHome(savedHome)
         if (typeof savedUpdate === 'boolean') setCheckUpdate(savedUpdate)
         if (typeof savedPath === 'string') setDownloadPath(savedPath)
         else setDownloadPath(await window.electronAPI.getDesktopPath())
+        if (typeof savedCity === 'string') setPreferredCity(savedCity)
         setShortcuts(savedShortcuts && Object.keys(savedShortcuts).length > 0 ? savedShortcuts : { ...DEFAULT_SHORTCUTS })
       } else {
         setShortcuts({ ...DEFAULT_SHORTCUTS })
@@ -263,6 +266,27 @@ export default function Settings({ models, onSave, onClose }: SettingsProps) {
 
                 <div style={{ textAlign: 'right', marginTop: 24 }}>
                   <button className="btn btn-primary" onClick={onClose}>完成</button>
+                </div>
+
+                <div className="setting-row" style={{ marginTop: 20, borderTop: '1px solid var(--border-color)', paddingTop: 20 }}>
+                  <div style={{ flex: 1 }}>
+                    <div className="setting-row-label">首选城市</div>
+                    <div className="setting-row-desc">智能体查询天气、位置等信息时优先使用此城市（VPN 用户建议填写真实所在城市）</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <input
+                    className="input-base"
+                    style={{ flex: 1, fontSize: 12 }}
+                    value={preferredCity}
+                    onChange={e => setPreferredCity(e.target.value)}
+                    placeholder="例: 深圳"
+                  />
+                  <button className="btn btn-primary btn-sm" onClick={() => {
+                    if (window.electronAPI) {
+                      window.electronAPI.setStore('preferredCity', preferredCity.trim())
+                    }
+                  }}>保存</button>
                 </div>
               </>
             )}

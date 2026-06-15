@@ -262,10 +262,14 @@ function SimpleMarkdown({ content }: { content: string }) {
               // Detect blockquote: any line starting with '>'
               const lines = p.split('\n')
               const quoteLines = lines.filter(l => l.trim().startsWith('>'))
-              const labelLines = lines.filter(l => {
-                const t = l.trim()
-                return t && !t.startsWith('>') && !t.startsWith('---')
-              })
+              // Label = only non-> lines BEFORE the first > line
+              const firstQuoteIdx = lines.findIndex(l => l.trim().startsWith('>'))
+              const labelLines = firstQuoteIdx >= 0
+                ? lines.slice(0, firstQuoteIdx).filter(l => {
+                    const t = l.trim()
+                    return t && !t.startsWith('---')
+                  })
+                : []
               if (quoteLines.length > 0) {
                 const quoteText = quoteLines.map(l => l.replace(/^> ?/, '')).join('\n').trim()
                 const labelRaw = labelLines.map(l => l.trim()).join(' / ')
