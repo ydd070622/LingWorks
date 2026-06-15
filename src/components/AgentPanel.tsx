@@ -31,16 +31,20 @@ function QuoteBlock({ text, label }: { text: string; label?: string }) {
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
   }
-  // Detect prompt type from label: only show adopt button for explicit prompt keywords
+  // Detect prompt type from label: only show card style for explicit prompt keywords
   const promptType: 'positive' | 'negative' | null = (() => {
     if (!label) return null
     const lowerLabel = label.toLowerCase()
     if (lowerLabel.includes('negative') || label.includes('负向') || label.includes('负面')) return 'negative'
     // Only treat as positive prompt if label explicitly mentions prompt-related keywords
     if (lowerLabel.includes('prompt') || label.includes('提示词') || label.includes('正向') || label.includes('正面')) return 'positive'
-    // Regular blockquote (e.g., 核心定位, 功能说明) — no adopt button
+    // Regular blockquote (e.g., 信息来源, 核心定位, 功能说明) — no card, render inline
     return null
   })()
+  // For non-prompt blockquotes: render as simple inline text (no card, no copy button)
+  if (!promptType) {
+    return <span className="agent-inline-quote">{text}</span>
+  }
   const handleAdopt = () => {
     if (promptType) {
       window.dispatchEvent(new CustomEvent('adopt-prompt', { detail: { type: promptType, text } }))
@@ -64,6 +68,77 @@ function QuoteBlock({ text, label }: { text: string; label?: string }) {
       </div>
     </div>
   )
+}
+
+// ===== Table Block =====
+function TableBlock({ text }: { text: string }) {
+  const lines = text.trim().split('\n').filter(l => l.trim().startsWith('|'))
+  if (lines.length < 3) return <span>{text}</span>
+  const parseRow = (line: string) =>
+    line.replace(/^\|\s*/, '').replace(/\s*\|$/, '').split('|').map(c => c.trim())
+  const header = parseRow(lines[0])
+  const body = lines.slice(2)
+  // Render inline markdown (bold, italic, code) in table cells
+  const renderCell = (text: string) =>
+    text
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+      .replace(/\*(.+?)\*/g, '<i>$1</i>')
+      .replace(/`(.+?)`/g, '<code>$1</code>')
+  return (
+    <table className="agent-table">
+      <thead>
+        <tr>{header.map((h, i) => <th key={i} dangerouslySetInnerHTML={{ __html: renderCell(h) }} />)}</tr>
+      </thead>
+      <tbody>
+        {body.map((row, ri) => (
+          <tr key={ri}>{parseRow(row).map((c, ci) => <td key={ci} dangerouslySetInnerHTML={{ __html: renderCell(c) }} />)}</tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
+// ===== Extract tables from a text block, returning alternating [text, table] segments =====
+function extractTables(text: string): Array<{ type: 'text' | 'table'; content: string }> {
+  const lines = text.split('\n')
+  const result: Array<{ type: 'text' | 'table'; content: string }> = []
+  let i = 0
+  let textBuf: string[] = []
+
+  while (i < lines.length) {
+    // Look for table start: three consecutive lines that all start/end with |
+    const isPipeLine = (idx: number) => {
+      const l = (lines[idx] || '').trim()
+      return l.startsWith('|') && l.endsWith('|')
+    }
+    const isSepLine = (idx: number) => {
+      const s = (lines[idx] || '').trim().replace(/\s/g, '')
+      return /^\|[-:]+\|[-:|]+\|?[-:|]*\|?$/.test(s)
+    }
+
+    if (isPipeLine(i) && i + 1 < lines.length && isSepLine(i + 1) && i + 2 < lines.length && isPipeLine(i + 2)) {
+      // Flush text buffer
+      if (textBuf.length > 0) {
+        result.push({ type: 'text', content: textBuf.join('\n') })
+        textBuf = []
+      }
+      // Collect table lines
+      const tableLines: string[] = []
+      while (i < lines.length && isPipeLine(i)) {
+        tableLines.push(lines[i])
+        i++
+      }
+      result.push({ type: 'table', content: tableLines.join('\n') })
+    } else {
+      textBuf.push(lines[i])
+      i++
+    }
+  }
+  if (textBuf.length > 0) {
+    result.push({ type: 'text', content: textBuf.join('\n') })
+  }
+  return result.length > 0 ? result : [{ type: 'text', content: text }]
 }
 
 // ===== Simple Markdown Renderer =====
@@ -104,29 +179,37 @@ function SimpleMarkdown({ content }: { content: string }) {
         return (
           <span key={i}>
             {paragraphs.map((p, pi) => {
-              // Detect blockquote: any line starting with '>'
-              const lines = p.split('\n')
-              const quoteLines = lines.filter(l => l.trim().startsWith('>'))
-              // Label = only non-> lines BEFORE the first > line
-              const firstQuoteIdx = lines.findIndex(l => l.trim().startsWith('>'))
-              const labelLines = firstQuoteIdx >= 0
-                ? lines.slice(0, firstQuoteIdx).filter(l => {
-                    const t = l.trim()
-                    return t && !t.startsWith('---')
-                  })
-                : []
-              if (quoteLines.length > 0) {
-                const quoteText = quoteLines.map(l => l.replace(/^> ?/, '')).join('\n').trim()
-                const labelRaw = labelLines.map(l => l.trim()).join(' / ')
-                const labelClean = labelRaw.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1').trim()
-                return <QuoteBlock key={pi} text={quoteText} label={labelClean || undefined} />
-              }
+              // Extract tables from the paragraph
+              const parts = extractTables(p)
               return (
                 <span key={pi}>
                   {pi > 0 && <><br /><br /></>}
-                  <span dangerouslySetInnerHTML={{
-                    __html: renderInline(p).replace(/\n/g, '<br/>'),
-                  }} />
+                  {parts.map((part, idx) => {
+                    if (part.type === 'table') {
+                      return <TableBlock key={idx} text={part.content} />
+                    }
+                    // Process text part: detect blockquotes
+                    const textLines = part.content.split('\n')
+                    const quoteLines = textLines.filter(l => l.trim().startsWith('>'))
+                    const firstQuoteIdx = textLines.findIndex(l => l.trim().startsWith('>'))
+                    const labelLines = firstQuoteIdx >= 0
+                      ? textLines.slice(0, firstQuoteIdx).filter(l => {
+                          const t = l.trim()
+                          return t && !t.startsWith('---')
+                        })
+                      : []
+                    if (quoteLines.length > 0) {
+                      const quoteText = quoteLines.map(l => l.replace(/^> ?/, '')).join('\n').trim()
+                      const labelRaw = labelLines.map(l => l.trim()).join(' / ')
+                      const labelClean = labelRaw.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1').trim()
+                      return <QuoteBlock key={idx} text={quoteText} label={labelClean || undefined} />
+                    }
+                    return (
+                      <span key={idx} dangerouslySetInnerHTML={{
+                        __html: renderInline(part.content).replace(/\n/g, '<br/>'),
+                      }} />
+                    )
+                  })}
                 </span>
               )
             })}

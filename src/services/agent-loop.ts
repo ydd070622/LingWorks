@@ -183,10 +183,14 @@ const TOOL_DEFS = [
       name: 'query_deepseek_usage',
       description:
         '查询 DeepSeek 账户余额和用量数据。当用户询问 DeepSeek 余额、Token 消耗、费用、用量统计时使用。' +
-        '返回：账户余额、今日用量（Token+费用）、当月模型级汇总（V4 Flash/Pro 的Token和费用）、每日明细（近7天每天的 flashTokens/proTokens/totalTokens/totalCost，可回答"昨天/前天/某天用了多少Token"）。',
+        '返回：账户余额、指定日期范围内的每日明细（flashTokens/proTokens/totalTokens/totalCost）、模型级汇总。' +
+        '当用户问"今天/昨天/上周/本月/上月/某天"时，自动计算并传入对应的 start_date 和 end_date（YYYY-MM-DD格式）。',
       parameters: {
         type: 'object',
-        properties: {},
+        properties: {
+          start_date: { type: 'string', description: '查询起始日期，格式 YYYY-MM-DD。用户说"上周"时计算上周一到上周日；"本月"用本月1号到今天；"上月"用上月1号到上月最后一天。不传则默认查询最近7天' },
+          end_date: { type: 'string', description: '查询结束日期，格式 YYYY-MM-DD。不传则默认今天' },
+        },
         required: [],
       },
     },
@@ -300,7 +304,7 @@ async function buildSystemPrompt(modelName?: string, providerName?: string): Pro
     '\n2. 用户问电脑文件 → 用 file_list 列出目录，用 file_read 读取内容' +
     '\n3. 用户要求创建/修改文件 → 用 file_write 或 file_edit' +
     '\n4. 用户问 DeepSeek 余额/用量/Token/费用 → 只需调用 query_deepseek_usage 工具（会自动跳转到 dashboard），然后基于返回的数据用自然语言输出完整回答（余额、各模型Token、每日费用明细）' +
-    '\n5. 在回答中引用信息来源（标注URL或网站名）' +
+    '\n5. 在回答中自然引用信息来源（如"据XX网站消息……"），直接融入正文流中。**禁止用 > 块引用或单独的来源列表格式**' +
     '\n\n行为规范：' +
     '\n- ⚠️ 重要：当需要同时使用多个工具时，先连续调用所有工具（不要中间输出文字），全部工具返回结果后再一次性输出完整回答。否则工具调用前的文字会被撤销' +
     '\n- 调用工具时直接调用，不要先输出「我来查一下」「让我搜索」之类的预备文字' +
@@ -576,29 +580,50 @@ async function executeTool(tc: ToolCall, options?: AgentChatOptions, signal?: Ab
 
       // 2. Fetch monthly usage (needs platformToken)
       if (ptToken) {
-        try {
-          const now = new Date()
-          const month = now.getMonth() + 1
-          const year = now.getFullYear()
-          const headers: Record<string, string> = {
+        const fetchUsageMonth = async (m: number, y: number) => {
+          const h: Record<string, string> = {
             Authorization: `Bearer ${ptToken}`,
             'x-app-version': '1.0.0', Accept: '*/*',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
           }
-
-          const [amountRes, costRes] = await Promise.all([
-            fetch(`https://platform.deepseek.com/api/v0/usage/amount?month=${month}&year=${year}`, { headers, signal: AbortSignal.timeout(10000) }),
-            fetch(`https://platform.deepseek.com/api/v0/usage/cost?month=${month}&year=${year}`, { headers, signal: AbortSignal.timeout(10000) }),
+          const [am, co] = await Promise.all([
+            fetch(`https://platform.deepseek.com/api/v0/usage/amount?month=${m}&year=${y}`, { headers: h, signal: AbortSignal.timeout(10000) }),
+            fetch(`https://platform.deepseek.com/api/v0/usage/cost?month=${m}&year=${y}`, { headers: h, signal: AbortSignal.timeout(10000) }),
           ])
+          if (!am.ok || !co.ok) return null
+          return { am: await am.json(), co: await co.json() }
+        }
 
-          if (amountRes.ok && costRes.ok) {
-            const am = await amountRes.json()
-            const co = await costRes.json()
+        try {
+          const now = new Date()
+          const startDate = typeof args.start_date === 'string' ? args.start_date : new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6).toISOString().slice(0, 10)
+          const endDate = typeof args.end_date === 'string' ? args.end_date : now.toISOString().slice(0, 10)
 
-            // Parse model-level totals
-            const models: Record<string, any> = {}
+          // Determine which months to fetch
+          const sd = new Date(startDate)
+          const ed = new Date(endDate)
+          const allDaily: any[] = []
+          const allModels: Record<string, any> = {}
+          let monthCost = 0
+
+          for (let d = new Date(sd.getFullYear(), sd.getMonth(), 1); d <= ed; d.setMonth(d.getMonth() + 1)) {
+            const m = d.getMonth() + 1, y = d.getFullYear()
+            const data = await fetchUsageMonth(m, y)
+            if (!data) continue
+
+            const { am, co } = data
+            const costTotal = co?.data?.biz_data?.[0]
+            const costByDate: Record<string, number> = {}
+            if (costTotal) {
+              for (const day of (costTotal.days || [])) {
+                costByDate[day.date] = (day.data || []).reduce((s: number, md: any) => s + (md.usage || []).filter((e: any) => e.type !== 'REQUEST').reduce((ss: number, ee: any) => ss + (+ee.amount || 0), 0), 0)
+                monthCost += costByDate[day.date]
+              }
+            }
+
             for (const mu of (am?.data?.biz_data?.total || [])) {
-              if (mu.model !== 'deepseek-v4-flash' && mu.model !== 'deepseek-v4-pro') continue
+              const ml = (mu.model || '').toLowerCase()
+              if (!ml.includes('flash') && !ml.includes('pro')) continue
               let totalTokens = 0, requestCount = 0, cacheHit = 0, cacheMiss = 0, responseTokens = 0
               for (const e of (mu.usage || [])) {
                 const v = Math.round(+e.amount || 0)
@@ -610,68 +635,56 @@ async function executeTool(tc: ToolCall, options?: AgentChatOptions, signal?: Ab
                   case 'PROMPT_TOKEN': totalTokens += v; break
                 }
               }
-              models[mu.model === 'deepseek-v4-flash' ? 'V4 Flash' : 'V4 Pro'] = {
-                totalTokens, requestCount, cacheHitTokens: cacheHit, cacheMissTokens: cacheMiss, responseTokens,
+              const key = ml.includes('flash') ? 'V4 Flash' : 'V4 Pro'
+              if (!allModels[key]) allModels[key] = { totalTokens: 0, requestCount: 0, cacheHitTokens: 0, cacheMissTokens: 0, responseTokens: 0, cost: 0 }
+              allModels[key].totalTokens += totalTokens
+              allModels[key].requestCount += requestCount
+              allModels[key].cacheHitTokens += cacheHit
+              allModels[key].cacheMissTokens += cacheMiss
+              allModels[key].responseTokens += responseTokens
+            }
+
+            // Cost per model
+            if (costTotal) {
+              for (const cm of (costTotal.total || [])) {
+                const mc = (cm.usage || []).filter((e: any) => e.type !== 'REQUEST').reduce((s: number, e: any) => s + (+e.amount || 0), 0)
+                const cml = (cm.model || '').toLowerCase()
+                const key = cml.includes('flash') ? 'V4 Flash' : cml.includes('pro') ? 'V4 Pro' : null
+                if (key && allModels[key]) allModels[key].cost += mc
               }
             }
 
-            // Parse per-day token data from amount API
-            const daysByDate: Record<string, { flashTokens: number; proTokens: number; totalTokens: number }> = {}
-            for (const d of (am?.data?.biz_data?.days || [])) {
+            // Per-day data
+            const daysByDate: Record<string, { flashTokens: number; proTokens: number; totalTokens: number; totalCost: number }> = {}
+            for (const day of (am?.data?.biz_data?.days || [])) {
               let flash = 0, pro = 0, total = 0
-              for (const mu of (d.data || [])) {
+              for (const mu of (day.data || [])) {
                 let tokens = 0
                 for (const e of (mu.usage || [])) {
-                  if (['PROMPT_CACHE_HIT_TOKEN', 'PROMPT_CACHE_MISS_TOKEN', 'RESPONSE_TOKEN', 'PROMPT_TOKEN'].includes(e.type)) {
-                    tokens += Math.round(parseFloat(e.amount) || 0)
-                  }
+                  if (['PROMPT_CACHE_HIT_TOKEN', 'PROMPT_CACHE_MISS_TOKEN', 'RESPONSE_TOKEN', 'PROMPT_TOKEN'].includes(e.type)) tokens += Math.round(parseFloat(e.amount) || 0)
                 }
                 total += tokens
-                if (mu.model === 'deepseek-v4-flash') flash = tokens
-                else if (mu.model === 'deepseek-v4-pro') pro = tokens
+                const ml2 = (mu.model || '').toLowerCase()
+                if (ml2.includes('flash')) flash += tokens
+                else if (ml2.includes('pro')) pro += tokens
               }
-              daysByDate[d.date] = { flashTokens: flash, proTokens: pro, totalTokens: total }
+              daysByDate[day.date] = { flashTokens: flash, proTokens: pro, totalTokens: total, totalCost: costByDate[day.date] || 0 }
             }
 
-            // Parse cost data
-            const costTotal = co?.data?.biz_data?.[0]
-            let monthCost = 0
-            const costByDate: Record<string, number> = {}
-            if (costTotal) {
-              for (const d of (costTotal.days || [])) {
-                const dayCost = (d.data || []).reduce((s: number, m: any) => s + (m.usage || []).filter((e: any) => e.type !== 'REQUEST').reduce((ss: number, ee: any) => ss + (+ee.amount || 0), 0), 0)
-                costByDate[d.date] = +dayCost.toFixed(4)
-                monthCost += dayCost
-              }
-              // Add model-level costs
-              for (const m of (costTotal.total || [])) {
-                const mc = (m.usage || []).filter((e: any) => e.type !== 'REQUEST').reduce((s: number, e: any) => s + (+e.amount || 0), 0)
-                const key = m.model === 'deepseek-v4-flash' ? 'V4 Flash' : m.model === 'deepseek-v4-pro' ? 'V4 Pro' : null
-                if (key && models[key]) models[key].cost = +mc.toFixed(4)
-              }
+            for (const [date, dd] of Object.entries(daysByDate)) {
+              if (date >= startDate && date <= endDate) allDaily.push({ date, ...dd })
             }
+          }
 
-            // Merge token + cost into per-day array
-            const allDates = new Set([...Object.keys(daysByDate), ...Object.keys(costByDate)])
-            const dailyData = Array.from(allDates).sort().map(date => ({
-              date,
-              flashTokens: daysByDate[date]?.flashTokens || 0,
-              proTokens: daysByDate[date]?.proTokens || 0,
-              totalTokens: daysByDate[date]?.totalTokens || 0,
-              totalCost: costByDate[date] || 0,
-            }))
+          allDaily.sort((a, b) => a.date.localeCompare(b.date))
+          const todayStr = now.toISOString().slice(0, 10)
 
-            const today = new Date().toISOString().slice(0, 10)
-            const todayData = dailyData.find(d => d.date === today)
-            result.usage = {
-              month: `${year}-${String(month).padStart(2, '0')}`,
-              monthCost: +monthCost.toFixed(2),
-              today: todayData || null,
-              models,
-              dailyBreakdown: dailyData.slice(-7),  // 近7天每日明细: { date, flashTokens, proTokens, totalTokens, totalCost }
-            }
-          } else {
-            result.usageError = `用量查询失败 (${amountRes.status}/${costRes.status})`
+          result.usage = {
+            startDate, endDate,
+            monthCost: +monthCost.toFixed(2),
+            today: allDaily.find(d => d.date === todayStr) || null,
+            models: allModels,
+            dailyBreakdown: allDaily,
           }
         } catch (e: any) {
           result.usageError = `用量查询失败: ${e.message}`

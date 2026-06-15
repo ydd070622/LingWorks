@@ -2105,6 +2105,46 @@ textarea.input-base {
   background: var(--accent); color: #fff;
 }
 
+/* Inline quote — for non-prompt blockquotes (e.g. source citations), rendered as plain text */
+.agent-inline-quote {
+  display: block;
+  margin: 6px 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+/* Markdown Table — Excel-style grid */
+.agent-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 12px;
+  line-height: 1.6;
+  border: 1px solid var(--border-color);
+}
+.agent-table th,
+.agent-table td {
+  padding: 7px 12px;
+  text-align: left;
+  border: 1px solid var(--border-color);
+}
+.agent-table th {
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.agent-table td {
+  color: var(--text-secondary);
+}
+.agent-table tbody tr:nth-child(even) td {
+  background: rgba(255, 255, 255, 0.02);
+}
+.agent-table tbody tr:hover td {
+  background: rgba(99, 102, 241, 0.06);
+}
+
 .agent-msg-actions { display: flex; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-color); justify-content: flex-end; }
 .agent-msg-action {
   font-size: 11px; color: var(--text-secondary); cursor: pointer;

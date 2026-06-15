@@ -58,8 +58,9 @@ async function fetchMonthUsage(token: string, month: number, year: number): Prom
         let fc = 0, pc = 0
         for (const m of (d.data || [])) {
           const mc = (m.usage || []).filter((e: any) => e.type !== 'REQUEST').reduce((ss: number, ee: any) => ss + (+ee.amount || 0), 0)
-          if (m.model === 'deepseek-v4-flash') fc = mc
-          else if (m.model === 'deepseek-v4-pro') pc = mc
+          const ml = (m.model || '').toLowerCase()
+          if (ml.includes('flash')) fc = mc
+          else if (ml.includes('pro')) pc = mc
         }
         costByDateModel[d.date] = { flash: fc, pro: pc }
       }
@@ -67,19 +68,21 @@ async function fetchMonthUsage(token: string, month: number, year: number): Prom
 
     const costForModel = (model: string) => {
       if (!costTotal) return 0
-      const m = (costTotal.total || []).find((x: any) => x.model === model)
+      const ml = model.toLowerCase()
+      const m = (costTotal.total || []).find((x: any) => (x.model || '').toLowerCase() === ml)
       return m ? (m.usage || []).filter((e: any) => e.type !== 'REQUEST').reduce((s: number, e: any) => s + (+e.amount || 0), 0) : 0
     }
 
     const models: UsageModel[] = []
     for (const mu of (am?.data?.biz_data?.total || [])) {
-      if (mu.model !== 'deepseek-v4-flash' && mu.model !== 'deepseek-v4-pro') continue
+      const modelLower = (mu.model || '').toLowerCase()
+      if (!modelLower.includes('flash') && !modelLower.includes('pro')) continue
       let total = 0, request = 0, hit = 0, miss = 0, response = 0
       for (const e of (mu.usage || [])) {
         const v = Math.round(+e.amount || 0)
         switch (e.type) { case 'REQUEST': request = v; break; case 'PROMPT_CACHE_HIT_TOKEN': hit = v; total += v; break; case 'PROMPT_CACHE_MISS_TOKEN': miss = v; total += v; break; case 'RESPONSE_TOKEN': response = v; total += v; break; case 'PROMPT_TOKEN': total += v; break }
       }
-      models.push({ key: mu.model === 'deepseek-v4-flash' ? 'flash' : 'pro', name: mu.model === 'deepseek-v4-flash' ? 'V4 Flash' : 'V4 Pro', totalTokens: total, requestCount: request, cost: costForModel(mu.model), cacheHitTokens: hit, cacheMissTokens: miss, responseTokens: response })
+      models.push({ key: modelLower.includes('flash') ? 'flash' : 'pro', name: modelLower.includes('flash') ? 'V4 Flash' : 'V4 Pro', totalTokens: total, requestCount: request, cost: costForModel(mu.model), cacheHitTokens: hit, cacheMissTokens: miss, responseTokens: response })
     }
 
     const days: UsageDay[] = (am?.data?.biz_data?.days || []).map((d: any) => {
@@ -92,8 +95,9 @@ async function fetchMonthUsage(token: string, month: number, year: number): Prom
           }
         }
         total += tokens
-        if (mu.model === 'deepseek-v4-flash') flash = tokens
-        else if (mu.model === 'deepseek-v4-pro') pro = tokens
+        const ml = (mu.model || '').toLowerCase()
+        if (ml.includes('flash')) flash += tokens
+        else if (ml.includes('pro')) pro += tokens
       }
       const cbm = costByDateModel[d.date] || { flash: 0, pro: 0 }
       return { date: d.date, flashTokens: flash, proTokens: pro, totalTokens: total, totalCost: costByDate[d.date] || 0, flashCost: cbm.flash, proCost: cbm.pro }
