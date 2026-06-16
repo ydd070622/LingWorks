@@ -13,6 +13,7 @@ import Home from './pages/Home'
 import Prompts from './pages/Prompts'
 import Dashboard from './pages/Dashboard'
 import XiaoHongShuCards from './pages/XiaoHongShuCards'
+import NoteCreator from './pages/NoteCreator'
 import type { NavItem, CustomModel, DownloadItem, ShortcutBindings, AgentContext } from './types'
 import type { SearchResult } from './services/multi-search'
 import { X, Loader2, House } from 'lucide-react'
@@ -22,13 +23,16 @@ import { X, Loader2, House } from 'lucide-react'
 const defaultModels: CustomModel[] = []
 
 const navItems: NavItem[] = [
+  // 小红书运营（独立分组）
+  { type: 'xhs', id: 'xhs_juguang', label: '账号管理', icon: 'globe' },
+  { type: 'xhs', id: 'note_creator', label: '笔记创作', icon: 'tool' },
+  { type: 'xhs', id: 'data_analytics', label: '运营数据', icon: 'tool' },
+  // 常用网站
   { type: 'website', id: 'liblib', label: 'Lib tv', url: 'https://www.liblib.tv', icon: 'globe' },
   { type: 'website', id: 'runninghub', label: 'RunningHub', url: 'https://www.runninghub.cn', icon: 'globe' },
-  { type: 'website', id: 'tapnow', label: 'TapNow', url: 'https://app.tapnow.ai', icon: 'globe' },
   { type: 'website', id: 'chatgpt', label: 'ChatGPT', url: 'https://chatgpt.com', icon: 'globe' },
   { type: 'website', id: 'github', label: 'GitHub', url: 'https://github.com', icon: 'globe' },
   { type: 'website', id: 'gemini', label: 'Gemini', url: 'https://gemini.google.com', icon: 'globe' },
-  { type: 'website', id: 'xhs_juguang', label: '小红书', url: '', icon: 'globe' },
   { type: 'comfyui', id: 'duannao', label: '端脑云', url: 'https://cephalon.cloud/aigc', icon: 'globe' },
   { type: 'comfyui', id: 'zhisuan', label: '智算云扉', url: 'https://waas.aigate.cc/index', icon: 'globe' },
   { type: 'comfyui', id: 'onethingai', label: 'OneThingAi', url: 'https://onethingai.com', icon: 'globe' },
@@ -437,6 +441,12 @@ export default function App() {
             <WebViewPage key={site.id} site={site} visible={activeId === site.id} onUrlChange={(url, content) => { setBrowserUrl(url); setBrowserContent(content || '') }} />
           ))}
           {activeId === 'xhs_juguang' && <XiaoHongShuCards onUrlChange={(url, content) => { setBrowserUrl(url); setBrowserContent(content || '') }} />}
+          {activeId === 'note_creator' && <NoteCreator onSendToAgent={handleSendToAgent} onNavigate={(page) => setActiveId(page)} onOpenAgent={() => setAgentOpen(true)} />}
+          {activeId === 'data_analytics' && (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
+              📊 运营数据 — 开发中，敬请期待
+            </div>
+          )}
           {comfyuiSites.map(site => (
             <WebViewPage key={site.id} site={site} visible={activeId === site.id} onUrlChange={(url, content) => { setBrowserUrl(url); setBrowserContent(content || '') }} />
           ))}

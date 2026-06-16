@@ -69,6 +69,7 @@ export default function Sidebar({ items, activeId, theme, collapsed, collapsedSe
     duannao: '端', zhisuan: '智', onethingai: 'AI',
   };
 
+  const xhsItems = items.filter(i => i.type === 'xhs')
   const websites = items.filter(i => i.type === 'website')
   const comfyui = items.filter(i => i.type === 'comfyui')
   const tools = items.filter(i => i.type === 'tool')
@@ -94,6 +95,17 @@ export default function Sidebar({ items, activeId, theme, collapsed, collapsedSe
           <ChevronRight size={14} />
         </div>
         <div className="sidebar-nav-collapsed">
+          {xhsItems.map(item => (
+            <div
+              key={item.id}
+              className={`sidebar-icon-item ${activeId === item.id ? 'active' : ''}`}
+              onClick={() => onSelect(item.id)}
+              title={item.label}
+            >
+              {iconLabel[item.id] || <Globe size={14} />}
+            </div>
+          ))}
+          <div className="sidebar-sep" />
           {websites.map(item => (
             <div
               key={item.id}
@@ -236,6 +248,26 @@ export default function Sidebar({ items, activeId, theme, collapsed, collapsedSe
       </div>
 
       <div className="sidebar-nav">
+        <div className="sidebar-section">
+          <div className="sidebar-section-title clickable" onClick={() => onToggleSection('xhs')}>
+            <Globe size={14} /> 小红书运营
+            <ChevronDown size={12} className={`chevron ${collapsedSections.has('xhs') ? 'collapsed' : ''}`} />
+          </div>
+        </div>
+        {!collapsedSections.has('xhs') && xhsItems.map(item => (
+          <div
+            key={item.id}
+            className={`sidebar-item ${activeId === item.id ? 'active' : ''}`}
+            onClick={() => onSelect(item.id)}
+          >
+            <span className="sidebar-item-icon">
+              {iconLabel[item.id] || <Globe size={16} />}
+            </span>
+            <span>{item.label}</span>
+            {item.id === 'note_creator' && <span className="sidebar-badge" style={{ marginLeft: 'auto', fontSize: 10, background: 'var(--accent)', color: '#fff', padding: '1px 6px', borderRadius: 8, fontWeight: 600 }}>新</span>}
+          </div>
+        ))}
+
         <div className="sidebar-section">
           <div className="sidebar-section-title clickable" onClick={() => onToggleSection('websites')}>
             <Globe size={14} /> 常用网站

@@ -6,6 +6,7 @@ export interface CustomModel {
 }
 
 export type NavItem =
+  | { type: 'xhs'; id: string; label: string; icon: string }
   | { type: 'website'; id: string; label: string; url: string; icon: string }
   | { type: 'comfyui'; id: string; label: string; url: string; icon: string }
   | { type: 'tool'; id: string; label: string; icon: string }
