@@ -8,7 +8,7 @@ import * as path from 'path'
 import { registerStore, readConfigSync } from './ipc/store'
 import { registerSearch } from './ipc/search'
 import { registerAuth } from './ipc/auth'
-import { registerDownload, attachWebviewDownloads } from './ipc/download'
+import { registerDownload, attachWebviewDownloads, registerAllPartitions, registerWebviewSessionIPC } from './ipc/download'
 import { registerTools } from './ipc/tools'
 import { registerTranslate } from './ipc/translate'
 
@@ -81,9 +81,18 @@ function createWindow() {
   // Download management
   const { activeDownloads, trackSession } = registerDownload(mainWindow)
 
-  // Track all future webContents (webviews, etc.)
+  // Pre-register download handlers on all known persistent webview partitions.
+  // This is REQUIRED because webview partition is set AFTER document.createElement,
+  // so the web-contents-created event fires before the partition takes effect.
+  registerAllPartitions(mainWindow)
+
+  // Allow renderer to register download handlers for specific webContents (fallback)
+  registerWebviewSessionIPC(mainWindow)
+
+  // Track all future webContents (non-webview windows only — webview
+  // download sessions are handled by registerAllPartitions pre-registration)
   app.on('web-contents-created', (_, contents) => {
-    if (contents.getType() === 'webview') {
+    if (contents.getType() === 'window') {
       trackSession(contents.session)
     }
   })

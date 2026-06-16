@@ -25,6 +25,7 @@ window.electronAPI = {
   getDesktopPath: () => ipcRenderer.invoke('get-desktop-path'),
   selectFolder: (defaultPath: string) => ipcRenderer.invoke('select-folder', defaultPath),
   cancelDownload: (id: string) => ipcRenderer.invoke('cancel-download', id),
+  registerWebviewSession: (wcId: number) => ipcRenderer.invoke('register-webview-session', wcId),
   shellOpenPath: (p: string) => ipcRenderer.invoke('shell-open-path', p),
   shellShowItem: (p: string) => ipcRenderer.invoke('shell-show-item', p),
 

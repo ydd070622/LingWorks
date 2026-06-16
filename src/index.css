@@ -626,6 +626,11 @@ textarea.input-base {
   to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
+@keyframes toast-in-right {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
 /* WebView fill */
 .webview-container {
   width: 100%;

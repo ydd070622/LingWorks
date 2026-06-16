@@ -116,6 +116,12 @@ export default function App() {
   const [downloads, setDownloads] = useState<DownloadItem[]>([])
   const [isMaximized, setIsMaximized] = useState(false)
 
+  // Trigger sidebar download panel auto-expand on download events
+  const [expandDownloads, setExpandDownloads] = useState(0)
+
+  // Ref-based dedup (not affected by React batching) to prevent duplicate download entries
+  const activeDownloadRef = useRef(new Set<string>())
+
   const onTitleMouseDown = useCallback((e: React.MouseEvent) => {
     if (isMaximized) return
     if ((e.target as HTMLElement).closest('.traffic-btn')) return
@@ -261,6 +267,9 @@ export default function App() {
     const api = window.electronAPI
     if (api) {
       unsubs.push(api.onDownloadStarted((d) => {
+        // Ref-based dedup prevents duplicate entries from batched setState
+        if (activeDownloadRef.current.has(d.filename)) return
+        activeDownloadRef.current.add(d.filename)
         setDownloads(prev => {
           if (prev.some(dl => dl.filename === d.filename && dl.state === 'progress')) return prev
           return [...prev, { ...d, state: 'progress' as const }]
@@ -272,14 +281,27 @@ export default function App() {
         ))
       }))
       unsubs.push(api.onDownloadCompleted((d) => {
-        setDownloads(prev => prev.map(dl =>
-          dl.id === d.id ? { ...dl, state: 'completed' as const, filePath: d.filePath } : dl
-        ))
+        setDownloads(prev => {
+          const found = prev.find(dl => dl.id === d.id)
+          if (found) {
+            activeDownloadRef.current.delete(found.filename)
+          }
+          return prev.map(dl =>
+            dl.id === d.id ? { ...dl, state: 'completed' as const, filePath: d.filePath } : dl
+          )
+        })
+        setExpandDownloads(Date.now())
       }))
       unsubs.push(api.onDownloadFailed((d) => {
-        setDownloads(prev => prev.map(dl =>
-          dl.id === d.id ? { ...dl, state: 'failed' as const } : dl
-        ))
+        setDownloads(prev => {
+          const found = prev.find(dl => dl.id === d.id)
+          if (found) {
+            activeDownloadRef.current.delete(found.filename)
+          }
+          return prev.map(dl =>
+            dl.id === d.id ? { ...dl, state: 'failed' as const } : dl
+          )
+        })
       }))
     }
     return () => unsubs.forEach(fn => fn())
@@ -421,6 +443,7 @@ export default function App() {
           collapsed={sidebarCollapsed}
           collapsedSections={collapsedSections}
           downloads={downloads}
+          expandDownloads={expandDownloads > 0}
           onSelect={setActiveId}
           onToggleTheme={toggleTheme}
           onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}

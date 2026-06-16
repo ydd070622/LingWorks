@@ -9,6 +9,7 @@ interface SidebarProps {
   collapsed: boolean
   collapsedSections: Set<string>
   downloads: DownloadItem[]
+  expandDownloads?: boolean
   onSelect: (id: string) => void
   onToggleTheme: () => void
   onToggleCollapse: () => void
@@ -37,7 +38,7 @@ const favicons: Record<string, string> = {
   onethingai: './favicons/onethingai.png',
 }
 
-export default function Sidebar({ items, activeId, theme, collapsed, collapsedSections, downloads, onSelect, onToggleTheme, onToggleCollapse, onOpenSettings, onToggleSection, onGoHome, onCancelDownload, onClearDownloads, onSidebarActivity, agentOpen, onToggleAgent }: SidebarProps) {
+export default function Sidebar({ items, activeId, theme, collapsed, collapsedSections, downloads, expandDownloads, onSelect, onToggleTheme, onToggleCollapse, onOpenSettings, onToggleSection, onGoHome, onCancelDownload, onClearDownloads, onSidebarActivity, agentOpen, onToggleAgent }: SidebarProps) {
   const makeIcon = (name: string, alt: string) => (
     <img src={`./icons/${name}.png`} alt={alt} style={{width: 24, height: 24}} />
   );
@@ -80,6 +81,11 @@ export default function Sidebar({ items, activeId, theme, collapsed, collapsedSe
   const activeDownloads = downloads.filter(d => d.state === 'progress')
   const hasDownloads = downloads.length > 0
   const [showDlFlyout, setShowDlFlyout] = useState(false)
+
+  // Auto-expand download panel when downloads complete
+  useEffect(() => {
+    if (expandDownloads) setShowDlFlyout(true)
+  }, [expandDownloads])
 
   useEffect(() => {
     if (!showDlFlyout) return
@@ -173,19 +179,17 @@ export default function Sidebar({ items, activeId, theme, collapsed, collapsedSe
           ))}
         </div>
         <div className="sidebar-footer-collapsed">
-          {hasDownloads && (
-            <div
-              className={`sidebar-icon-item${showDlFlyout ? ' active' : ''}`}
-              onClick={(e) => { e.stopPropagation(); setShowDlFlyout(!showDlFlyout) }}
-              title={`下载 (${activeDownloads.length} 进行中)`}
-              style={{ position: 'relative', color: activeDownloads.length > 0 ? '#10b981' : 'var(--text-muted)' }}
-            >
-              <Download size={14} />
-              {activeDownloads.length > 0 && (
-                <span className="dl-icon-badge">{activeDownloads.length}</span>
-              )}
-            </div>
-          )}
+          <div
+            className={`sidebar-icon-item${showDlFlyout ? ' active' : ''}`}
+            onClick={(e) => { e.stopPropagation(); setShowDlFlyout(!showDlFlyout) }}
+            title={`下载${activeDownloads.length > 0 ? ` (${activeDownloads.length} 进行中)` : ''}`}
+            style={{ position: 'relative', color: activeDownloads.length > 0 ? '#10b981' : 'var(--text-muted)' }}
+          >
+            <Download size={14} />
+            {activeDownloads.length > 0 && (
+              <span className="dl-icon-badge">{activeDownloads.length}</span>
+            )}
+          </div>
           <div className="sidebar-icon-item" onClick={onToggleTheme} title={theme === 'dark' ? '浅色' : '深色'}>
             {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
           </div>
@@ -378,16 +382,14 @@ export default function Sidebar({ items, activeId, theme, collapsed, collapsedSe
       </div>
 
       <div style={{ padding: '6px 8px', borderTop: '1px solid var(--border-color)' }}>
-        {hasDownloads && (
-          <div
-            className="sidebar-item"
-            onClick={(e) => { e.stopPropagation(); setShowDlFlyout(!showDlFlyout) }}
-            style={{ fontSize: 12, color: activeDownloads.length > 0 ? '#10b981' : 'var(--text-muted)', position: 'relative' }}
-          >
-            <span className="sidebar-item-icon"><Download size={14} /></span>
-            <span>下载 {activeDownloads.length > 0 && `(${activeDownloads.length})`}</span>
-          </div>
-        )}
+        <div
+          className="sidebar-item"
+          onClick={(e) => { e.stopPropagation(); setShowDlFlyout(!showDlFlyout) }}
+          style={{ fontSize: 12, color: activeDownloads.length > 0 ? '#10b981' : 'var(--text-muted)', position: 'relative' }}
+        >
+          <span className="sidebar-item-icon"><Download size={14} /></span>
+          <span>下载 {activeDownloads.length > 0 && `(${activeDownloads.length})`}</span>
+        </div>
         <div className="sidebar-item" onClick={onToggleTheme} style={{ fontSize: 12, color: 'var(--text-muted)' }}>
           <span className="sidebar-item-icon">{theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}</span>
           <span>{theme === 'dark' ? '浅色主题' : '深色主题'}</span>

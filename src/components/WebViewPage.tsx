@@ -67,6 +67,15 @@ export default function WebViewPage({ site, visible, onUrlChange }: WebViewPageP
       }
     })
 
+    // Register download handler on main process once webview is fully attached to DOM.
+    // This is the SAFEST timing because partition attribute is already applied.
+    wv.addEventListener('did-attach', () => {
+      try {
+        const wcId = wv.getWebContentsId()
+        window.electronAPI?.registerWebviewSession(wcId)
+      } catch {}
+    })
+
     wv.addEventListener('did-finish-load', () => {
       if (onUrlChange) {
         const url = (wv as any).getURL?.() || tabUrl

@@ -146,6 +146,7 @@ declare global {
       onDownloadCompleted: (cb: (data: { id: string; filePath: string }) => void) => () => void
       onDownloadFailed: (cb: (data: { id: string }) => void) => () => void
       cancelDownload: (id: string) => Promise<void>
+      registerWebviewSession: (wcId: number) => Promise<boolean>
       shellOpenPath: (p: string) => Promise<void>
       shellShowItem: (p: string) => Promise<void>
       minimizeWindow: () => Promise<void>
