@@ -45,6 +45,7 @@ const COVER_STYLES = ['📸 前后对比', '🏠 完工实拍', '✨ 效果图�
 export default function NoteCreator({ onSendToAgent, onNavigate, onOpenAgent }: NoteCreatorProps) {
   // State
   const [activeTab, setActiveTab] = useState<'write' | 'cover'>('write')
+  const [showPreview, setShowPreview] = useState(false)
   const [previewMode, setPreviewMode] = useState<'feed' | 'detail'>('feed')
   const [activeTopic, setActiveTopic] = useState('设计案例')
   const [requirements, setRequirements] = useState('')
@@ -178,7 +179,7 @@ export default function NoteCreator({ onSendToAgent, onNavigate, onOpenAgent }: 
       {/* ===== Left: Editor ===== */}
       <div style={{
         flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column',
-        borderRight: '1px solid var(--border-color)', background: 'var(--bg-primary)',
+        borderRight: showPreview ? '1px solid var(--border-color)' : 'none', background: 'var(--bg-primary)',
       }}>
         {/* Header */}
         <div style={{
@@ -186,6 +187,13 @@ export default function NoteCreator({ onSendToAgent, onNavigate, onOpenAgent }: 
           borderBottom: '1px solid var(--border-color)', flexShrink: 0,
         }}>
           <h2 style={{ fontSize: 15, fontWeight: 600, flex: 1, margin: 0 }}>✍️ 笔记创作</h2>
+          <button
+            onClick={() => setShowPreview(!showPreview)}
+            style={aiBtnStyle(showPreview)}
+            title="切换预览"
+          >
+            📱 {showPreview ? '隐藏预览' : '预览效果'}
+          </button>
           <div style={{ display: 'flex', gap: 2, background: 'var(--bg-tertiary)', borderRadius: 8, padding: 3 }}>
             <button
               onClick={() => setActiveTab('write')}
@@ -395,6 +403,7 @@ export default function NoteCreator({ onSendToAgent, onNavigate, onOpenAgent }: 
       </div>
 
       {/* ===== Right: Preview ===== */}
+      {showPreview && (
       <div style={{
         width: 390, minWidth: 390, background: '#f5f5f5',
         display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0,
@@ -576,6 +585,7 @@ export default function NoteCreator({ onSendToAgent, onNavigate, onOpenAgent }: 
           )}
         </div>
       </div>
+      )}
 
       {/* ===== Publish Modal ===== */}
       {publishModalOpen && (
