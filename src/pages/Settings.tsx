@@ -147,7 +147,9 @@ export default function Settings({ models, onSave, onClose }: SettingsProps) {
         if (typeof savedProvince === 'string' && savedProvince) {
           setCityProvince(savedProvince); setCityList(getCities(savedProvince))
           if (typeof savedCity === 'string' && savedCity) {
-            setCity(savedCity); setDistrictList(getDistricts(savedProvince, savedCity))
+            // savedCity 格式为 "省,市"，需要提取城市名
+            const cityName = savedCity.includes(',') ? savedCity.split(',')[1] : savedCity
+            setCity(cityName); setDistrictList(getDistricts(savedProvince, cityName))
             if (typeof savedDistrict === 'string' && savedDistrict) setDistrict(savedDistrict)
           }
         }

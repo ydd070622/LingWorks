@@ -236,9 +236,9 @@ export default function Dashboard({ onSelect }: { onSelect?: (id: string) => voi
   )
 
   const StatsBox = ({ items }: { items: { value: string; label: string; color?: string }[] }) => (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 12 }}>
       {items.map((s, i) => (
-        <div key={i} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: 14, textAlign: 'center' }}>
+        <div key={i} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', borderRadius: 10, padding: 14, textAlign: 'center' }}>
           <div style={{ fontSize: 20, fontWeight: 700, color: s.color }}>{s.value}</div>
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{s.label}</div>
         </div>
@@ -390,6 +390,7 @@ export default function Dashboard({ onSelect }: { onSelect?: (id: string) => voi
       const dayData = dp.days.find(d => d.date === dp.date) || getDefaultDays()
       const maxToken = Math.max(dayData.flashTokens, dayData.proTokens, 1)
       const barH = Math.min(200, Math.max(60, cH))
+      const sharedOuterH = Math.max(180, barH + 60)
       const sortedDays = dp.days.filter(d => d.totalTokens > 0).map(d => d.date).sort()
       const curIdx = sortedDays.indexOf(dp.date)
       const prevDate = curIdx > 0 ? sortedDays[curIdx - 1] : null
@@ -398,7 +399,7 @@ export default function Dashboard({ onSelect }: { onSelect?: (id: string) => voi
       return (
         <div style={{ height: '100%', overflow: 'hidden', background: 'var(--bg-primary)', display: 'flex', flexDirection: 'column' }}>
           <div style={{ flex: 1, overflow: 'auto', padding: '0 24px 24px', maxWidth: 900, margin: '0 auto', width: '100%' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 0', marginBottom: 24, borderBottom: '1px solid var(--border-color)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', marginBottom: 12, borderBottom: '1px solid var(--border-color)' }}>
               <button className="btn btn-ghost btn-sm" onClick={() => setDetailPage(null)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 13 }}>
                 <ArrowLeft size={14} /> 返回
               </button>
@@ -425,15 +426,15 @@ export default function Dashboard({ onSelect }: { onSelect?: (id: string) => voi
               { value: fmtMoney(dayData.totalCost), label: '当日消费' },
             ]} />
 
-            <div className="api-config-section" style={{ padding: 20, marginBottom: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16, justifyContent: 'space-between' }}>
+            <div className="api-config-section" style={{ padding: 16, marginBottom: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, justifyContent: 'space-between' }}>
                 <span>📊 Flash vs Pro 用量对比</span>
                 <div style={{ display: 'flex', gap: 16, fontSize: 11, fontWeight: 400 }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: '#f59e0b' }} /> Flash</span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: '#8b5cf6' }} /> Pro</span>
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 60, padding: '20px 0', height: Math.max(160, barH + 60) }}>
+              <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 60, height: sharedOuterH }}>
                 {/* Flash bar */}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
                   <span style={{ fontSize: 14, fontWeight: 700, color: '#f59e0b' }}>{fmtShort(dayData.flashTokens)}</span>
@@ -450,6 +451,49 @@ export default function Dashboard({ onSelect }: { onSelect?: (id: string) => voi
                 </div>
               </div>
             </div>
+
+            {/* Monthly Token Bar Chart */}
+            {(() => {
+              const month = dp.date.slice(0, 7)
+              const [yy, mm] = month.split('-').map(Number)
+              const totalDays = new Date(yy, mm, 0).getDate()
+              const currentDay = new Date().getMonth() + 1 === mm && new Date().getFullYear() === yy ? new Date().getDate() : totalDays
+              const dayMap = new Map(dp.days.map(d => [parseInt(d.date.split('-')[2], 10), d]))
+              const fullMonthDays: UsageDay[] = []
+              for (let d = 1; d <= currentDay; d++) {
+                fullMonthDays.push(dayMap.get(d) || { date: `${month}-${String(d).padStart(2, '0')}`, flashTokens: 0, proTokens: 0, totalTokens: 0, totalCost: 0, flashCost: 0, proCost: 0 })
+              }
+              const maxMonthToken = Math.max(...fullMonthDays.map(d => d.totalTokens), 1)
+              return (
+                <div className="api-config-section" style={{ padding: 20, marginTop: 12, marginBottom: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, justifyContent: 'space-between' }}>
+                    <span>📊 本月每日 Token 消耗</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>点击某天查看详情</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: sharedOuterH, overflow: 'hidden' }}>
+                    {fullMonthDays.map((d, i) => {
+                      const isActive = d.date === dp.date
+                      const hasData = d.totalTokens > 0
+                      const h = hasData ? Math.max(8, (d.totalTokens / maxMonthToken) * (sharedOuterH - 30)) : 0
+                      const dayNum = parseInt(d.date.split('-')[2], 10)
+                      const barBg = hasData
+                        ? (isActive ? 'linear-gradient(180deg,#22c55e,rgba(34,197,94,0.1))' : 'linear-gradient(180deg,#6366f1,rgba(99,102,241,0.1))')
+                        : '#2a2a3e'
+                      return (
+                        <div key={i} style={{ flex: '1 0 0', minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, height: '100%', justifyContent: 'flex-end', cursor: hasData ? 'pointer' : 'default', borderRadius: '4px 4px 0 0' }}
+                          onClick={() => hasData && goToDay(d.date)}
+                          onMouseEnter={e => { if (hasData) (e.currentTarget as HTMLElement).style.background = 'rgba(99,102,241,0.08)' }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '' }}>
+                          <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 600, whiteSpace: 'nowrap', minHeight: 14 }}>{hasData ? fmtShort(d.totalTokens) : ''}</span>
+                          <div style={{ width: '100%', height: h, background: barBg, borderRadius: '4px 4px 0 0' }} />
+                          <span style={{ fontSize: 9, fontWeight: 600, color: isActive ? '#22c55e' : 'var(--text-secondary)' }}>{dayNum}日</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })()}
           </div>
         </div>
       )
