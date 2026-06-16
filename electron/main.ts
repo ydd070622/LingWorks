@@ -20,7 +20,6 @@ import { checkForUpdates } from './updater'
 
 // ===== App Configuration =====
 app.commandLine.appendSwitch('disable-gpu-sandbox')
-app.commandLine.appendSwitch('disable-software-rasterizer')
 app.commandLine.appendSwitch('disable-features', 'WebDriver')
 
 const isDev = !app.isPackaged
