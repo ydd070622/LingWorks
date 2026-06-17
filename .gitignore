@@ -9,3 +9,5 @@ prototype-*.html
 dashboard-detail-mockup.html
 .reasonix/
 reasonix.toml
+
+electron-dist/

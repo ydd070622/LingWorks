@@ -75,6 +75,9 @@ export default function Sidebar({ items, activeId, theme, collapsed, collapsedSe
   const aggregators = items.filter(i => i.type === 'aggregator')
   const accounts = items.filter(i => i.type === 'account')
   const vpnSites = items.filter(i => i.type === 'vpn')
+  const xhsSites = items.filter(i => i.type === 'xhs')
+  const imageWorkshopItems = items.filter(i => i.type === 'tool' || i.type === 'comfyui')
+  const consoleItems = items.filter(i => i.type === 'aggregator' || i.type === 'account' || i.type === 'vpn')
 
   const activeDownloads = downloads.filter(d => d.state === 'progress')
   const hasDownloads = downloads.length > 0
@@ -132,12 +135,12 @@ export default function Sidebar({ items, activeId, theme, collapsed, collapsedSe
         ))}
 
         <div className="sidebar-section">
-          <div className="sidebar-section-title clickable" onClick={() => onToggleSection('comfyui')}>
-            <Workflow size={14} /> ComfyUI
-            <ChevronDown size={12} className={`chevron ${collapsedSections.has('comfyui') ? 'collapsed' : ''}`} />
+          <div className="sidebar-section-title clickable" onClick={() => onToggleSection('xhs')}>
+            <Globe size={14} /> 小红书工作台
+            <ChevronDown size={12} className={`chevron ${collapsedSections.has('xhs') ? 'collapsed' : ''}`} />
           </div>
         </div>
-        {!collapsedSections.has('comfyui') && comfyui.map(item => (
+        {!collapsedSections.has('xhs') && xhsSites.map(item => (
           <div
             key={item.id}
             className={`sidebar-item ${activeId === item.id ? 'active' : ''}`}
@@ -150,75 +153,51 @@ export default function Sidebar({ items, activeId, theme, collapsed, collapsedSe
           </div>
         ))}
 
-        <div className="sidebar-section">
-          <div className="sidebar-section-title clickable" onClick={() => onToggleSection('tools')}>
-            <Wrench size={14} /> 生图工具
-            <ChevronDown size={12} className={`chevron ${collapsedSections.has('tools') ? 'collapsed' : ''}`} />
+        
+<div className="sidebar-section">
+          <div className="sidebar-section-title clickable" onClick={() => onToggleSection('image-workshop')}>
+            <Brush size={14} /> 图像工坊
+            <ChevronDown size={12} className={`chevron ${collapsedSections.has('image-workshop') ? 'collapsed' : ''}`} />
           </div>
         </div>
-        {!collapsedSections.has('tools') && tools.map(item => (
-          <div
-            key={item.id}
-            className={`sidebar-item ${activeId === item.id ? 'active' : ''}`}
-            onClick={() => onSelect(item.id)}
-          >
-            <span className="sidebar-item-icon">{toolIcons[item.id] || <Brush size={16} />}</span>
-            <span>{item.label}</span>
-          </div>
-        ))}
-
-        <div className="sidebar-section">
-          <div className="sidebar-section-title clickable" onClick={() => onToggleSection('aggregators')}>
-            <Layers size={14} /> 聚合网站
-            <ChevronDown size={12} className={`chevron ${collapsedSections.has('aggregators') ? 'collapsed' : ''}`} />
-          </div>
-        </div>
-        {!collapsedSections.has('aggregators') && aggregators.map(item => (
-          <div
-            key={item.id}
-            className={`sidebar-item ${activeId === item.id ? 'active' : ''}`}
-            onClick={() => onSelect(item.id)}
-          >
-            <span className="sidebar-item-icon">{aggregatorIcons[item.id]}</span>
-            <span>{item.label}</span>
-          </div>
-        ))}
-
-        <div className="sidebar-section">
-          <div className="sidebar-section-title clickable" onClick={() => onToggleSection('accounts')}>
-            <Contact size={14} /> 常用账号
-            <ChevronDown size={12} className={`chevron ${collapsedSections.has('accounts') ? 'collapsed' : ''}`} />
-          </div>
-        </div>
-        {!collapsedSections.has('accounts') && accounts.map(item => (
-          <div
-            key={item.id}
-            className={`sidebar-item ${activeId === item.id ? 'active' : ''}`}
-            onClick={() => onSelect(item.id)}
-          >
-            <span className="sidebar-item-icon">{iconLabel[item.id] || <Contact size={16} color="#f97316" />}</span>
-            <span>{item.label}</span>
-          </div>
-        ))}
-
-        <div className="sidebar-section">
-          <div className="sidebar-section-title clickable" onClick={() => onToggleSection('vpn')}>
-            <Wifi size={14} /> VPN配置
-            <ChevronDown size={12} className={`chevron ${collapsedSections.has('vpn') ? 'collapsed' : ''}`} />
-          </div>
-        </div>
-        {!collapsedSections.has('vpn') && vpnSites.map(item => (
+        {!collapsedSections.has('image-workshop') && imageWorkshopItems.map(item => (
           <div
             key={item.id}
             className={`sidebar-item ${activeId === item.id ? 'active' : ''}`}
             onClick={() => onSelect(item.id)}
           >
             <span className="sidebar-item-icon">
-              <img src={favicons[item.id]} alt="" className="sidebar-icon-img" />
+              {item.type === 'comfyui'
+                ? (favicons[item.id] ? <img src={favicons[item.id]} alt="" className="sidebar-icon-img" /> : (iconLabel[item.id] || <Globe size={16} />))
+                : (toolIcons[item.id] || <Brush size={16} />)}
             </span>
             <span>{item.label}</span>
           </div>
         ))}
+        <div className="sidebar-section">
+          <div className="sidebar-section-title clickable" onClick={() => onToggleSection('console')}>
+            <Layers size={14} /> 控制台
+            <ChevronDown size={12} className={`chevron ${collapsedSections.has('console') ? 'collapsed' : ''}`} />
+          </div>
+        </div>
+        {!collapsedSections.has('console') && consoleItems.map(item => {
+          const isAccount = item.type === 'account'
+          const isVpn = item.type === 'vpn'
+          return (
+            <div
+              key={item.id}
+              className={`sidebar-item ${activeId === item.id ? 'active' : ''}`}
+              onClick={() => onSelect(item.id)}
+            >
+              <span className="sidebar-item-icon">
+                {isVpn && favicons[item.id] ? <img src={favicons[item.id]} alt="" className="sidebar-icon-img" />
+                 : isAccount ? (iconLabel[item.id] || <Contact size={16} color="#f97316" />)
+                 : (aggregatorIcons[item.id] || <Globe size={16} />)}
+              </span>
+              <span>{item.label}</span>
+            </div>
+          )
+        })}
       </div>
 
       <div style={{ padding: '6px 8px', borderTop: '1px solid var(--border-color)' }}>
