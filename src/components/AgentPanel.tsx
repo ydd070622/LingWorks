@@ -271,6 +271,10 @@ export default function AgentPanel({ isOpen, onClose, currentUrl, currentContent
   })
   const [quotedText, setQuotedText] = useState<string | null>(null)
 
+  const [panelWidth, setPanelWidth] = useState(340)
+  const isDraggingRef = useRef(false)
+  const [isDraggingClass, setIsDraggingClass] = useState(false)
+
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const abortRefs = useRef<Map<string, AbortController>>(new Map())
@@ -680,9 +684,36 @@ export default function AgentPanel({ isOpen, onClose, currentUrl, currentContent
     return p ? p.name.split(' ')[0] : pid
   }
 
+  const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    isDraggingRef.current = true
+    setIsDraggingClass(true)
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    const startX = e.clientX
+    const startWidth = panelWidth
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDraggingRef.current) return
+      const newWidth = startWidth - (e.clientX - startX)
+      setPanelWidth(Math.max(200, Math.min(800, newWidth)))
+    }
+    const handleMouseUp = () => {
+      isDraggingRef.current = false
+      setIsDraggingClass(false)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }, [panelWidth])
+ 
   return (
-    <div className={`agent-panel ${isOpen ? 'open' : ''}`}>
-      <div className="agent-panel-inner">
+    <div className={`agent-panel ${isOpen ? 'open' : ''}${isDraggingClass ? ' dragging' : ''}`} style={isOpen ? { width: panelWidth } : undefined}>
+      {isOpen && <div className="agent-panel-resize-handle" onMouseDown={handleResizeMouseDown} />}
+      <div className="agent-panel-inner" style={isOpen ? { width: panelWidth } : undefined}>
         {/* Header + Tabs */}
         <div className="agent-panel-header">
           <span className="agent-panel-title">智能体助手</span>
