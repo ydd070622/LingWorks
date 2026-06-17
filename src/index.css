@@ -2483,3 +2483,9 @@ textarea.input-base {
   padding: 4px 0;
   white-space: pre-wrap;
 }
+
+/* Agent panel - prevent table cell word breaking */
+.agent-messages table td,
+.agent-messages table th {
+  white-space: nowrap;
+}
