@@ -115,35 +115,25 @@ if (collapsed) {
           </div>
         ))}
         <div className="sidebar-sep" />
-        {comfyui.map(item => (
+        {imageWorkshopItems.map(item => (
           <div key={item.id} className={`sidebar-icon-item ${activeId === item.id ? 'active' : ''}`} onClick={() => onSelect(item.id)} title={item.label}>
-            {favicons[item.id] ? <img src={favicons[item.id]} alt={item.label} className="sidebar-icon-img" /> : (iconLabel[item.id] || <Globe size={14} />)}
+            {item.type === 'comfyui'
+              ? (favicons[item.id] ? <img src={favicons[item.id]} alt={item.label} className="sidebar-icon-img" /> : (iconLabel[item.id] || <Globe size={14} />))
+              : (toolIcons[item.id] || <Brush size={14} />)}
           </div>
         ))}
         <div className="sidebar-sep" />
-        {tools.map(item => (
+        {consoleItems.map(item => {
+          const isAccount = item.type === 'account'
+          const isVpn = item.type === 'vpn'
+          return (
           <div key={item.id} className={`sidebar-icon-item ${activeId === item.id ? 'active' : ''}`} onClick={() => onSelect(item.id)} title={item.label}>
-            {toolIcons[item.id]}
+            {isVpn && favicons[item.id] ? <img src={favicons[item.id]} alt={item.label} className="sidebar-icon-img" />
+             : isAccount ? (iconLabel[item.id] || <Contact size={14} color="#f97316" />)
+             : (aggregatorIcons[item.id] || <Globe size={14} />)}
           </div>
-        ))}
-        <div className="sidebar-sep" />
-        {aggregators.map(item => (
-          <div key={item.id} className={`sidebar-icon-item ${activeId === item.id ? 'active' : ''}`} onClick={() => onSelect(item.id)} title={item.label}>
-            {aggregatorIcons[item.id]}
-          </div>
-        ))}
-        <div className="sidebar-sep" />
-        {accounts.map(item => (
-          <div key={item.id} className={`sidebar-icon-item ${activeId === item.id ? 'active' : ''}`} onClick={() => onSelect(item.id)} title={item.label}>
-            {iconLabel[item.id] || <Contact size={14} color="#f97316" />}
-          </div>
-        ))}
-        <div className="sidebar-sep" />
-        {vpnSites.map(item => (
-          <div key={item.id} className={`sidebar-icon-item ${activeId === item.id ? 'active' : ''}`} onClick={() => onSelect(item.id)} title={item.label}>
-            <img src={favicons[item.id]} alt={item.label} className="sidebar-icon-img" />
-          </div>
-        ))}
+          )
+        })}
       </div>
       <div className="sidebar-footer-collapsed">
         <div className={`sidebar-icon-item${showDlFlyout ? ' active' : ''}`} onClick={(e) => { e.stopPropagation(); setShowDlFlyout(!showDlFlyout) }} title={`下载${activeDownloads.length > 0 ? ` (${activeDownloads.length} 进行中)` : ''}`} style={{ position: 'relative', color: activeDownloads.length > 0 ? '#10b981' : 'var(--text-muted)' }}>
