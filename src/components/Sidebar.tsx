@@ -77,8 +77,9 @@ export default function Sidebar({ items, activeId, theme, collapsed, collapsedSe
   const accounts = items.filter(i => i.type === 'account')
   const vpnSites = items.filter(i => i.type === 'vpn')
   const xhsSites = items.filter(i => i.type === 'xhs')
-  const imageWorkshopItems = items.filter(i => i.type === 'tool' || i.type === 'comfyui')
-  const consoleItems = items.filter(i => i.type === 'aggregator' || i.type === 'account' || i.type === 'vpn')
+const imageWorkshopItems = items.filter(i => i.type === 'tool')
+const consoleItems = items.filter(i => i.type === 'aggregator' || i.type === 'account' || i.type === 'vpn')
+const comfyuiPageItem = items.find(i => i.type === 'comfyui-page')
 
   const activeDownloads = downloads.filter(d => d.state === 'progress')
   const hasDownloads = downloads.length > 0
@@ -115,6 +116,11 @@ if (collapsed) {
           </div>
         ))}
         <div className="sidebar-sep" />
+        {comfyuiPageItem && (
+          <div key={comfyuiPageItem.id} className={`sidebar-icon-item ${activeId === comfyuiPageItem.id ? 'active' : ''}`} onClick={() => onSelect(comfyuiPageItem.id)} title={comfyuiPageItem.label}>
+            <img src="./favicons/duannao.png" alt="" className="sidebar-icon-img" />
+          </div>
+        )}
         {imageWorkshopItems.map(item => (
           <div key={item.id} className={`sidebar-icon-item ${activeId === item.id ? 'active' : ''}`} onClick={() => onSelect(item.id)} title={item.label}>
             {item.type === 'comfyui'
@@ -238,6 +244,16 @@ if (collapsed) {
             <ChevronDown size={12} className={`chevron ${collapsedSections.has('image-workshop') ? 'collapsed' : ''}`} />
           </div>
         </div>
+        {!collapsedSections.has('image-workshop') && comfyuiPageItem && (
+          <div
+            key={comfyuiPageItem.id}
+            className={`sidebar-item ${activeId === comfyuiPageItem.id ? 'active' : ''}`}
+            onClick={() => onSelect(comfyuiPageItem.id)}
+          >
+            <span className="sidebar-item-icon"><img src="./favicons/duannao.png" alt="" className="sidebar-icon-img" /></span>
+            <span>{comfyuiPageItem.label}</span>
+          </div>
+        )}
         {!collapsedSections.has('image-workshop') && imageWorkshopItems.map(item => (
           <div
             key={item.id}

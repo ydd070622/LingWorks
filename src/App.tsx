@@ -12,6 +12,7 @@ import Accounts from './pages/Accounts'
 import Home from './pages/Home'
 import Prompts from './pages/Prompts'
 import Dashboard from './pages/Dashboard'
+import ComfyuiPlatforms from './pages/ComfyuiPlatforms'
 import XiaoHongShuCards from './pages/XiaoHongShuCards'
 import type { NavItem, CustomModel, DownloadItem, ShortcutBindings, AgentContext } from './types'
 import type { SearchResult } from './services/multi-search'
@@ -32,6 +33,7 @@ const navItems: NavItem[] = [
   { type: 'comfyui', id: 'duannao', label: '端脑云', url: 'https://cephalon.cloud/aigc', icon: 'globe' },
   { type: 'comfyui', id: 'zhisuan', label: '智算云扉', url: 'https://waas.aigate.cc/index', icon: 'globe' },
   { type: 'comfyui', id: 'onethingai', label: 'OneThingAi', url: 'https://onethingai.com', icon: 'globe' },
+  { type: 'comfyui-page', id: 'comfyui', label: 'Comfyui', icon: 'tool' },
   { type: 'tool', id: 'txt2img', label: '文生图', icon: 'tool' },
   { type: 'tool', id: 'img2img', label: '图生图', icon: 'tool' },
   { type: 'tool', id: 'history', label: '生成历史', icon: 'tool' },
@@ -466,6 +468,7 @@ export default function App() {
           {vpnSites.map(site => (
             <WebViewPage key={site.id} site={site} visible={activeId === site.id} onUrlChange={(url, content) => { setBrowserUrl(url); setBrowserContent(content || '') }} />
           ))}
+          {activeId === 'comfyui' && <ComfyuiPlatforms onNavigate={setActiveId} />}
           {activeId === 'txt2img' && <TextToImage models={models} onSendToAgent={handleSendToAgent} adoptPrompt={adoptPrompt} onAdoptConsumed={() => setAdoptPrompt(null)} />}
           {activeId === 'img2img' && <ImageToImage models={models} onSendToAgent={handleSendToAgent} />}
           {activeId === 'history' && <History />}
