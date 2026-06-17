@@ -693,11 +693,11 @@ export default function AgentPanel({ isOpen, onClose, currentUrl, currentContent
     document.body.style.userSelect = 'none'
     const startX = e.clientX
     const startWidth = panelWidth
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isDraggingRef.current) return
-      const newWidth = startWidth - (e.clientX - startX)
-      setPanelWidth(Math.max(200, Math.min(800, newWidth)))
-    }
+      const handleMouseMove = (e: MouseEvent) => {
+        if (!isDraggingRef.current) return
+        const newWidth = startWidth - (e.clientX - startX)
+        setPanelWidth(Math.max(340, Math.min(800, newWidth)))
+      }
     const handleMouseUp = () => {
       isDraggingRef.current = false
       setIsDraggingClass(false)
