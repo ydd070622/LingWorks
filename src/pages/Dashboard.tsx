@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { RefreshCw, Settings, X, ArrowLeft, CreditCard, SunMedium, CalendarDays, Brain, Zap, BarChart3, KeyRound } from 'lucide-react'
 
 interface BalanceData { isAvailable: boolean; currency: string; totalBalance: string; toppedUpBalance: string }

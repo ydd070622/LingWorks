@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Globe, Brush, Settings, Sun, Moon, PanelLeft, ChevronRight, Wrench, Layers, CreditCard, Wifi, User, ChevronDown, Sparkles, Images, HistoryIcon, LayoutGrid, Wallet, Contact, Download, FolderOpen, LayoutDashboard, Workflow } from 'lucide-react'
 import type { NavItem, DownloadItem } from '../types'
 
@@ -50,7 +50,8 @@ export default function Sidebar({ items, activeId, theme, collapsed, collapsedSe
   };
 
   const aggregatorIcons: Record<string, React.ReactNode> = {
-    platformCenter: makeIcon('platforms', '平台中心'),
+    platforms: makeIcon('platforms', '开放平台'),
+    recharge: makeIcon('recharge', '充值平台'),
     dashboard: makeIcon('dashboard', '数据面板'),
   };
 
@@ -60,7 +61,8 @@ export default function Sidebar({ items, activeId, theme, collapsed, collapsedSe
     img2img: makeIcon('img2img', '图生图'),
     history: makeIcon('history', '生成历史'),
     prompts: makeIcon('prompts', 'Prompt管理'),
-    platformCenter: makeIcon('platforms', '平台中心'),
+    platforms: makeIcon('platforms', '开放平台'),
+    recharge: makeIcon('recharge', '充值平台'),
     dashboard: makeIcon('dashboard', '数据面板'),
     accounts: makeIcon('accounts', '常用账号'),
     skyun: 'SK', mitce: 'MC',

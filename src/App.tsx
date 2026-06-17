@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Sidebar from './components/Sidebar'
 import WebViewPage from './components/WebViewPage'
 import AgentPanel from './components/AgentPanel'
@@ -8,7 +8,6 @@ import History from './pages/History'
 import Platforms from './pages/Platforms'
 import Recharge from './pages/Recharge'
 import Settings from './pages/Settings'
-import PlatformCenter from './pages/PlatformCenter'
 import Accounts from './pages/Accounts'
 import Home from './pages/Home'
 import Prompts from './pages/Prompts'
@@ -37,7 +36,8 @@ const navItems: NavItem[] = [
   { type: 'tool', id: 'img2img', label: '图生图', icon: 'tool' },
   { type: 'tool', id: 'history', label: '生成历史', icon: 'tool' },
   { type: 'tool', id: 'prompts', label: 'Prompt 管理', icon: 'tool' },
-  { type: 'aggregator', id: 'platformCenter', label: '平台中心', icon: 'tool' },
+  { type: 'aggregator', id: 'platforms', label: '开放平台', icon: 'tool' },
+  { type: 'aggregator', id: 'recharge', label: '充值平台', icon: 'tool' },
   { type: 'aggregator', id: 'dashboard', label: '数据看板', icon: 'tool' },
   { type: 'account', id: 'accounts', label: '常用账号', icon: 'tool' },
   { type: 'vpn', id: 'skyun', label: 'Skyun', url: 'https://skyun.top/', icon: 'globe' },
@@ -458,8 +458,9 @@ export default function App() {
           {activeId === 'img2img' && <ImageToImage models={models} onSendToAgent={handleSendToAgent} />}
           {activeId === 'history' && <History />}
           {activeId === 'prompts' && <Prompts />}
-          {activeId === 'platformCenter' && <PlatformCenter autoOpenPlatform={autoOpenPlatform} onPlatformOpened={() => setAutoOpenPlatform(null)} />}
-          {activeId === 'dashboard' && <Dashboard onSelect={(id) => { setActiveId(id); if (id === 'platformCenter') setAutoOpenPlatform('deepseek') }} />}
+          {activeId === 'platforms' && <Platforms autoOpenPlatform={autoOpenPlatform} onPlatformOpened={() => setAutoOpenPlatform(null)} />}
+          {activeId === 'recharge' && <Recharge />}
+          {activeId === 'dashboard' && <Dashboard onSelect={(id) => { setActiveId(id); if (id === 'platforms') setAutoOpenPlatform('deepseek') }} />}
           {activeId === 'accounts' && <Accounts />}
         </div>
       </div>
