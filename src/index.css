@@ -204,13 +204,34 @@ body {
   margin: 0;
 }
 
+/* Floating sidebar toggle (visible when sidebar collapsed) */
+.sidebar-float-tab {
+  position: absolute;
+  left: 0; top: 50%; transform: translateY(-50%);
+  width: 28px; height: 52px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-left: none;
+  border-radius: 0 8px 8px 0;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 10;
+  box-shadow: 2px 0 12px rgba(0,0,0,0.3);
+  color: var(--text-muted);
+  transition: background 0.15s, color 0.15s;
+}
+.sidebar-float-tab:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+
 .sidebar-collapse-toggle {
-  width: 24px;
-  height: 24px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
   color: var(--text-muted);
   -webkit-app-region: no-drag;

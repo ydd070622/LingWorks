@@ -247,17 +247,6 @@ export default function App() {
     return unsub
   }, [])
 
-  const autoCollapseTimer = useRef<ReturnType<typeof setTimeout>>()
-  const resetAutoCollapse = useCallback(() => {
-    clearTimeout(autoCollapseTimer.current)
-    autoCollapseTimer.current = setTimeout(() => setSidebarCollapsed(true), 10000)
-  }, [])
-
-  useEffect(() => {
-    resetAutoCollapse()
-    return () => clearTimeout(autoCollapseTimer.current)
-  }, [resetAutoCollapse])
-
   useEffect(() => {
     const unsubs: (() => void)[] = []
     const api = window.electronAPI
@@ -448,7 +437,6 @@ export default function App() {
           onGoHome={() => setActiveId('home')}
           onCancelDownload={cancelDownload}
           onClearDownloads={clearDownloads}
-          onSidebarActivity={resetAutoCollapse}
           agentOpen={agentOpen}
           onToggleAgent={() => setAgentOpen(!agentOpen)}
         />
