@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { X, Plus, Trash2, Pencil, Settings2, Image, Bot, Key, Command, Info, Loader2, FolderOpen, Search, ArrowLeft, Wifi, ChevronDown, Download, PlugZap } from 'lucide-react'
 import type { CustomModel, ShortcutBindings, AgentModel } from '../types'
 import { AGENT_PROVIDERS, loadModels as loadAgentModels, saveModels as saveAgentModels, fetchProviderModels, generateId, getProviderEndpoint } from '../services/agent'
+import { clearCityCache } from '../services/agent-loop'
 import { getSortedProvinces, getCities, getDistricts } from '../data/regions'
 
 interface SettingsProps {
@@ -195,6 +196,7 @@ export default function Settings({ models, onSave, onClose }: SettingsProps) {
       saveGeneral('preferredProvince', province)
       if (!city && !district) saveGeneral('preferredCityCombined', province)
     }
+    clearCityCache()
   }
   const onCityChange = (c: string) => {
     setCity(c); setDistrict('')
@@ -205,6 +207,7 @@ export default function Settings({ models, onSave, onClose }: SettingsProps) {
       window.electronAPI?.setStore('preferredDistrict', '')
       if (districts.length === 0) saveGeneral('preferredCityCombined', cityProvince + ',' + c)
     }
+    clearCityCache()
   }
   const onDistrictChange = (d: string) => {
     setDistrict(d)
@@ -212,6 +215,7 @@ export default function Settings({ models, onSave, onClose }: SettingsProps) {
       saveGeneral('preferredDistrict', d)
       saveGeneral('preferredCityCombined', cityProvince + ',' + city + ',' + d)
     }
+    clearCityCache()
   }
 
   const pickFolder = async () => {

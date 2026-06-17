@@ -286,6 +286,22 @@ export default function AgentPanel({ isOpen, onClose, currentUrl, currentContent
   currentUrlRef.current = currentUrl
   currentContentRef.current = currentContent
   currentPageRef.current = currentPage
+  const tavilyKeyRef = useRef<string>('')
+
+  // Load Tavily key from persistent store (survives restart), localStorage fallback
+  useEffect(() => {
+    const loadKey = async () => {
+      if (window.electronAPI) {
+        const saved = await window.electronAPI.getStore('agent_tavily_key')
+        if (typeof saved === 'string' && saved) {
+          tavilyKeyRef.current = saved
+          return
+        }
+      }
+      tavilyKeyRef.current = localStorage.getItem('agent_tavily_key') || ''
+    }
+    loadKey()
+  }, [])
   const [, setInputTick] = useState(0)
   const [streamTick, setStreamTick] = useState(0)
 
@@ -505,7 +521,7 @@ export default function AgentPanel({ isOpen, onClose, currentUrl, currentContent
     const ctxPage = currentPageRef.current
 
     try {
-      for await (const event of agentChat(activeModel, chatHistory, enableTools, controller.signal, { tavilyApiKey: localStorage.getItem('agent_tavily_key') || undefined, currentUrl: ctxUrl, currentContent: ctxContent, currentPage: ctxPage })) {
+      for await (const event of agentChat(activeModel, chatHistory, enableTools, controller.signal, { tavilyApiKey: tavilyKeyRef.current || localStorage.getItem('agent_tavily_key') || undefined, currentUrl: ctxUrl, currentContent: ctxContent, currentPage: ctxPage })) {
         switch (event.type) {
           case 'thinking':
             break

@@ -137,7 +137,8 @@ app.on('web-contents-created', (_e, contents) => {
     if (type === 'window') {
       contents.on('will-navigate', (_ev, url) => {
         if (url.startsWith('http://') || url.startsWith('https://')) {
-          mainWindow?.webContents.send('popup-navigate', { url })
+          const hostId = (contents as any).hostWebContents?.id
+          mainWindow?.webContents.send('popup-navigate', { url, hostWebContentsId: hostId })
           const win = BrowserWindow.fromWebContents(contents)
           if (win) win.close()
         }

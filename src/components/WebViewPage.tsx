@@ -33,6 +33,8 @@ export default function WebViewPage({ site, visible, onUrlChange }: WebViewPageP
   const [linkMenu, setLinkMenu] = useState<{ url: string; text: string; x: number; y: number } | null>(null)
   const webviewMap = useRef<Map<string, WebviewElement>>(new Map())
   const containerRef = useRef<HTMLDivElement>(null)
+  const onUrlChangeRef = useRef(onUrlChange)
+  onUrlChangeRef.current = onUrlChange
 
   useEffect(() => {
     const unsub = window.electronAPI?.onNewTab((data) => {
@@ -43,6 +45,13 @@ export default function WebViewPage({ site, visible, onUrlChange }: WebViewPageP
       }
     })
     const unsub2 = window.electronAPI?.onPopupNavigate((data) => {
+      // Only handle if the popup originated from a webview managed by this WebViewPage
+      if (data.hostWebContentsId != null) {
+        const belongsToUs = Array.from(webviewMap.current.values()).some(
+          wv => { try { return wv.getWebContentsId() === data.hostWebContentsId } catch { return false } }
+        )
+        if (!belongsToUs) return
+      }
       const newId = `tab-${++tabCounter}-${Date.now()}`
       setTabs(prev => [...prev, { id: newId, url: data.url, title: '加载中...' }])
       setActiveId(newId)
@@ -77,9 +86,10 @@ export default function WebViewPage({ site, visible, onUrlChange }: WebViewPageP
     })
 
     wv.addEventListener('did-finish-load', () => {
-      if (onUrlChange) {
+      const cb = onUrlChangeRef.current
+      if (cb) {
         const url = (wv as any).getURL?.() || tabUrl
-        onUrlChange(url) // Immediately sync URL — content comes async below
+        cb(url) // Immediately sync URL — content comes async below
         try {
           // Extract page title + rendered text for agent context
           ;(wv as any).executeJavaScript('JSON.stringify({title:document.title,text:document.body?document.body.innerText:document.documentElement.innerText})').then((raw: string) => {
@@ -87,7 +97,7 @@ export default function WebViewPage({ site, visible, onUrlChange }: WebViewPageP
             try { const d = JSON.parse(raw); title = d.title || ''; content = d.text || '' } catch { content = raw || '' }
             const trimmed = content?.slice(0, 5000) || ''
             const label = title ? `【页面标题】${title}\n【页面URL】${url}\n【页面文本（前5000字符）】` : `【页面URL】${url}\n【页面文本（前5000字符）】`
-            if (trimmed) onUrlChange(url, `${label}\n${trimmed}\n\n⚠️ 以上是该网页的真实内容，请基于此内容回答，不要依赖你的训练数据猜测。`)
+            if (trimmed) cb(url, `${label}\n${trimmed}\n\n⚠️ 以上是该网页的真实内容，请基于此内容回答，不要依赖你的训练数据猜测。`)
           }).catch(() => {})
         } catch {}
       }
@@ -108,8 +118,9 @@ export default function WebViewPage({ site, visible, onUrlChange }: WebViewPageP
 
     // Report URL on SPA navigation (pushState / hash changes) — delayed to let content render
     wv.addEventListener('did-navigate-in-page', ((e: any) => {
-      if (onUrlChange && e.url) {
-        onUrlChange(e.url) // Immediately sync URL
+      const cb = onUrlChangeRef.current
+      if (cb && e.url) {
+        cb(e.url) // Immediately sync URL
         setTimeout(() => {
           try {
             ;(wv as any).executeJavaScript('JSON.stringify({title:document.title,text:document.body?document.body.innerText:document.documentElement.innerText})').then((raw: string) => {
@@ -117,7 +128,7 @@ export default function WebViewPage({ site, visible, onUrlChange }: WebViewPageP
               try { const d = JSON.parse(raw); title = d.title || ''; content = d.text || '' } catch { content = raw || '' }
               const trimmed = content?.slice(0, 5000) || ''
               const label = title ? `【页面标题】${title}\n【页面URL】${e.url}\n【页面文本（前5000字符）】` : `【页面URL】${e.url}\n【页面文本（前5000字符）】`
-              if (trimmed) onUrlChange(e.url, `${label}\n${trimmed}\n\n⚠️ 以上是该网页的真实内容，请基于此内容回答，不要依赖你的训练数据猜测。`)
+              if (trimmed) cb(e.url, `${label}\n${trimmed}\n\n⚠️ 以上是该网页的真实内容，请基于此内容回答，不要依赖你的训练数据猜测。`)
             }).catch(() => {})
           } catch {}
         }, 1200)
@@ -204,16 +215,16 @@ export default function WebViewPage({ site, visible, onUrlChange }: WebViewPageP
     })
 
     // When switching back to a previously-loaded page, re-extract content
-    if (wasExisting && wv && onUrlChange) {
+    if (wasExisting && wv && onUrlChangeRef.current) {
       const url = (wv as any).getURL?.() || tab.url
-      onUrlChange(url) // Immediately sync URL — content comes async below
+      onUrlChangeRef.current(url) // Immediately sync URL — content comes async below
       try {
         ;(wv as any).executeJavaScript('JSON.stringify({title:document.title,text:document.body?document.body.innerText:document.documentElement.innerText})').then((raw: string) => {
           let title = ''; let content = ''
           try { const d = JSON.parse(raw); title = d.title || ''; content = d.text || '' } catch { content = raw || '' }
           const trimmed = content?.slice(0, 5000) || ''
           const label = title ? `【页面标题】${title}\n【页面URL】${url}\n【页面文本（前5000字符）】` : `【页面URL】${url}\n【页面文本（前5000字符）】`
-          if (trimmed) onUrlChange(url, `${label}\n${trimmed}\n\n⚠️ 以上是该网页的真实内容，请基于此内容回答，不要依赖你的训练数据猜测。`)
+          if (trimmed) onUrlChangeRef.current(url, `${label}\n${trimmed}\n\n⚠️ 以上是该网页的真实内容，请基于此内容回答，不要依赖你的训练数据猜测。`)
         }).catch(() => {})
       } catch {}
     }
@@ -233,12 +244,13 @@ export default function WebViewPage({ site, visible, onUrlChange }: WebViewPageP
   const handleSwitch = (id: string) => {
     setActiveId(id)
     // Report URL of the newly active tab (with DOM content if available)
-    if (onUrlChange) {
+    const cb = onUrlChangeRef.current
+    if (cb) {
       const tab = tabs.find(t => t.id === id)
       if (tab) {
         const wv = webviewMap.current.get(id)
         const url = wv ? ((wv as any).getURL?.() || tab.url) : tab.url
-        onUrlChange(url) // Immediately sync URL
+        cb(url) // Immediately sync URL
         try {
           if (wv) {
             ;(wv as any).executeJavaScript('JSON.stringify({title:document.title,text:document.body?document.body.innerText:document.documentElement.innerText})').then((raw: string) => {
@@ -246,13 +258,13 @@ export default function WebViewPage({ site, visible, onUrlChange }: WebViewPageP
               try { const d = JSON.parse(raw); title = d.title || ''; content = d.text || '' } catch { content = raw || '' }
               const trimmed = content?.slice(0, 5000) || ''
               const label = title ? `【页面标题】${title}\n【页面URL】${url}\n【页面文本（前5000字符）】` : `【页面URL】${url}\n【页面文本（前5000字符）】`
-              if (trimmed) onUrlChange(url, `${label}\n${trimmed}\n\n⚠️ 以上是该网页的真实内容，请基于此内容回答，不要依赖你的训练数据猜测。`)
+              if (trimmed) cb(url, `${label}\n${trimmed}\n\n⚠️ 以上是该网页的真实内容，请基于此内容回答，不要依赖你的训练数据猜测。`)
             }).catch(() => {})
           } else {
-            onUrlChange(url)
+            cb(url)
           }
         } catch {
-          onUrlChange(url)
+          cb(url)
         }
       }
     }
@@ -298,7 +310,14 @@ export default function WebViewPage({ site, visible, onUrlChange }: WebViewPageP
 
   const handleCloseOthers = () => {
     if (ctxTab) {
-      setTabs(prev => prev.filter(t => t.id === ctxTab.id))
+      setTabs(prev => {
+        const removed = prev.filter(t => t.id !== ctxTab.id)
+        for (const t of removed) {
+          const wv = webviewMap.current.get(t.id)
+          if (wv) { wv.remove(); webviewMap.current.delete(t.id) }
+        }
+        return [ctxTab]
+      })
       setActiveId(ctxTab.id)
     }
     closeCtx()
@@ -307,7 +326,14 @@ export default function WebViewPage({ site, visible, onUrlChange }: WebViewPageP
   const handleCloseRight = () => {
     if (ctxTab) {
       const idx = tabs.findIndex(t => t.id === ctxTab.id)
-      setTabs(prev => prev.filter((t, i) => i <= idx))
+      setTabs(prev => {
+        const removed = prev.filter((_t, i) => i > idx)
+        for (const t of removed) {
+          const wv = webviewMap.current.get(t.id)
+          if (wv) { wv.remove(); webviewMap.current.delete(t.id) }
+        }
+        return prev.filter((_t, i) => i <= idx)
+      })
     }
     closeCtx()
   }

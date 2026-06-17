@@ -200,6 +200,11 @@ const TOOL_DEFS = [
 // ===== City Detection (IP geolocation, cached) =====
 let _cachedCity = ''
 
+/** Call this when user changes city in Settings to invalidate stale cache */
+export function clearCityCache(): void {
+  _cachedCity = ''
+}
+
 // Common English → Chinese city name mapping
 const EN2ZH: Record<string, string> = {
   'Shenzhen': '深圳', 'Guangzhou': '广州', 'Beijing': '北京', 'Shanghai': '上海',
@@ -531,6 +536,11 @@ async function executeTool(tc: ToolCall, options?: AgentChatOptions, signal?: Ab
     }
 
     case 'query_deepseek_usage': {
+      // Combine external abort signal with internal timeout
+      const _abortSig = signal
+        ? AbortSignal.any([signal, AbortSignal.timeout(10000)])
+        : AbortSignal.timeout(10000)
+
       // Read stored credentials from electron store
       const api = window.electronAPI
       if (!api) return JSON.stringify({ error: 'query_deepseek_usage 仅可在桌面环境中使用' })
@@ -555,7 +565,7 @@ async function executeTool(tc: ToolCall, options?: AgentChatOptions, signal?: Ab
         try {
           const res = await fetch('https://api.deepseek.com/user/balance', {
             headers: { Authorization: `Bearer ${apiKey}` },
-            signal: AbortSignal.timeout(10000),
+            signal: _abortSig,
           })
           if (res.ok) {
             const data = await res.json()
@@ -587,8 +597,8 @@ async function executeTool(tc: ToolCall, options?: AgentChatOptions, signal?: Ab
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
           }
           const [am, co] = await Promise.all([
-            fetch(`https://platform.deepseek.com/api/v0/usage/amount?month=${m}&year=${y}`, { headers: h, signal: AbortSignal.timeout(10000) }),
-            fetch(`https://platform.deepseek.com/api/v0/usage/cost?month=${m}&year=${y}`, { headers: h, signal: AbortSignal.timeout(10000) }),
+            fetch(`https://platform.deepseek.com/api/v0/usage/amount?month=${m}&year=${y}`, { headers: h, signal: _abortSig }),
+            fetch(`https://platform.deepseek.com/api/v0/usage/cost?month=${m}&year=${y}`, { headers: h, signal: _abortSig }),
           ])
           if (!am.ok || !co.ok) return null
           return { am: await am.json(), co: await co.json() }
