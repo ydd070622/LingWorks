@@ -190,9 +190,6 @@ if (collapsed) {
   return (
     <div className="sidebar" onMouseMove={onSidebarActivity} onMouseEnter={onSidebarActivity}>
       <div className="sidebar-header">
-        <div className="sidebar-header-title" onClick={onGoHome} title="回到主页">
-          <h1>AI Web Tools</h1>
-        </div>
         <div className="sidebar-collapse-toggle" onClick={onToggleCollapse} title="收起侧栏">
           <ChevronLeft size={14} />
         </div>

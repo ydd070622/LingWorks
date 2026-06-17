@@ -16,7 +16,7 @@ import ComfyuiPlatforms from './pages/ComfyuiPlatforms'
 import XiaoHongShuCards from './pages/XiaoHongShuCards'
 import type { NavItem, CustomModel, DownloadItem, ShortcutBindings, AgentContext } from './types'
 import type { SearchResult } from './services/multi-search'
-import { X, Loader2, House } from 'lucide-react'
+import { X, Loader2, House, PanelLeft } from 'lucide-react'
 
 // No default free image generation model (Pollinations AI now requires payment/API key)
 // Users need to configure their own API in Settings
@@ -407,7 +407,14 @@ export default function App() {
     <div className={`app-layout${isMaximized ? '' : ' app-rounded'}`}>
       <div className="window-titlebar" onMouseDown={onTitleMouseDown}>
         <span className="titlebar-label"><img src="./titlebar-icon.png" alt="" className="titlebar-icon" />AI Web Tools</span>
-        <span className="titlebar-drag-area" onDoubleClick={() => window.electronAPI?.maximizeWindow()} />
+       <span className="titlebar-drag-area" onDoubleClick={() => window.electronAPI?.maximizeWindow()} />
+        <button
+          className="titlebar-home-btn"
+          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+          title={sidebarCollapsed ? '展开侧栏' : '收起侧栏'}
+        >
+          <PanelLeft size={14} />
+        </button>
         <button
           className="titlebar-home-btn"
           onClick={() => setActiveId('home')}
