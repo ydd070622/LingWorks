@@ -1,7 +1,7 @@
 /**
- * Auto-updater — check Gitee for latest release, download, and install
+ * Auto-updater — check GitHub for latest release, download silently, notify renderer
  */
-import { app, BrowserWindow, dialog, net, shell } from 'electron'
+import { app, BrowserWindow, net, shell, ipcMain } from 'electron'
 import * as path from 'path'
 import * as fs from 'fs'
 
@@ -15,9 +15,11 @@ function compareVersions(local: string, remote: string): boolean {
   return false
 }
 
+let downloadedFilePath: string | null = null
+
 export async function checkForUpdates(mainWindow: BrowserWindow) {
   try {
-    const res = await net.fetch('https://gitee.com/api/v5/repos/ydd070622/ai-web-tools/releases/latest')
+    const res = await net.fetch('https://api.github.com/repos/ydd070622/LingWorks/releases/latest')
     if (!res.ok) return
     const data = await res.json() as { tag_name?: string; body?: string; assets?: { browser_download_url?: string }[] }
     const remoteVersion = (data.tag_name || '').replace(/^v/, '')
@@ -27,36 +29,35 @@ export async function checkForUpdates(mainWindow: BrowserWindow) {
     const downloadUrl = data.assets?.[0]?.browser_download_url
     if (!downloadUrl) return
 
-    const result = await dialog.showMessageBox(mainWindow, {
-      type: 'info',
-      title: '发现新版本',
-      message: `发现新版本 v${remoteVersion}（当前 v${localVersion}）`,
-      detail: data.body || '',
-      buttons: ['立即更新', '以后再说'],
-      defaultId: 0,
-      cancelId: 1,
+    // Notify renderer that update is available — starts silent download
+    mainWindow.webContents.send('update-available', {
+      version: remoteVersion,
+      currentVersion: localVersion,
+      downloadUrl,
     })
-    if (result.response !== 0) return
 
+    // Auto-start silent download
+    await startDownload(mainWindow, downloadUrl, remoteVersion)
+  } catch {}
+}
+
+// Silent download triggered by renderer (or auto-started)
+async function startDownload(mainWindow: BrowserWindow, downloadUrl: string, version: string) {
+  try {
     const tmpDir = app.getPath('temp')
-    const fileName = `LingWorks Setup ${remoteVersion}.exe`
+    const fileName = `LingWorks Setup ${version}.exe`
     const filePath = path.join(tmpDir, fileName)
 
-    const downloadWin = new BrowserWindow({
-      width: 400,
-      height: 150,
-      resizable: false,
-      parent: mainWindow,
-      modal: false,
-      webPreferences: { nodeIntegration: true, contextIsolation: false },
-    })
-    const html = `<!DOCTYPE html><html><body style="background:#1e1e2e;color:#e8e8ed;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;flex-direction:column;gap:12px"><h3 style="margin:0;font-size:16px">正在下载更新...</h3><progress id="bar" value="0" max="100" style="width:300px;height:16px;border-radius:8px"></progress><span id="percent" style="font-size:13px;color:#888">0%</span></body></html>`
-    downloadWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
-    downloadWin.setTitle('更新下载')
+    // Check if already downloaded (previous session)
+    if (fs.existsSync(filePath)) {
+      downloadedFilePath = filePath
+      mainWindow.webContents.send('update-downloaded', { filePath, version })
+      return
+    }
 
     const dlRes = await net.fetch(downloadUrl)
     if (!dlRes.ok || !dlRes.body) {
-      downloadWin.close()
+      mainWindow.webContents.send('update-error', '下载失败')
       return
     }
 
@@ -72,27 +73,23 @@ export async function checkForUpdates(mainWindow: BrowserWindow) {
       downloaded += value.length
       if (total > 0) {
         const pct = Math.round((downloaded / total) * 100)
-        downloadWin.webContents.executeJavaScript(`
-          document.getElementById('bar').value=${pct}; document.getElementById('percent').textContent='${pct}%';
-        `).catch(() => {})
+        mainWindow.webContents.send('update-download-progress', { percent: pct })
       }
     }
 
     fs.writeFileSync(filePath, Buffer.concat(chunks))
-    downloadWin.close()
+    downloadedFilePath = filePath
+    mainWindow.webContents.send('update-downloaded', { filePath, version })
+  } catch {
+    mainWindow.webContents.send('update-error', '下载失败')
+  }
+}
 
-    const installResult = await dialog.showMessageBox(mainWindow, {
-      type: 'info',
-      title: '下载完成',
-      message: '更新已下载完成，是否立即安装？',
-      detail: '安装时将自动关闭当前程序',
-      buttons: ['立即安装', '以后再说'],
-      defaultId: 0,
-      cancelId: 1,
-    })
-    if (installResult.response === 0) {
-      shell.openPath(filePath)
+export function registerUpdateIPC(mainWindow: BrowserWindow) {
+  ipcMain.handle('update-install', async () => {
+    if (downloadedFilePath) {
+      shell.openPath(downloadedFilePath)
       setTimeout(() => app.quit(), 500)
     }
-  } catch {}
+  })
 }

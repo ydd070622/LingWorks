@@ -114,6 +114,12 @@ export default function App() {
   const [downloads, setDownloads] = useState<DownloadItem[]>([])
   const [isMaximized, setIsMaximized] = useState(false)
 
+  // Update state
+  const [updateInfo, setUpdateInfo] = useState<{ version: string; currentVersion: string } | null>(null)
+  const [updateDownloaded, setUpdateDownloaded] = useState(false)
+  const [updateDownloadProgress, setUpdateDownloadProgress] = useState(0)
+  const [showUpdateDialog, setShowUpdateDialog] = useState(false)
+
   // Trigger sidebar download panel auto-expand on download events
   const [expandDownloads, setExpandDownloads] = useState(0)
 
@@ -311,6 +317,28 @@ export default function App() {
     return () => unsubs.forEach(fn => fn())
   }, [])
 
+  // Update listeners
+  useEffect(() => {
+    const api = window.electronAPI
+    if (!api) return
+    const unsubs2: (() => void)[] = []
+    unsubs2.push(api.onUpdateAvailable((data: any) => {
+      setUpdateInfo({ version: data.version, currentVersion: data.currentVersion })
+    }))
+    unsubs2.push(api.onUpdateDownloadProgress((data: any) => {
+      setUpdateDownloadProgress(data.percent)
+    }))
+    unsubs2.push(api.onUpdateDownloaded((data: any) => {
+      setUpdateDownloaded(true)
+      setUpdateDownloadProgress(100)
+      setUpdateInfo(prev => prev || { version: data.version, currentVersion: '' })
+    }))
+    unsubs2.push(api.onUpdateError((msg: string) => {
+      console.error('Update error:', msg)
+    }))
+    return () => unsubs2.forEach(fn => fn())
+  }, [])
+
   useEffect(() => {
     const api = window.electronAPI
     if (api) {
@@ -437,6 +465,15 @@ export default function App() {
           <span className={`titlebar-agent-dot${agentOpen ? '' : ' off'}`} />
           <span className="titlebar-agent-key">Ctrl+Space</span>
         </button>
+        {updateInfo && (
+          <button
+            className="titlebar-update-btn"
+            onClick={() => setShowUpdateDialog(true)}
+            title={'发现新版本 v' + updateInfo.version}
+          >
+            Update
+          </button>
+        )}
         <div className="titlebar-btns">
           <button className="traffic-btn traffic-minimize" onClick={() => window.electronAPI?.minimizeWindow()} title="最小化">─</button>
           <button className="traffic-btn traffic-maximize" onClick={() => window.electronAPI?.maximizeWindow()} title={isMaximized ? '还原' : '最大化'}>{isMaximized ? '❐' : '☐'}</button>
@@ -565,6 +602,33 @@ export default function App() {
                 )}
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Update confirmation dialog */}
+      {showUpdateDialog && updateInfo && (
+        <div className="update-dialog-overlay" onClick={() => setShowUpdateDialog(false)}>
+          <div className="update-dialog" onClick={e => e.stopPropagation()}>
+            <div className="update-dialog-icon">⬆</div>
+            <h3>确认更新到 v{updateInfo.version}</h3>
+            <p>当前版本 v{updateInfo.currentVersion}，应用将立即退出并启动安装程序。</p>
+            {!updateDownloaded && (
+              <div className="update-dialog-progress">
+                <div className="update-dialog-progress-bar" style={{ width: updateDownloadProgress + '%' }} />
+                <span>{updateDownloadProgress}%</span>
+              </div>
+            )}
+            <div className="update-dialog-actions">
+              <button className="update-btn-later" onClick={() => setShowUpdateDialog(false)}>稍后</button>
+              <button
+                className="update-btn-restart"
+                onClick={() => window.electronAPI?.installUpdate()}
+                disabled={!updateDownloaded}
+              >
+                立即重启更新
+              </button>
+            </div>
           </div>
         </div>
       )}

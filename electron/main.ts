@@ -16,7 +16,7 @@ import { registerTranslate } from './ipc/translate'
 import './tool-handlers'
 
 // Auto-updater
-import { checkForUpdates } from './updater'
+import { checkForUpdates, registerUpdateIPC } from './updater'
 
 // ===== App Configuration =====
 app.commandLine.appendSwitch('disable-gpu-sandbox')
@@ -268,7 +268,10 @@ app.whenReady().then(() => {
     })
   }
 
-  if (mainWindow) checkForUpdates(mainWindow)
+  if (mainWindow) {
+    registerUpdateIPC(mainWindow)
+    checkForUpdates(mainWindow)
+  }
 })
 
 app.on('activate', () => {

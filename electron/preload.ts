@@ -102,4 +102,27 @@ window.electronAPI = {
   fileRead: (path: string, maxLines?: number) => ipcRenderer.invoke('file-read', path, maxLines),
   fileWrite: (path: string, content: string) => ipcRenderer.invoke('file-write', path, content),
   fileEdit: (path: string, search: string, replace: string) => ipcRenderer.invoke('file-edit', path, search, replace),
+
+  // Update
+  installUpdate: () => ipcRenderer.invoke('update-install'),
+  onUpdateAvailable: (cb: (data: { version: string; currentVersion: string; downloadUrl: string }) => void) => {
+    const h = (_e: any, d: any) => cb(d)
+    ipcRenderer.on('update-available', h)
+    return () => { ipcRenderer.removeListener('update-available', h) }
+  },
+  onUpdateDownloaded: (cb: (data: { filePath: string; version: string }) => void) => {
+    const h = (_e: any, d: any) => cb(d)
+    ipcRenderer.on('update-downloaded', h)
+    return () => { ipcRenderer.removeListener('update-downloaded', h) }
+  },
+  onUpdateDownloadProgress: (cb: (data: { percent: number }) => void) => {
+    const h = (_e: any, d: any) => cb(d)
+    ipcRenderer.on('update-download-progress', h)
+    return () => { ipcRenderer.removeListener('update-download-progress', h) }
+  },
+  onUpdateError: (cb: (msg: string) => void) => {
+    const h = (_e: any, msg: string) => cb(msg)
+    ipcRenderer.on('update-error', h)
+    return () => { ipcRenderer.removeListener('update-error', h) }
+  },
 }

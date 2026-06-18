@@ -1833,6 +1833,89 @@ textarea.input-base {
 .titlebar-agent-dot.off { background: #555; }
 .titlebar-agent-key { font-size: 9px; padding: 1px 4px; border-radius: 3px; background: rgba(255,255,255,0.05); }
 
+/* Update button in titlebar */
+.titlebar-update-btn {
+  background: #22c55e;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-right: 8px;
+  transition: background 0.2s;
+  -webkit-app-region: no-drag;
+}
+.titlebar-update-btn:hover { background: #16a34a; }
+
+/* Update confirmation dialog */
+.update-dialog-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999;
+}
+.update-dialog {
+  background: var(--bg-secondary, #1e1e2e);
+  border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+  border-radius: 16px;
+  padding: 32px;
+  min-width: 380px;
+  max-width: 440px;
+  text-align: center;
+  box-shadow: 0 24px 48px rgba(0,0,0,0.5);
+}
+.update-dialog-icon {
+  font-size: 36px; margin-bottom: 12px;
+}
+.update-dialog h3 {
+  font-size: 18px; font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 8px;
+}
+.update-dialog p {
+  font-size: 13px; color: var(--text-muted);
+  margin: 0 0 20px; line-height: 1.5;
+}
+.update-dialog-progress {
+  height: 6px; background: rgba(255,255,255,0.08);
+  border-radius: 3px; margin-bottom: 20px; position: relative;
+  overflow: hidden;
+}
+.update-dialog-progress-bar {
+  height: 100%; background: #22c55e;
+  border-radius: 3px; transition: width 0.3s;
+}
+.update-dialog-progress > span {
+  position: absolute; right: 0; top: -18px;
+  font-size: 11px; color: var(--text-muted);
+}
+.update-dialog-actions {
+  display: flex; gap: 10px; justify-content: center;
+}
+.update-btn-later {
+  padding: 8px 20px; border-radius: 8px;
+  border: 1px solid var(--border-color, rgba(255,255,255,0.15));
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px; cursor: pointer;
+  transition: all 0.2s;
+}
+.update-btn-later:hover { border-color: rgba(255,255,255,0.3); color: var(--text-primary); }
+.update-btn-restart {
+  padding: 8px 20px; border-radius: 8px;
+  border: none;
+  background: #22c55e;
+  color: #fff;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.update-btn-restart:hover { background: #16a34a; }
+.update-btn-restart:disabled {
+  opacity: 0.5; cursor: not-allowed;
+}
+
 /* Sidebar Agent Toggle */
 
 /* Agent Panel Container */
