@@ -3,8 +3,64 @@
  * Spawns Python scraper process, captures JSON output, returns to renderer
  */
 import { ipcMain } from 'electron'
-import { spawn } from 'child_process'
+import { spawn, execSync } from 'child_process'
 import * as path from 'path'
+import * as fs from 'fs'
+
+function findPython(): string | null {
+  const isWin = process.platform === 'win32'
+
+  // Candidates in priority order
+  const candidates: string[] = isWin
+    ? ['python', 'python3', 'py']
+    : ['python3', 'python']
+
+  for (const cmd of candidates) {
+    try {
+      const result = execSync(isWin ? `where ${cmd} 2>nul` : `which ${cmd} 2>/dev/null`, {
+        encoding: 'utf-8',
+        timeout: 5000,
+      })
+      const lines = result.trim().split('\n').map(l => l.trim()).filter(Boolean)
+      // Skip Microsoft Store stub (opens store, not real python)
+      for (const line of lines) {
+        if (line.includes('WindowsApps')) continue
+        if (fs.existsSync(line)) return line
+      }
+    } catch {
+      // Not found, try next
+    }
+  }
+
+  // Fallback: check common Windows install paths
+  if (isWin) {
+    const localAppData = process.env.LOCALAPPDATA || ''
+    const commonPaths = [
+      path.join(localAppData, 'Programs', 'Python'),
+      'C:\\Python313', 'C:\\Python312', 'C:\\Python311', 'C:\\Python310',
+      'C:\\Program Files\\Python313', 'C:\\Program Files\\Python312',
+    ]
+    for (const base of commonPaths) {
+      const exe = path.join(base, 'python.exe')
+      if (fs.existsSync(exe)) return exe
+    }
+    // Check for versioned dirs under LOCALAPPDATA\Programs\Python
+    if (localAppData) {
+      const pythonDir = path.join(localAppData, 'Programs', 'Python')
+      if (fs.existsSync(pythonDir)) {
+        try {
+          const dirs = fs.readdirSync(pythonDir)
+          for (const d of dirs.sort().reverse()) {
+            const exe = path.join(pythonDir, d, 'python.exe')
+            if (fs.existsSync(exe)) return exe
+          }
+        } catch { /* ignore */ }
+      }
+    }
+  }
+
+  return null
+}
 
 function getPythonDir(): string {
   const isDev = !require('electron').app.isPackaged
@@ -21,12 +77,21 @@ function getSyncScript(): string {
 export function registerXHSSync() {
   ipcMain.handle('sync-xhs-notes', async () => {
     return new Promise<{ success: boolean; notes: any[]; message: string; account?: any }>((resolve) => {
+      const pythonExe = findPython()
+      if (!pythonExe) {
+        resolve({
+          success: false,
+          notes: [],
+          message: '未找到 Python。请安装 Python 并确保在 PATH 中，或使用 python.org 下载安装。',
+        })
+        return
+      }
+
       const scriptPath = getSyncScript()
-      const pythonCmd = process.platform === 'win32' ? 'python' : 'python3'
+      console.log(`[xhs-sync] Python: ${pythonExe}`)
+      console.log(`[xhs-sync] Script: ${scriptPath}`)
 
-      console.log(`[xhs-sync] Starting: ${pythonCmd} ${scriptPath}`)
-
-      const proc = spawn(pythonCmd, [scriptPath, '--headless'], {
+      const proc = spawn(pythonExe, [scriptPath, '--headless'], {
         cwd: getPythonDir(),
         env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
       })
@@ -65,7 +130,7 @@ export function registerXHSSync() {
         resolve({
           success: false,
           notes: [],
-          message: `无法启动 Python (${err.message})。请确认 Python 已安装且在 PATH 中。`,
+          message: `无法启动 Python (${err.message})`,
         })
       })
     })
