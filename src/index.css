@@ -2545,38 +2545,38 @@ textarea.input-base {
 /* CRM Sidebar */
 .crm-sidebar {
   width: 170px; flex-shrink: 0;
-  background: #0c0e14; border-right: 1px solid var(--border-color);
+  background: var(--bg-sidebar); border-right: 1px solid var(--border-color);
   display: flex; flex-direction: column; user-select: none;
   overflow-y: auto;
 }
 .crm-sidebar-logo {
   padding: 14px 14px 10px; display: flex; align-items: center; gap: 7px;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid var(--border-color);
 }
 .crm-sidebar-logo-icon {
   width: 24px; height: 24px; border-radius: 6px;
   background: var(--accent); display: flex; align-items: center;
   justify-content: center; color: #fff; font-size: 12px; font-weight: 700;
 }
-.crm-sidebar-logo-text { color: #e8e8ed; font-size: 13px; font-weight: 700; }
+.crm-sidebar-logo-text { color: var(--text-primary); font-size: 13px; font-weight: 700; }
 .crm-sidebar-section {
-  padding: 12px 12px 4px; font-size: 10px; color: rgba(255,255,255,0.3);
+  padding: 12px 12px 4px; font-size: 10px; color: var(--text-muted);
   text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600;
 }
 .crm-sidebar-nav { display: flex; flex-direction: column; padding: 4px 6px; gap: 1px; }
 .crm-sidebar-item {
   display: flex; align-items: center; gap: 8px;
-  padding: 8px 10px; border-radius: 6px; color: rgba(255,255,255,0.5);
+  padding: 8px 10px; border-radius: 6px; color: var(--text-secondary);
   cursor: pointer; transition: all 0.15s; font-size: 12px; font-weight: 500;
   position: relative;
 }
-.crm-sidebar-item:hover { background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.8); }
-.crm-sidebar-item.active { background: rgba(255,255,255,0.06); color: #fff; }
+.crm-sidebar-item:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+.crm-sidebar-item.active { background: var(--bg-active); color: var(--text-primary); }
 .crm-sidebar-item.active::before {
   content: ''; position: absolute; left: -4px; top: 6px; bottom: 6px;
   width: 3px; border-radius: 0 3px 3px 0; background: var(--accent);
 }
-.crm-sidebar-item-icon { width: 18px; display: flex; align-items: center; justify-content: center; opacity: 0.75; }
+.crm-sidebar-item-icon { width: 18px; display: flex; align-items: center; justify-content: center; opacity: 0.7; }
 .crm-sidebar-item.active .crm-sidebar-item-icon { opacity: 1; }
 .crm-sidebar-badge {
   margin-left: auto; font-size: 10px; padding: 1px 7px; border-radius: 10px;
@@ -2594,12 +2594,6 @@ textarea.input-base {
   background: var(--bg-secondary);
 }
 .crm-page { display: flex; flex-direction: column; height: 100%; }
-
-/* Theme light overrides for CRM sidebar */
-.theme-light .crm-sidebar { background: #1e1e2e; }
-.theme-light .crm-sidebar-item { color: rgba(255,255,255,0.45); }
-.theme-light .crm-sidebar-item:hover { color: rgba(255,255,255,0.75); }
-.theme-light .crm-sidebar-item.active { color: #fff; }
 
 /* CRM Toolbar */
 .crm-toolbar {
