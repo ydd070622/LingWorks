@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Globe, Brush, Settings, Sun, Moon, Wrench, Layers, CreditCard, Wifi, User, ChevronDown, Sparkles, Images, HistoryIcon, LayoutGrid, Wallet, Contact, Download, FolderOpen, LayoutDashboard, Workflow } from 'lucide-react'
+import { Globe, Brush, Settings, Sun, Moon, Wrench, Layers, CreditCard, Wifi, User, ChevronDown, Sparkles, Images, HistoryIcon, LayoutGrid, Wallet, Contact, Download, FolderOpen, LayoutDashboard, Workflow, Users } from 'lucide-react'
 import type { NavItem, DownloadItem } from '../types'
 
 interface SidebarProps {
@@ -74,6 +74,7 @@ export default function Sidebar({ items, activeId, theme, collapsed, collapsedSe
     accounts: makeIcon('accounts', '常用账号'),
     skyun: 'SK', mitce: 'MC',
     duannao: '端', zhisuan: '智', onethingai: 'AI',
+    crm: <Users size={16} />,
   };
 
   const websites = items.filter(i => i.type === 'website')
@@ -82,7 +83,7 @@ export default function Sidebar({ items, activeId, theme, collapsed, collapsedSe
   const aggregators = items.filter(i => i.type === 'aggregator')
   const accounts = items.filter(i => i.type === 'account')
   const vpnSites = items.filter(i => i.type === 'vpn')
-  const xhsSites = items.filter(i => i.type === 'xhs')
+  const xhsSites = items.filter(i => i.type === 'xhs' || i.type === 'crm')
 const imageWorkshopItems = items.filter(i => i.type === 'tool')
 const consoleItems = items.filter(i => i.type === 'aggregator' || i.type === 'account' || i.type === 'vpn')
 const comfyuiPageItem = items.find(i => i.type === 'comfyui-page')

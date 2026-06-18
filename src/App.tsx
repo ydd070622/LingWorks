@@ -14,6 +14,7 @@ import Prompts from './pages/Prompts'
 import Dashboard from './pages/Dashboard'
 import ComfyuiPlatforms from './pages/ComfyuiPlatforms'
 import XiaoHongShuCards from './pages/XiaoHongShuCards'
+import CRMPanel from './pages/CRMPanel'
 import type { NavItem, CustomModel, DownloadItem, ShortcutBindings, AgentContext } from './types'
 import type { SearchResult } from './services/multi-search'
 import { X, Loader2, House, PanelLeft } from 'lucide-react'
@@ -30,6 +31,7 @@ const navItems: NavItem[] = [
   { type: 'website', id: 'github', label: 'GitHub', url: 'https://github.com', icon: 'globe' },
   { type: 'website', id: 'gemini', label: 'Gemini', url: 'https://gemini.google.com', icon: 'globe' },
   { type: 'xhs', id: 'xhs_juguang', label: '小红书', url: '', icon: 'globe' },
+  { type: 'crm', id: 'crm', label: '客户管理', icon: 'users' },
   { type: 'comfyui', id: 'duannao', label: '端脑云', url: 'https://cephalon.cloud/aigc', icon: 'globe' },
   { type: 'comfyui', id: 'zhisuan', label: '智算云扉', url: 'https://waas.aigate.cc/index', icon: 'globe' },
   { type: 'comfyui', id: 'onethingai', label: 'OneThingAi', url: 'https://onethingai.com', icon: 'globe' },
@@ -518,6 +520,7 @@ export default function App() {
             <WebViewPage key={site.id} site={site} visible={activeId === site.id} onUrlChange={(url, content) => { setBrowserUrl(url); setBrowserContent(content || '') }} />
           ))}
           {activeId === 'xhs_juguang' && <XiaoHongShuCards onUrlChange={(url, content) => { setBrowserUrl(url); setBrowserContent(content || '') }} resetKey={xhsResetKey} />}
+          {activeId === 'crm' && <CRMPanel />}
           {comfyuiSites.map(site => (
             <WebViewPage key={site.id} site={site} visible={activeId === site.id} onUrlChange={(url, content) => { setBrowserUrl(url); setBrowserContent(content || '') }} />
           ))}

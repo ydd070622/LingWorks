@@ -14,6 +14,7 @@ export type NavItem =
  | { type: 'aggregator'; id: string; label: string; icon: string }
   | { type: 'vpn'; id: string; label: string; url: string; icon: string }
   | { type: 'account'; id: string; label: string; icon: string }
+  | { type: 'crm'; id: string; label: string; icon: string }
 
 export interface Account {
   id: string
