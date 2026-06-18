@@ -1,6 +1,6 @@
 {
   "name": "ai-web-tools",
-  "version": "3.5.3",
+  "version": "3.5.4",
   "private": true,
   "main": "dist-electron/main.js",
   "scripts": {
@@ -35,8 +35,7 @@
     },
     "files": [
       "dist/**/*",
-      "dist-electron/**/*",
-      "python/**/*"
+      "dist-electron/**/*"
     ],
     "nsis": {
       "oneClick": false,

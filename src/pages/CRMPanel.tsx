@@ -814,14 +814,14 @@ function NotesPage({ data, setEditingNote, setFilterNoteId, setTab, syncNotes }:
       const result = await window.electronAPI.syncXHSNotes()
       if (result.success && result.notes.length > 0) {
         const { added, updated } = syncNotes(result.notes)
-        setSyncMsg(`同步完成，新增 ${added} 条，更新 ${updated} 条`)
+        setSyncMsg(`导入完成，新增 ${added} 条，更新 ${updated} 条`)
       } else if (result.success && result.notes.length === 0) {
-        setSyncMsg('未找到新笔记')
+        setSyncMsg('CSV 中暂无笔记数据，请先运行 xhs-monitor 采集')
       } else {
-        setSyncMsg(result.message || '同步失败')
+        setSyncMsg(result.message || '导入失败')
       }
     } catch {
-      setSyncMsg('同步异常，请重试')
+      setSyncMsg('导入异常，请重试')
     } finally {
       setSyncing(false)
     }
