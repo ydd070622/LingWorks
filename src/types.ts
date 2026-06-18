@@ -172,6 +172,7 @@ declare global {
       fileRead: (path: string, maxLines?: number) => Promise<{ path?: string; size?: number; sizeKB?: string; totalLines?: number; content?: string; truncated?: boolean; error?: string }>
       fileWrite: (path: string, content: string) => Promise<{ path?: string; size?: number; message?: string; error?: string }>
       fileEdit: (path: string, search: string, replace: string) => Promise<{ path?: string; message?: string; oldLines?: number; newLines?: number; error?: string }>
+      syncXHSNotes: () => Promise<{ success: boolean; notes: Array<{ title: string; publish_date: string; views: number; likes: number; collects: number; comments: number; shares: number }>; message: string; account?: { followers: number } }>
     }
   }
 }

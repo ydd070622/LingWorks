@@ -102,6 +102,7 @@ window.electronAPI = {
   fileRead: (path: string, maxLines?: number) => ipcRenderer.invoke('file-read', path, maxLines),
   fileWrite: (path: string, content: string) => ipcRenderer.invoke('file-write', path, content),
   fileEdit: (path: string, search: string, replace: string) => ipcRenderer.invoke('file-edit', path, search, replace),
+  syncXHSNotes: () => ipcRenderer.invoke('sync-xhs-notes'),
 
   // Update
   startUpdateDownload: (downloadUrl: string, version: string) => ipcRenderer.invoke('update-start-download', downloadUrl, version),

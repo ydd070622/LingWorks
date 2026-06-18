@@ -217,6 +217,39 @@ export default function CRMPanel() {
     persist({ ...data, notes: [...data.notes, n] })
   }, [data, persist])
 
+  const syncNotes = useCallback((scrapedNotes: Array<{ title: string; publish_date: string; views: number; likes: number; collects: number; comments: number; shares: number }>) => {
+    let added = 0; let updated = 0
+    const existing = [...data.notes]
+    for (const sn of scrapedNotes) {
+      if (!sn.title.trim()) continue
+      const existingIdx = existing.findIndex(n => n.title === sn.title)
+      if (existingIdx >= 0) {
+        existing[existingIdx] = {
+          ...existing[existingIdx],
+          publishDate: sn.publish_date || existing[existingIdx].publishDate,
+          views: sn.views || existing[existingIdx].views,
+          likes: sn.likes || existing[existingIdx].likes,
+          comments: sn.comments || existing[existingIdx].comments,
+          status: 'published',
+        }
+        updated++
+      } else {
+        existing.push({
+          id: 'n' + Date.now() + '_' + added,
+          title: sn.title,
+          publishDate: sn.publish_date,
+          status: 'published',
+          views: sn.views,
+          likes: sn.likes,
+          comments: sn.comments,
+        })
+        added++
+      }
+    }
+    persist({ ...data, notes: existing })
+    return { added, updated }
+  }, [data, persist])
+
   const followUps = useMemo(() =>
     data.customers.filter(c => c.followUpDate && c.stage !== 'closed')
       .map(c => ({ ...c, diff: daysDiff(c.followUpDate, ts) }))
@@ -229,7 +262,7 @@ export default function CRMPanel() {
 
   if (!loaded) return <div className="crm-loading">加载中...</div>
 
-  const sharedProps = { data, followUps, todayCount, overdueCount, closedCusts, leadCount, enrichCust, updateCust, addCust, deleteCust, deleteCusts, moveCust, updateNote, addNote, viewMode, setViewMode, filterNoteId, setFilterNoteId, setEditingCustomer, setEditingNote, setTab }
+  const sharedProps = { data, followUps, todayCount, overdueCount, closedCusts, leadCount, enrichCust, updateCust, addCust, deleteCust, deleteCusts, moveCust, updateNote, addNote, syncNotes, viewMode, setViewMode, filterNoteId, setFilterNoteId, setEditingCustomer, setEditingNote, setTab }
 
   const sidebarItems = [
     { ...TABS[0], badge: todayCount > 0 ? { count: todayCount, cls: overdueCount > 0 ? 'danger' : 'warn' } : null },
@@ -307,6 +340,7 @@ interface SharedProps {
   moveCust: (id: string, stage: string) => void
   updateNote: (id: string, upd: Partial<Note>) => void
   addNote: (note: Partial<Note>) => void
+  syncNotes: (scrapedNotes: Array<{ title: string; publish_date: string; views: number; likes: number; collects: number; comments: number; shares: number }>) => { added: number; updated: number }
   viewMode: 'table' | 'kanban'
   setViewMode: (v: 'table' | 'kanban') => void
   filterNoteId: string | null
@@ -761,16 +795,48 @@ function DashboardPage({ data, todayCount }: SharedProps) {
 }
 
 // ==================== 6. Notes Page ====================
-function NotesPage({ data, setEditingNote, setFilterNoteId, setTab }: SharedProps) {
+function NotesPage({ data, setEditingNote, setFilterNoteId, setTab, syncNotes }: SharedProps) {
+  const [syncing, setSyncing] = useState(false)
+  const [syncMsg, setSyncMsg] = useState<string | null>(null)
+
   const notesWithLeads = useMemo(() => data.notes.map(n => ({
     ...n, leads: data.customers.filter(c => c.sourceNoteId === n.id).length,
   })), [data.notes, data.customers])
+
+  const handleSync = async () => {
+    if (!window.electronAPI?.syncXHSNotes) {
+      setSyncMsg('同步功能仅在桌面应用中可用')
+      return
+    }
+    setSyncing(true)
+    setSyncMsg(null)
+    try {
+      const result = await window.electronAPI.syncXHSNotes()
+      if (result.success && result.notes.length > 0) {
+        const { added, updated } = syncNotes(result.notes)
+        setSyncMsg(`同步完成，新增 ${added} 条，更新 ${updated} 条`)
+      } else if (result.success && result.notes.length === 0) {
+        setSyncMsg('未找到新笔记')
+      } else {
+        setSyncMsg(result.message || '同步失败')
+      }
+    } catch {
+      setSyncMsg('同步异常，请重试')
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   return (
     <div className="crm-page">
       <div className="crm-toolbar">
         <span className="crm-page-subtitle">{notesWithLeads.length} 条笔记 · {notesWithLeads.filter(n => n.status === 'published').length} 已发布</span>
-        <button className="crm-btn-primary" onClick={() => setEditingNote({ status: 'draft' })}><Plus size={14} /> 添加笔记</button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {syncMsg && <span className="crm-sync-msg">{syncMsg}</span>}
+          <button className="crm-btn-primary" onClick={handleSync} disabled={syncing}>
+            {syncing ? '同步中...' : '同步小红书笔记'}
+          </button>
+        </div>
       </div>
       <div className="crm-table-wrap">
         <table className="crm-table">

@@ -11,6 +11,7 @@ import { registerAuth } from './ipc/auth'
 import { registerDownload, attachWebviewDownloads, registerWebviewSessionIPC } from './ipc/download'
 import { registerTools } from './ipc/tools'
 import { registerTranslate } from './ipc/translate'
+import { registerXHSSync } from './ipc/xhs-sync'
 
 // Agent tool IPC handlers (web_fetch, file_*)
 import './tool-handlers'
@@ -78,6 +79,7 @@ function createWindow() {
   registerAuth()
   toolsRef = registerTools(mainWindow) || null
   registerTranslate()
+  registerXHSSync()
 
   // Download management
   const { activeDownloads, trackSession } = registerDownload(mainWindow)

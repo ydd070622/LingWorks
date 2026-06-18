@@ -2611,6 +2611,7 @@ textarea.input-base {
 .crm-search::placeholder { color: var(--text-muted); }
 .crm-count-label { font-size: 12px; color: var(--text-secondary); }
 .crm-page-subtitle { font-size: 12px; color: var(--text-secondary); }
+.crm-sync-msg { font-size: 11px; color: var(--accent); white-space: nowrap; }
 .crm-mono { font-family: var(--font-mono); font-size: 11px; }
 .crm-accent { color: var(--accent); }
 .crm-muted { font-size: 11px; color: var(--text-muted); }
