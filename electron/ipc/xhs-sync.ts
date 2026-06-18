@@ -62,18 +62,31 @@ function findPython(): string | null {
   return null
 }
 
-function getPythonDir(): string {
-  const isDev = !require('electron').app.isPackaged
-  if (isDev) {
-    // __dirname is dist-electron/ipc — project root is two levels up
-    return path.join(__dirname, '..', '..', 'python')
-  }
-  // In packaged app, python/ is next to the app.asar
-  return path.join(process.resourcesPath, 'app.asar.unpacked', 'python')
-}
-
 function getSyncScript(): string {
-  return path.join(getPythonDir(), 'sync_notes.py')
+  const candidates: string[] = []
+
+  // Dev mode: __dirname is dist-electron/ipc, project root is two levels up
+  candidates.push(path.join(__dirname, '..', '..', 'python', 'sync_notes.py'))
+
+  // Packaged app: asar.unpacked
+  try {
+    const { app } = require('electron')
+    if (app.isPackaged) {
+      candidates.push(path.join(process.resourcesPath, 'app.asar.unpacked', 'python', 'sync_notes.py'))
+    }
+  } catch {}
+
+  // Fallback: original xhs-monitor path
+  candidates.push(path.join(process.env.USERPROFILE || 'C:\\Users\\' + (process.env.USERNAME || ''), 'Desktop', 'xhs-monitor', 'sync_notes.py'))
+
+  for (const p of candidates) {
+    if (fs.existsSync(p)) {
+      return p
+    }
+  }
+
+  // Return first candidate for error message
+  return candidates[0]
 }
 
 export function registerXHSSync() {
@@ -93,10 +106,12 @@ export function registerXHSSync() {
       console.log(`[xhs-sync] Python: ${pythonExe}`)
       console.log(`[xhs-sync] Script: ${scriptPath}`)
 
+      const scriptDir = path.dirname(scriptPath)
+      console.log(`[xhs-sync] CWD: ${scriptDir}`)
+
       const proc = spawn(pythonExe, [scriptPath, '--headless'], {
-        cwd: getPythonDir(),
+        cwd: scriptDir,
         env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
-        shell: process.platform === 'win32',
       })
 
       let stdout = ''
@@ -129,11 +144,12 @@ export function registerXHSSync() {
       })
 
       proc.on('error', (err: Error) => {
-        console.error(`[xhs-sync] Failed to spawn: ${err.message}`)
+        console.error(`[xhs-sync] Failed: ${err.message}`)
+        console.error(`[xhs-sync] Tried: ${pythonExe} "${scriptPath}"`)
         resolve({
           success: false,
           notes: [],
-          message: `无法启动 Python (${err.message})`,
+          message: `同步失败: ${err.message}`,
         })
       })
     })
