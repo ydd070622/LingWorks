@@ -86,8 +86,6 @@ export default function XiaoHongShuCards({ onUrlChange, resetKey }: { onUrlChang
   const wvMap = useRef<Map<string, WebviewElement>>(new Map())
   const containerRef = useRef<HTMLDivElement>(null)
   const accountRef = useRef(activeView)
-  const onUrlChangeRef = useRef(onUrlChange)
-  onUrlChangeRef.current = onUrlChange
 
   useEffect(() => { accountRef.current = activeView }, [activeView])
 
@@ -108,12 +106,9 @@ export default function XiaoHongShuCards({ onUrlChange, resetKey }: { onUrlChang
     })()
   }, [])
 
-  // Init tabs when entering a view; clean up previous account's webviews to prevent leak
+  // Init tabs when entering a view
   useEffect(() => {
     if (!activeView) return
-    // Different account: dispose all existing webviews bound to the previous account
-    wvMap.current.forEach(wv => { try { wv.remove() } catch {} })
-    wvMap.current.clear()
     const initId = `xhs-${++tabCounter}`
     setTabs([{ id: initId, url: activeView.url, title: activeView.label }])
     setActiveTabId(initId)
@@ -144,20 +139,19 @@ export default function XiaoHongShuCards({ onUrlChange, resetKey }: { onUrlChang
       }
     })
 
-    // Report URL + rendered DOM content for agent context (use ref to avoid stale closure)
+    // Report URL + rendered DOM content for agent context
     wv.addEventListener('did-finish-load', () => {
-      const cb = onUrlChangeRef.current
-      if (cb) {
+      if (onUrlChange) {
         const url = (wv as any).getURL?.() || tabUrl
         try {
           ;(wv as any).executeJavaScript('document.body?document.body.innerText:document.documentElement.innerText').then((content: string) => {
             const trimmed = content?.slice(0, 8000) || ''
-            cb(url, trimmed ? `页面内容（前8000字符）:\n${trimmed}` : undefined)
+            onUrlChange(url, trimmed ? `页面内容（前8000字符）:\n${trimmed}` : undefined)
           }).catch(() => {
-            cb(url)
+            onUrlChange(url)
           })
         } catch {
-          cb(url)
+          onUrlChange(url)
         }
       }
       try {
@@ -175,19 +169,18 @@ export default function XiaoHongShuCards({ onUrlChange, resetKey }: { onUrlChang
     })
 
     wv.addEventListener('did-navigate-in-page', ((e: any) => {
-      const cb = onUrlChangeRef.current
-      if (cb && e.url) {
+      if (onUrlChange && e.url) {
         // Delay extraction to wait for SPA content to render after navigation
         setTimeout(() => {
           try {
             ;(wv as any).executeJavaScript('document.body?document.body.innerText:document.documentElement.innerText').then((content: string) => {
               const trimmed = content?.slice(0, 8000) || ''
-              cb(e.url, trimmed ? `页面内容（前8000字符）:\n${trimmed}` : undefined)
+              onUrlChange(e.url, trimmed ? `页面内容（前8000字符）:\n${trimmed}` : undefined)
             }).catch(() => {
-              cb(e.url)
+              onUrlChange(e.url)
             })
           } catch {
-            cb(e.url)
+            onUrlChange(e.url)
           }
         }, 1200)
       }
@@ -225,19 +218,6 @@ export default function XiaoHongShuCards({ onUrlChange, resetKey }: { onUrlChang
         (w.style as any).display = id === tab.id ? '' : 'none'
       }
     })
-
-    // Sync URL of the active tab to agent panel (re-extract content if already loaded)
-    const cb = onUrlChangeRef.current
-    if (cb && wv) {
-      const url = (wv as any).getURL?.() || tab.url
-      cb(url)
-      try {
-        ;(wv as any).executeJavaScript('document.body?document.body.innerText:document.documentElement.innerText').then((content: string) => {
-          const trimmed = content?.slice(0, 8000) || ''
-          if (trimmed) cb(url, `页面内容（前8000字符）:\n${trimmed}`)
-        }).catch(() => {})
-      } catch {}
-    }
   }, [activeTabId, tabs, activeView, createWebview])
 
   useEffect(() => {
