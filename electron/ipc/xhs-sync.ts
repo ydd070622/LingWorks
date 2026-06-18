@@ -65,9 +65,11 @@ function findPython(): string | null {
 function getPythonDir(): string {
   const isDev = !require('electron').app.isPackaged
   if (isDev) {
-    return path.join(__dirname, '..', 'python')
+    // __dirname is dist-electron/ipc — project root is two levels up
+    return path.join(__dirname, '..', '..', 'python')
   }
-  return path.join(process.resourcesPath, '..', 'python')
+  // In packaged app, python/ is next to the app.asar
+  return path.join(process.resourcesPath, 'app.asar.unpacked', 'python')
 }
 
 function getSyncScript(): string {
@@ -94,6 +96,7 @@ export function registerXHSSync() {
       const proc = spawn(pythonExe, [scriptPath, '--headless'], {
         cwd: getPythonDir(),
         env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
+        shell: process.platform === 'win32',
       })
 
       let stdout = ''
