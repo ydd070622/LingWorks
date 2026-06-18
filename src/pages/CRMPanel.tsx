@@ -218,23 +218,36 @@ export default function CRMPanel() {
   }, [data, persist])
 
   const syncNotes = useCallback((scrapedNotes: Array<{ title: string; publish_date: string; views: number; likes: number; collects: number; comments: number; shares: number }>) => {
-    let added = 0; let updated = 0
+    let added = 0; let updated = 0; let removed = 0
     const existing = [...data.notes]
+    const scrapedTitles = new Set(scrapedNotes.map(n => n.title).filter(Boolean))
+    // Mark which note IDs are linked to customers
+    const linkedIds = new Set(data.customers.filter(c => c.sourceNoteId).map(c => c.sourceNoteId!))
+
+    // Remove old notes that aren't in scraped data and have no customers
+    const filtered = existing.filter(n => {
+      if (!scrapedTitles.has(n.title) && !linkedIds.has(n.id)) {
+        removed++
+        return false
+      }
+      return true
+    })
+
     for (const sn of scrapedNotes) {
       if (!sn.title.trim()) continue
-      const existingIdx = existing.findIndex(n => n.title === sn.title)
-      if (existingIdx >= 0) {
-        existing[existingIdx] = {
-          ...existing[existingIdx],
-          publishDate: sn.publish_date || existing[existingIdx].publishDate,
-          views: sn.views || existing[existingIdx].views,
-          likes: sn.likes || existing[existingIdx].likes,
-          comments: sn.comments || existing[existingIdx].comments,
+      const idx = filtered.findIndex(n => n.title === sn.title)
+      if (idx >= 0) {
+        filtered[idx] = {
+          ...filtered[idx],
+          publishDate: sn.publish_date || filtered[idx].publishDate,
+          views: sn.views || filtered[idx].views,
+          likes: sn.likes || filtered[idx].likes,
+          comments: sn.comments || filtered[idx].comments,
           status: 'published',
         }
         updated++
       } else {
-        existing.push({
+        filtered.push({
           id: 'n' + Date.now() + '_' + added,
           title: sn.title,
           publishDate: sn.publish_date,
@@ -246,8 +259,8 @@ export default function CRMPanel() {
         added++
       }
     }
-    persist({ ...data, notes: existing })
-    return { added, updated }
+    persist({ ...data, notes: filtered })
+    return { added, updated, removed }
   }, [data, persist])
 
   const followUps = useMemo(() =>
@@ -340,7 +353,7 @@ interface SharedProps {
   moveCust: (id: string, stage: string) => void
   updateNote: (id: string, upd: Partial<Note>) => void
   addNote: (note: Partial<Note>) => void
-  syncNotes: (scrapedNotes: Array<{ title: string; publish_date: string; views: number; likes: number; collects: number; comments: number; shares: number }>) => { added: number; updated: number }
+  syncNotes: (scrapedNotes: Array<{ title: string; publish_date: string; views: number; likes: number; collects: number; comments: number; shares: number }>) => { added: number; updated: number; removed: number }
   viewMode: 'table' | 'kanban'
   setViewMode: (v: 'table' | 'kanban') => void
   filterNoteId: string | null
@@ -813,8 +826,10 @@ function NotesPage({ data, setEditingNote, setFilterNoteId, setTab, syncNotes }:
     try {
       const result = await window.electronAPI.syncXHSNotes()
       if (result.success && result.notes.length > 0) {
-        const { added, updated } = syncNotes(result.notes)
-        setSyncMsg(`导入完成，新增 ${added} 条，更新 ${updated} 条`)
+        const { added, updated, removed } = syncNotes(result.notes)
+        const parts = [`新增 ${added} 条`, `更新 ${updated} 条`]
+        if (removed > 0) parts.push(`清理 ${removed} 条旧笔记`)
+        setSyncMsg(parts.join('，'))
       } else if (result.success && result.notes.length === 0) {
         setSyncMsg('CSV 中暂无笔记数据，请先运行 xhs-monitor 采集')
       } else {
