@@ -226,29 +226,45 @@ export default function CRMPanel() {
 
   const sharedProps = { data, followUps, todayCount, overdueCount, closedCusts, leadCount, enrichCust, updateCust, addCust, deleteCust, moveCust, updateNote, addNote, viewMode, setViewMode, filterNoteId, setFilterNoteId, setEditingCustomer, setEditingNote, setTab }
 
+  const sidebarItems = [
+    { ...TABS[0], badge: todayCount > 0 ? { count: todayCount, cls: overdueCount > 0 ? 'danger' : 'warn' } : null },
+    { ...TABS[1], badge: null },
+    { ...TABS[2], badge: leadCount > 0 ? { count: leadCount, cls: 'info' } : null },
+    { ...TABS[3], badge: closedCusts.length > 0 ? { count: closedCusts.length, cls: 'success' } : null },
+    { ...TABS[4], badge: null },
+    { ...TABS[5], badge: null },
+  ]
+
   return (
     <div className="crm-panel">
-      <div className="crm-tabs">
-        {TABS.map(t => {
-          const Icon = t.icon
-          const counts: Record<string, number> = { leadpool: leadCount, contracts: closedCusts.length }
-          const count = counts[t.id] || 0
-          return (
-            <button key={t.id} className={`crm-tab ${tab === t.id ? 'active' : ''}`} onClick={() => { setTab(t.id); setFilterNoteId(null) }}>
-              <Icon size={15} />
-              <span>{t.label}</span>
-              {count > 0 && <span className="crm-tab-badge">{count}</span>}
-            </button>
-          )
-        })}
+      <div className="crm-sidebar">
+        <div className="crm-sidebar-logo">
+          <div className="crm-sidebar-logo-icon">L</div>
+          <span className="crm-sidebar-logo-text">客户管理</span>
+        </div>
+        <div className="crm-sidebar-section">主菜单</div>
+        <div className="crm-sidebar-nav">
+          {sidebarItems.map(item => {
+            const Icon = item.icon
+            return (
+              <div key={item.id} className={`crm-sidebar-item ${tab === item.id ? 'active' : ''}`} onClick={() => { setTab(item.id); setFilterNoteId(null) }}>
+                <span className="crm-sidebar-item-icon"><Icon size={15} /></span>
+                <span>{item.label}</span>
+                {item.badge && <span className={`crm-sidebar-badge ${item.badge.cls}`}>{item.badge.count}</span>}
+              </div>
+            )
+          })}
+        </div>
       </div>
-      <div className="crm-content">
-        {tab === 'workbench' && <Workbench {...sharedProps} />}
-        {tab === 'customers' && <CustomerPage {...sharedProps} />}
-        {tab === 'leadpool' && <LeadPoolPage {...sharedProps} />}
-        {tab === 'contracts' && <ContractPage {...sharedProps} />}
-        {tab === 'dashboard' && <DashboardPage {...sharedProps} />}
-        {tab === 'notes' && <NotesPage {...sharedProps} />}
+      <div className="crm-main">
+        <div className="crm-content">
+          {tab === 'workbench' && <Workbench {...sharedProps} />}
+          {tab === 'customers' && <CustomerPage {...sharedProps} />}
+          {tab === 'leadpool' && <LeadPoolPage {...sharedProps} />}
+          {tab === 'contracts' && <ContractPage {...sharedProps} />}
+          {tab === 'dashboard' && <DashboardPage {...sharedProps} />}
+          {tab === 'notes' && <NotesPage {...sharedProps} />}
+        </div>
       </div>
       {editingCustomer && (
         <CustomerModal
