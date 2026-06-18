@@ -579,7 +579,7 @@ export default function Home({ onSelect, searchQuery, searchEngineId, searchUrl,
       </div>
       <div className="home-content">
         <h1 className="home-title">LingWorks</h1>
-        <p className="home-subtitle">所有 AI 工具，一站汇聚</p>
+        <p className="home-subtitle">Ai个人工作台</p>
         <div className="home-search-wrap">
           <input
             className="home-search-box"
