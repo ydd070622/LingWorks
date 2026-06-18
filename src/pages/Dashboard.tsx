@@ -124,8 +124,22 @@ export default function Dashboard({ onSelect }: { onSelect?: (id: string) => voi
 
   const loadConfig = useCallback(async () => {
     if (window.electronAPI) {
-      const models = await window.electronAPI.getStore('customModels')
-      if (Array.isArray(models)) { const ds = models.find((m: any) => m.name?.toLowerCase().includes('deepseek')); if (ds?.apiKey) setApiKey(ds.apiKey) }
+      let key = await window.electronAPI.getStore('dsApiKey')
+      // Migration: read from old customModels store if dsApiKey not yet set
+      if (!key) {
+        const models = await window.electronAPI.getStore('customModels')
+        if (Array.isArray(models)) {
+          const ds = models.find((m: any) => m.name?.toLowerCase().includes('deepseek'))
+          if (ds?.apiKey) {
+            key = ds.apiKey
+            await window.electronAPI.setStore('dsApiKey', key)
+            // Remove DeepSeek entry from customModels to clean up 生图模型 list
+            const filtered = models.filter((m: any) => !(m.name?.toLowerCase().includes('deepseek')))
+            await window.electronAPI.setStore('customModels', filtered)
+          }
+        }
+      }
+      if (typeof key === 'string') setApiKey(key)
       const pt = await window.electronAPI.getStore('dsPlatformToken'); if (typeof pt === 'string') setPlatformToken(pt)
     }
   }, [])
@@ -200,7 +214,7 @@ export default function Dashboard({ onSelect }: { onSelect?: (id: string) => voi
           <div style={{ display: 'flex', gap: 8 }}>
             <input className="input-base" style={{ flex: 1 }} type="password" value={apiKey} onChange={async e => {
               setApiKey(e.target.value)
-              if (window.electronAPI) { const models = await window.electronAPI.getStore('customModels'); let list = Array.isArray(models) ? models : []; const idx = list.findIndex((m: any) => m.name === 'DeepSeek'); const item = { name: 'DeepSeek', apiKey: e.target.value, endpoint: 'https://api.deepseek.com/v1', modelName: 'deepseek-chat' }; if (idx >= 0) list[idx] = item; else list.push(item); await window.electronAPI.setStore('customModels', list) }
+              if (window.electronAPI) await window.electronAPI.setStore('dsApiKey', e.target.value)
             }} placeholder={apiKey ? '••••••••••••••••••••' : 'sk-...'} />
             <button className="btn btn-primary btn-sm" onClick={fetchBalance}>验证</button>
           </div>

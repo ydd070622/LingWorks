@@ -545,17 +545,13 @@ async function executeTool(tc: ToolCall, options?: AgentChatOptions, signal?: Ab
       const api = window.electronAPI
       if (!api) return JSON.stringify({ error: 'query_deepseek_usage 仅可在桌面环境中使用' })
 
-      const [customModels, platformToken] = await Promise.all([
-        api.getStore('customModels') as Promise<any>,
+      const [dsApiKey, platformToken] = await Promise.all([
+        api.getStore('dsApiKey') as Promise<any>,
         api.getStore('dsPlatformToken') as Promise<any>,
       ])
 
-      // Extract DeepSeek API key from customModels
-      let apiKey = ''
-      if (Array.isArray(customModels)) {
-        const ds = customModels.find((m: any) => m.name?.toLowerCase().includes('deepseek') || m.modelName?.toLowerCase().includes('deepseek'))
-        if (ds?.apiKey) apiKey = ds.apiKey
-      }
+      // Use dedicated dsApiKey store
+      const apiKey = typeof dsApiKey === 'string' ? dsApiKey : ''
       const ptToken = typeof platformToken === 'string' ? platformToken : ''
 
       const result: Record<string, any> = {}
