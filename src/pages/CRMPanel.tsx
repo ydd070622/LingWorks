@@ -112,7 +112,6 @@ export default function CRMPanel() {
       id: 'n' + Date.now(), title: note.title || '', publishDate: note.publishDate || '',
       status: note.status || 'draft', views: 0, likes: 0, comments: 0,
       account: note.account || (data.accounts && data.accounts[0]) || '',
-      link: note.link || '',
     }
     persist({ ...data, notes: [...(data.notes || []), n] })
   }, [data, persist])
@@ -188,7 +187,6 @@ export default function CRMPanel() {
       {editingNote && (
         <NoteModal
           note={editingNote}
-          accounts={data.accounts}
           onSave={n => { n.id ? updateNote(n.id, n) : addNote(n); setEditingNote(null) }}
           onClose={() => setEditingNote(null)}
         />

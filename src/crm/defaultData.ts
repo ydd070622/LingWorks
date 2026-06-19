@@ -5,12 +5,12 @@ export function createDefaultData(): CRMData {
   const fmt = (d: Date) => d.toISOString().split('T')[0]
   const a = (d: Date, n: number) => { const r = new Date(d); r.setDate(r.getDate() + n); return r }
   const notes: Note[] = [
-    { id: 'n1', title: '奶油风客厅改造实录，附软装清单', publishDate: '2026-06-08', status: 'published', views: 2341, likes: 187, comments: 43, account: '主账号', link: '' },
-    { id: 'n2', title: '89平小三居，这样装显大20平', publishDate: '2026-06-02', status: 'published', views: 5620, likes: 423, comments: 89, account: '主账号', link: '' },
-    { id: 'n3', title: '法式复古卧室，每个角落都是电影感', publishDate: '2026-05-28', status: 'published', views: 1892, likes: 156, comments: 32, account: '小号A', link: '' },
-    { id: 'n4', title: '精装房改造避坑指南', publishDate: '', status: 'draft', views: 0, likes: 0, comments: 0, account: '主账号', link: '' },
-    { id: 'n5', title: '15万预算装120平，附费用明细', publishDate: '2026-06-12', status: 'published', views: 3210, likes: 267, comments: 55, account: '小号A', link: '' },
-    { id: 'n6', title: '原木风厨房，治愈系烟火气', publishDate: '', status: 'draft', views: 0, likes: 0, comments: 0, account: '小号B', link: '' },
+    { id: 'n1', title: '奶油风客厅改造实录，附软装清单', publishDate: '2026-06-08', status: 'published', views: 2341, likes: 187, comments: 43, account: '主账号' },
+    { id: 'n2', title: '89平小三居，这样装显大20平', publishDate: '2026-06-02', status: 'published', views: 5620, likes: 423, comments: 89, account: '主账号' },
+    { id: 'n3', title: '法式复古卧室，每个角落都是电影感', publishDate: '2026-05-28', status: 'published', views: 1892, likes: 156, comments: 32, account: '小号A' },
+    { id: 'n4', title: '精装房改造避坑指南', publishDate: '', status: 'draft', views: 0, likes: 0, comments: 0, account: '主账号' },
+    { id: 'n5', title: '15万预算装120平，附费用明细', publishDate: '2026-06-12', status: 'published', views: 3210, likes: 267, comments: 55, account: '小号A' },
+    { id: 'n6', title: '原木风厨房，治愈系烟火气', publishDate: '', status: 'draft', views: 0, likes: 0, comments: 0, account: '小号B' },
   ]
   const customers: Customer[] = [
     { id: 'c1', name: '张女士', phone: '138****6789', wechat: 'zhang_xx', source: 'xiaohongshu', sourceNoteId: 'n1', stage: 'followup', houseType: '三室两厅', budget: '20万', style: '意式极简', followUpDate: fmt(a(now, 1)), followUpNote: '客户说6.19才有空', dealAmount: null, notes: '对意式极简很感兴趣，发了户型图。需等先生一起看方案。', createdAt: '2026-06-10', updatedAt: '2026-06-15' },

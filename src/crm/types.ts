@@ -1,7 +1,7 @@
 export interface Note {
   id: string; title: string; publishDate: string; status: 'published' | 'draft'
   views: number; likes: number; comments: number
-  account: string; link: string
+  account: string
 }
 
 export interface Customer {

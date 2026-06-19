@@ -1,17 +1,15 @@
 import { useState } from 'react'
-import { X, Link } from 'lucide-react'
+import { X } from 'lucide-react'
 import type { Note } from './types'
 
-export default function NoteModal({ note, accounts, onSave, onClose }: {
+export default function NoteModal({ note, onSave, onClose }: {
   note: Partial<Note>
-  accounts: string[]
   onSave: (n: Partial<Note> & { id?: string }) => void
   onClose: () => void
 }) {
   const [form, setForm] = useState({
     title: note.title || '', publishDate: note.publishDate || '',
-    status: note.status || 'draft', account: note.account || accounts[0] || '',
-    link: note.link || '',
+    status: note.status || 'draft',
   })
   const h = (f: string, v: string) => setForm(p => ({ ...p, [f]: v }))
 
@@ -25,35 +23,19 @@ export default function NoteModal({ note, accounts, onSave, onClose }: {
         <div className="crm-modal-body">
           <div className="crm-form-group">
             <label className="crm-form-label">标题 *</label>
-            <input className="crm-form-input" value={form.title} onChange={e => h('title', e.target.value)} placeholder="小红书笔记标题" />
-          </div>
-          {form.link && (
-            <div className="crm-acc-link" style={{ display:'flex', alignItems:'center', gap:6, fontSize:11, color:'var(--text-muted)' }}>
-              <Link size={12} style={{color:'var(--accent)'}} />
-              <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{form.link}</span>
-            </div>
-          )}
-          <div className="crm-form-group">
-            <label className="crm-form-label">小红书链接</label>
-            <input className="crm-form-input" value={form.link} onChange={e => h('link', e.target.value)} placeholder="粘贴小红书笔记链接" />
+            <input className="crm-form-input" value={form.title} onChange={e => h('title', e.target.value)} />
           </div>
           <div className="crm-form-row">
-            <div className="crm-form-group">
-              <label className="crm-form-label">归属账号</label>
-              <select className="crm-form-input" value={form.account} onChange={e => h('account', e.target.value)}>
-                {accounts.map(a => <option key={a} value={a}>{a}</option>)}
-              </select>
-            </div>
-            <div className="crm-form-group">
-              <label className="crm-form-label">发布日期</label>
-              <input type="date" className="crm-form-input" value={form.publishDate} onChange={e => h('publishDate', e.target.value)} />
-            </div>
             <div className="crm-form-group">
               <label className="crm-form-label">状态</label>
               <select className="crm-form-input" value={form.status} onChange={e => h('status', e.target.value)}>
                 <option value="published">已发布</option>
                 <option value="draft">草稿</option>
               </select>
+            </div>
+            <div className="crm-form-group">
+              <label className="crm-form-label">发布日期</label>
+              <input type="date" className="crm-form-input" value={form.publishDate} onChange={e => h('publishDate', e.target.value)} />
             </div>
           </div>
         </div>
