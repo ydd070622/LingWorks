@@ -681,8 +681,8 @@ export default function AgentPanel({ isOpen, onClose, currentUrl, currentContent
   }
 
   return (
-    <div className={`agent-panel ${isOpen ? 'open' : ''}`} style={isOpen ? { width: 340 } : undefined}>
-      <div className="agent-panel-inner" style={isOpen ? { width: 340 } : undefined}>
+    <div className={`agent-panel ${isOpen ? 'open' : ''}`} style={isOpen ? { width: 400 } : undefined}>
+      <div className="agent-panel-inner" style={isOpen ? { width: 400 } : undefined}>
         {/* Header + Tabs */}
         <div className="agent-panel-header">
           <span className="agent-panel-title">智能体助手</span>
