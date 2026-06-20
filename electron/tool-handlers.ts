@@ -3,7 +3,7 @@
  * Ports & Adapters: tools are executed here, agent loop runs in renderer.
  */
 
-import { ipcMain } from 'electron'
+import { ipcMain, shell } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
 
@@ -134,12 +134,25 @@ ipcMain.handle('file-list', async (_ev, dirPath: string) => {
       return { error: `不是目录: ${dirPath}` }
     }
     const entries = fs.readdirSync(dirPath, { withFileTypes: true })
-    const items = entries.slice(0, 200).map(e => ({
-      name: e.name,
-      isDir: e.isDirectory(),
-      size: e.isFile() ? fs.statSync(path.join(dirPath, e.name)).size : undefined,
-      modified: fs.statSync(path.join(dirPath, e.name)).mtime.toISOString(),
-    }))
+    const items = entries.slice(0, 200).map(e => {
+      try {
+        const entryStat = fs.statSync(path.join(dirPath, e.name))
+        return {
+          name: e.name,
+          isDir: e.isDirectory(),
+          size: e.isFile() ? entryStat.size : undefined,
+          modified: entryStat.mtime.toISOString(),
+        }
+      } catch {
+        // Skip entries with permission errors (e.g. System Volume Information)
+        return {
+          name: e.name,
+          isDir: e.isDirectory(),
+          size: undefined,
+          modified: undefined,
+        }
+      }
+    })
     console.log('[file-list] Found', items.length, 'items')
     return {
       path: dirPath,
@@ -220,6 +233,235 @@ ipcMain.handle('file-write', async (_ev, filePath: string, content: string) => {
     }
   } catch (e: any) {
     console.log('[file-write] Error:', e.message)
+    return { error: e.message, path: filePath }
+  }
+})
+
+// ===== IPC Handler: file_rename =====
+ipcMain.handle('file-rename', async (_ev, oldPath: string, newPath: string) => {
+  try {
+    console.log('[file-rename] Renaming:', oldPath, '→', newPath)
+    if (!fs.existsSync(oldPath)) {
+      return { error: `源文件不存在: ${oldPath}` }
+    }
+    if (fs.existsSync(newPath)) {
+      return { error: `目标文件已存在: ${newPath}` }
+    }
+    const dir = path.dirname(newPath)
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true })
+    }
+    fs.renameSync(oldPath, newPath)
+    console.log('[file-rename] Done:', oldPath, '→', newPath)
+    return {
+      oldPath,
+      newPath,
+      message: `成功重命名: ${path.basename(oldPath)} → ${path.basename(newPath)}`,
+    }
+  } catch (e: any) {
+    console.log('[file-rename] Error:', e.message)
+    return { error: e.message, oldPath, newPath }
+  }
+})
+
+// ===== IPC Handler: file_delete =====
+ipcMain.handle('file-delete', async (_ev, filePath: string) => {
+  try {
+    console.log('[file-delete] Deleting:', filePath)
+    if (!fs.existsSync(filePath)) {
+      return { error: `文件不存在: ${filePath}` }
+    }
+    const stat = fs.statSync(filePath)
+    if (stat.isDirectory()) {
+      fs.rmSync(filePath, { recursive: true, force: true })
+    } else {
+      fs.unlinkSync(filePath)
+    }
+    console.log('[file-delete] Done:', filePath)
+    return {
+      path: filePath,
+      message: `成功删除: ${path.basename(filePath)}`,
+    }
+  } catch (e: any) {
+    console.log('[file-delete] Error:', e.message)
+    return { error: e.message, path: filePath }
+  }
+})
+
+// ===== IPC Handler: file_copy =====
+ipcMain.handle('file-copy', async (_ev, srcPath: string, destPath: string) => {
+  try {
+    console.log('[file-copy] Copying:', srcPath, '→', destPath)
+    if (!fs.existsSync(srcPath)) {
+      return { error: `源文件不存在: ${srcPath}` }
+    }
+    if (fs.existsSync(destPath)) {
+      return { error: `目标已存在: ${destPath}` }
+    }
+    const dir = path.dirname(destPath)
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true })
+    }
+    const stat = fs.statSync(srcPath)
+    if (stat.isDirectory()) {
+      fs.cpSync(srcPath, destPath, { recursive: true })
+    } else {
+      fs.copyFileSync(srcPath, destPath)
+    }
+    console.log('[file-copy] Done:', srcPath, '→', destPath)
+    return {
+      srcPath,
+      destPath,
+      message: `成功复制: ${path.basename(srcPath)} → ${path.basename(destPath)}`,
+    }
+  } catch (e: any) {
+    console.log('[file-copy] Error:', e.message)
+    return { error: e.message, srcPath, destPath }
+  }
+})
+
+// ===== IPC Handler: file_search =====
+ipcMain.handle('file-search', async (_ev, dirPath: string, pattern: string, maxResults: number = 50) => {
+  try {
+    console.log('[file-search] Searching:', dirPath, 'pattern:', pattern)
+    if (!fs.existsSync(dirPath)) {
+      return { error: `目录不存在: ${dirPath}` }
+    }
+    const results: Array<{ name: string; path: string; isDir: boolean; size?: number }> = []
+    // Convert glob-like pattern to regex (support * and ?)
+    const regexStr = pattern
+      .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+      .replace(/\*/g, '.*')
+      .replace(/\?/g, '.')
+    const regex = new RegExp(regexStr, 'i')
+
+    function searchDir(dir: string, depth: number) {
+      if (depth > 5 || results.length >= maxResults) return
+      try {
+        const entries = fs.readdirSync(dir, { withFileTypes: true })
+        for (const entry of entries) {
+          if (results.length >= maxResults) return
+          const fullPath = path.join(dir, entry.name)
+          if (regex.test(entry.name)) {
+            const item: any = { name: entry.name, path: fullPath, isDir: entry.isDirectory() }
+            if (entry.isFile()) {
+              try { item.size = fs.statSync(fullPath).size } catch {}
+            }
+            results.push(item)
+          }
+          if (entry.isDirectory() && !entry.name.startsWith('.') && entry.name !== 'node_modules') {
+            searchDir(fullPath, depth + 1)
+          }
+        }
+      } catch { /* skip permission errors */ }
+    }
+
+    searchDir(dirPath, 0)
+    console.log('[file-search] Found:', results.length, 'results')
+    return {
+      dirPath,
+      pattern,
+      count: results.length,
+      results,
+    }
+  } catch (e: any) {
+    console.log('[file-search] Error:', e.message)
+    return { error: e.message, dirPath, pattern }
+  }
+})
+
+// ===== IPC Handler: file_mkdir =====
+ipcMain.handle('file-mkdir', async (_ev, dirPath: string) => {
+  try {
+    console.log('[file-mkdir] Creating directory:', dirPath)
+    if (fs.existsSync(dirPath)) {
+      return { error: `目录已存在: ${dirPath}` }
+    }
+    fs.mkdirSync(dirPath, { recursive: true })
+    console.log('[file-mkdir] Done:', dirPath)
+    return {
+      path: dirPath,
+      message: `成功创建目录: ${path.basename(dirPath)}`,
+    }
+  } catch (e: any) {
+    console.log('[file-mkdir] Error:', e.message)
+    return { error: e.message, path: dirPath }
+  }
+})
+
+// ===== IPC Handler: file_info =====
+ipcMain.handle('file-info', async (_ev, filePath: string) => {
+  try {
+    console.log('[file-info] Getting info:', filePath)
+    if (!fs.existsSync(filePath)) {
+      return { error: `文件不存在: ${filePath}` }
+    }
+    const stat = fs.statSync(filePath)
+    const ext = path.extname(filePath).toLowerCase()
+    const typeMap: Record<string, string> = {
+      '.jpg': '图片', '.jpeg': '图片', '.png': '图片', '.gif': '图片', '.bmp': '图片', '.webp': '图片', '.svg': '图片',
+      '.mp4': '视频', '.avi': '视频', '.mkv': '视频', '.mov': '视频', '.wmv': '视频',
+      '.mp3': '音频', '.wav': '音频', '.flac': '音频', '.aac': '音频', '.ogg': '音频',
+      '.pdf': 'PDF文档', '.doc': 'Word文档', '.docx': 'Word文档', '.xls': 'Excel表格', '.xlsx': 'Excel表格',
+      '.ppt': 'PPT', '.pptx': 'PPT', '.txt': '文本文件', '.csv': 'CSV文件',
+      '.zip': '压缩包', '.rar': '压缩包', '.7z': '压缩包', '.tar': '压缩包', '.gz': '压缩包',
+      '.exe': '可执行文件', '.msi': '安装程序', '.bat': '批处理文件', '.ps1': 'PowerShell脚本',
+      '.js': 'JavaScript', '.ts': 'TypeScript', '.py': 'Python', '.java': 'Java', '.html': 'HTML', '.css': 'CSS',
+      '.json': 'JSON', '.xml': 'XML', '.md': 'Markdown',
+    }
+    const formatSize = (bytes: number) => {
+      if (bytes < 1024) return bytes + ' B'
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+      if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+      return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB'
+    }
+    return {
+      path: filePath,
+      name: path.basename(filePath),
+      ext,
+      type: stat.isDirectory() ? '文件夹' : (typeMap[ext] || '文件'),
+      isDirectory: stat.isDirectory(),
+      size: stat.size,
+      sizeFormatted: formatSize(stat.size),
+      created: stat.birthtime.toISOString(),
+      modified: stat.mtime.toISOString(),
+      accessed: stat.atime.toISOString(),
+    }
+  } catch (e: any) {
+    console.log('[file-info] Error:', e.message)
+    return { error: e.message, path: filePath }
+  }
+})
+
+// ===== IPC Handler: file_open =====
+ipcMain.handle('file-open', async (_ev, filePath: string) => {
+  try {
+    console.log('[file-open] Opening:', filePath)
+    if (!fs.existsSync(filePath)) {
+      return { error: `文件不存在: ${filePath}` }
+    }
+    const err = await shell.openPath(filePath)
+    if (err) {
+      return { error: `打开失败: ${err}`, path: filePath }
+    }
+    return { path: filePath, message: `已打开: ${path.basename(filePath)}` }
+  } catch (e: any) {
+    console.log('[file-open] Error:', e.message)
+    return { error: e.message, path: filePath }
+  }
+})
+
+// ===== IPC Handler: file_show =====
+ipcMain.handle('file-show', async (_ev, filePath: string) => {
+  try {
+    console.log('[file-show] Showing in folder:', filePath)
+    if (!fs.existsSync(filePath)) {
+      return { error: `文件不存在: ${filePath}` }
+    }
+    shell.showItemInFolder(filePath)
+    return { path: filePath, message: `已在资源管理器中显示: ${path.basename(filePath)}` }
+  } catch (e: any) {
+    console.log('[file-show] Error:', e.message)
     return { error: e.message, path: filePath }
   }
 })

@@ -174,6 +174,14 @@ declare global {
       fileRead: (path: string, maxLines?: number) => Promise<{ path?: string; size?: number; sizeKB?: string; totalLines?: number; content?: string; truncated?: boolean; error?: string }>
       fileWrite: (path: string, content: string) => Promise<{ path?: string; size?: number; message?: string; error?: string }>
       fileEdit: (path: string, search: string, replace: string) => Promise<{ path?: string; message?: string; oldLines?: number; newLines?: number; error?: string }>
+      fileRename: (oldPath: string, newPath: string) => Promise<{ oldPath?: string; newPath?: string; message?: string; error?: string }>
+      fileDelete: (path: string) => Promise<{ path?: string; message?: string; error?: string }>
+      fileCopy: (srcPath: string, destPath: string) => Promise<{ srcPath?: string; destPath?: string; message?: string; error?: string }>
+      fileSearch: (dirPath: string, pattern: string, maxResults?: number) => Promise<{ dirPath?: string; pattern?: string; count?: number; results?: Array<{ name: string; path: string; isDir: boolean; size?: number }>; error?: string }>
+      fileMkdir: (path: string) => Promise<{ path?: string; message?: string; error?: string }>
+      fileInfo: (path: string) => Promise<{ path?: string; name?: string; ext?: string; type?: string; isDirectory?: boolean; size?: number; sizeFormatted?: string; created?: string; modified?: string; accessed?: string; error?: string }>
+      fileOpen: (path: string) => Promise<{ path?: string; message?: string; error?: string }>
+      fileShow: (path: string) => Promise<{ path?: string; message?: string; error?: string }>
     }
   }
 }

@@ -161,6 +161,140 @@ const TOOL_DEFS = [
   {
     type: 'function' as const,
     function: {
+      name: 'file_rename',
+      description:
+        '重命名或移动文件/文件夹到新路径。' +
+        '当用户要求改名、重命名、移动文件时使用此工具。' +
+        '需要提供原始路径和新路径（包含完整目录和文件名）。',
+      parameters: {
+        type: 'object',
+        properties: {
+          old_path: { type: 'string', description: '原始文件/文件夹的完整路径' },
+          new_path: { type: 'string', description: '新的完整路径（包含目标目录和新文件名）' },
+        },
+        required: ['old_path', 'new_path'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'file_delete',
+      description:
+        '删除指定的文件或文件夹。' +
+        '当用户要求删除、移除文件时使用此工具。删除文件夹会递归删除其内容。',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: '要删除的文件或文件夹的完整路径' },
+        },
+        required: ['path'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'file_copy',
+      description:
+        '复制文件或文件夹到新路径。' +
+        '当用户要求复制、拷贝、备份文件时使用此工具。',
+      parameters: {
+        type: 'object',
+        properties: {
+          src_path: { type: 'string', description: '源文件/文件夹的完整路径' },
+          dest_path: { type: 'string', description: '目标完整路径（包含目标目录和新文件名）' },
+        },
+        required: ['src_path', 'dest_path'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'file_search',
+      description:
+        '在指定目录下按文件名搜索文件（支持通配符 * 和 ?，递归子目录，最深5层）。' +
+        '当用户要求查找文件、搜索文件名时使用此工具。' +
+        '例如：搜索“*.pdf”找所有PDF，“微信*”找微信相关文件，“report*2024*”找2024年报告。',
+      parameters: {
+        type: 'object',
+        properties: {
+          dir_path: { type: 'string', description: '搜索起始目录，如 C:\\Users\\Admin\\Desktop' },
+          pattern: { type: 'string', description: '文件名匹配模式，支持 * 和 ? 通配符，如 *.jpg、微信*、report*' },
+          max_results: { type: 'number', description: '最大返回结果数，默认50' },
+        },
+        required: ['dir_path', 'pattern'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'file_mkdir',
+      description:
+        '创建新的文件夹/目录（自动创建父目录）。' +
+        '当用户要求新建文件夹、创建目录时使用此工具。',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: '要创建的文件夹完整路径' },
+        },
+        required: ['path'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'file_info',
+      description:
+        '获取文件/文件夹的详细信息，包括大小、创建时间、修改时间、文件类型等。' +
+        '当用户要求查看文件属性、文件大小、文件详情时使用此工具。',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: '文件或文件夹的完整路径' },
+        },
+        required: ['path'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'file_open',
+      description:
+        '用系统默认程序打开文件（如用浏览器打开HTML、用图片查看器打开图片、用Word打开文档）。' +
+        '当用户要求打开文件、用默认程序打开时使用此工具。',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: '要打开的文件完整路径' },
+        },
+        required: ['path'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'file_show',
+      description:
+        '在文件资源管理器中定位并高亮显示文件。' +
+        '当用户要求“在文件夹中显示”、“打开文件所在位置”、“定位文件”时使用此工具。',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: '要定位显示的文件完整路径' },
+        },
+        required: ['path'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
       name: 'navigate_to_page',
       description:
         '导航到应用的指定功能页面。当用户要求打开/跳转到某个页面时使用。' +
@@ -302,12 +436,28 @@ async function buildSystemPrompt(modelName?: string, providerName?: string): Pro
     '\n- file_read：读取文件内容（支持文本文件）' +
     '\n- file_write：创建或覆盖写入文件' +
     '\n- file_edit：对文件进行精确的搜索替换编辑' +
+    '\n- file_rename：重命名或移动文件/文件夹（用户要求改名、重命名、移动文件时使用）' +
+    '\n- file_delete：删除文件或文件夹（用户要求删除时使用）' +
+    '\n- file_copy：复制文件或文件夹（用户要求复制、备份时使用）' +
+    '\n- file_search：按文件名搜索文件（支持 * ? 通配符，递归子目录最深5层，用户要求查找/搜索文件时使用）' +
+    '\n- file_mkdir：创建新文件夹（用户要求新建文件夹/目录时使用）' +
+    '\n- file_info：获取文件详细信息（大小、创建/修改时间、类型，用户要求查看文件属性时使用）' +
+    '\n- file_open：用系统默认程序打开文件（用户要求打开文件时使用）' +
+    '\n- file_show：在资源管理器中定位显示文件（用户要求“在文件夹中显示”、“打开所在位置”时使用）' +
     '\n- navigate_to_page：导航到应用内的指定页面' +
     '\n- query_deepseek_usage：查询 DeepSeek 账户余额、Token 用量、费用数据（用户问 DeepSeek 余额/用量/费用时优先使用此工具直接回答，不要让用户自己去查看）' +
     '\n\n使用策略：' +
     '\n1. 天气/新闻/实时数据 → 使用 web_search 搜索（搜索时带上正确的日期）。搜索结果会返回 answer 字段（直接答案）和 results 数组（结构化内容），优先使用 answer 字段' +
     '\n2. 用户问电脑文件 → 用 file_list 列出目录，用 file_read 读取内容' +
     '\n3. 用户要求创建/修改文件 → 用 file_write 或 file_edit' +
+    '\n3.1 用户要求重命名/改名/移动文件 → 用 file_rename（先可用 file_list 或 file_search 确认文件存在，再用 file_rename 执行）' +
+    '\n3.2 用户要求删除文件 → 用 file_delete' +
+    '\n3.3 用户要求复制/备份文件 → 用 file_copy' +
+    '\n3.4 用户要求查找/搜索文件 → 用 file_search（先确定搜索目录，如用户桌面 C:\\Users\\Administrator\\Desktop）' +
+    '\n3.5 用户要求新建文件夹 → 用 file_mkdir' +
+    '\n3.6 用户要求查看文件属性/信息 → 用 file_info' +
+    '\n3.7 用户要求打开文件 → 用 file_open（系统默认程序打开）' +
+    '\n3.8 用户要求查看文件位置 → 用 file_show（在资源管理器中高亮显示）' +
     '\n4. 用户问 DeepSeek 余额/用量/Token/费用 → 只需调用 query_deepseek_usage 工具（会自动跳转到 dashboard），然后基于返回的数据用自然语言输出完整回答（余额、各模型Token、每日费用明细）' +
     '\n5. 在回答中自然引用信息来源（如"据XX网站消息……"），直接融入正文流中。**禁止用 > 块引用或单独的来源列表格式**' +
     '\n\n行为规范：' +
@@ -525,6 +675,146 @@ async function executeTool(tc: ToolCall, options?: AgentChatOptions, signal?: Ab
         }
       }
       return JSON.stringify({ error: 'file_edit 不可用', path })
+    }
+
+    case 'file_rename': {
+      const oldPath = args.old_path
+      const newPath = args.new_path
+      if (!oldPath || typeof oldPath !== 'string') {
+        return JSON.stringify({ error: 'file_rename 缺少 old_path 参数' })
+      }
+      if (!newPath || typeof newPath !== 'string') {
+        return JSON.stringify({ error: 'file_rename 缺少 new_path 参数' })
+      }
+      if (window.electronAPI?.fileRename) {
+        try {
+          const result = await window.electronAPI.fileRename(oldPath, newPath)
+          return JSON.stringify(result, null, 2)
+        } catch (e: any) {
+          return JSON.stringify({ error: `重命名失败: ${e.message}`, oldPath, newPath })
+        }
+      }
+      return JSON.stringify({ error: 'file_rename 不可用', oldPath, newPath })
+    }
+
+    case 'file_delete': {
+      const delPath = args.path
+      if (!delPath || typeof delPath !== 'string') {
+        return JSON.stringify({ error: 'file_delete 缺少 path 参数' })
+      }
+      if (window.electronAPI?.fileDelete) {
+        try {
+          const result = await window.electronAPI.fileDelete(delPath)
+          return JSON.stringify(result, null, 2)
+        } catch (e: any) {
+          return JSON.stringify({ error: `删除失败: ${e.message}`, path: delPath })
+        }
+      }
+      return JSON.stringify({ error: 'file_delete 不可用', path: delPath })
+    }
+
+    case 'file_copy': {
+      const srcPath = args.src_path
+      const destPath = args.dest_path
+      if (!srcPath || typeof srcPath !== 'string') {
+        return JSON.stringify({ error: 'file_copy 缺少 src_path 参数' })
+      }
+      if (!destPath || typeof destPath !== 'string') {
+        return JSON.stringify({ error: 'file_copy 缺少 dest_path 参数' })
+      }
+      if (window.electronAPI?.fileCopy) {
+        try {
+          const result = await window.electronAPI.fileCopy(srcPath, destPath)
+          return JSON.stringify(result, null, 2)
+        } catch (e: any) {
+          return JSON.stringify({ error: `复制失败: ${e.message}`, srcPath, destPath })
+        }
+      }
+      return JSON.stringify({ error: 'file_copy 不可用', srcPath, destPath })
+    }
+
+    case 'file_search': {
+      const dirPath = args.dir_path
+      const pattern = args.pattern
+      if (!dirPath || typeof dirPath !== 'string') {
+        return JSON.stringify({ error: 'file_search 缺少 dir_path 参数' })
+      }
+      if (!pattern || typeof pattern !== 'string') {
+        return JSON.stringify({ error: 'file_search 缺少 pattern 参数' })
+      }
+      if (window.electronAPI?.fileSearch) {
+        try {
+          const result = await window.electronAPI.fileSearch(dirPath, pattern, args.max_results)
+          return JSON.stringify(result, null, 2)
+        } catch (e: any) {
+          return JSON.stringify({ error: `搜索失败: ${e.message}`, dirPath, pattern })
+        }
+      }
+      return JSON.stringify({ error: 'file_search 不可用', dirPath, pattern })
+    }
+
+    case 'file_mkdir': {
+      const mkPath = args.path
+      if (!mkPath || typeof mkPath !== 'string') {
+        return JSON.stringify({ error: 'file_mkdir 缺少 path 参数' })
+      }
+      if (window.electronAPI?.fileMkdir) {
+        try {
+          const result = await window.electronAPI.fileMkdir(mkPath)
+          return JSON.stringify(result, null, 2)
+        } catch (e: any) {
+          return JSON.stringify({ error: `创建目录失败: ${e.message}`, path: mkPath })
+        }
+      }
+      return JSON.stringify({ error: 'file_mkdir 不可用', path: mkPath })
+    }
+
+    case 'file_info': {
+      const infoPath = args.path
+      if (!infoPath || typeof infoPath !== 'string') {
+        return JSON.stringify({ error: 'file_info 缺少 path 参数' })
+      }
+      if (window.electronAPI?.fileInfo) {
+        try {
+          const result = await window.electronAPI.fileInfo(infoPath)
+          return JSON.stringify(result, null, 2)
+        } catch (e: any) {
+          return JSON.stringify({ error: `获取文件信息失败: ${e.message}`, path: infoPath })
+        }
+      }
+      return JSON.stringify({ error: 'file_info 不可用', path: infoPath })
+    }
+
+    case 'file_open': {
+      const openPath = args.path
+      if (!openPath || typeof openPath !== 'string') {
+        return JSON.stringify({ error: 'file_open 缺少 path 参数' })
+      }
+      if (window.electronAPI?.fileOpen) {
+        try {
+          const result = await window.electronAPI.fileOpen(openPath)
+          return JSON.stringify(result, null, 2)
+        } catch (e: any) {
+          return JSON.stringify({ error: `打开文件失败: ${e.message}`, path: openPath })
+        }
+      }
+      return JSON.stringify({ error: 'file_open 不可用', path: openPath })
+    }
+
+    case 'file_show': {
+      const showPath = args.path
+      if (!showPath || typeof showPath !== 'string') {
+        return JSON.stringify({ error: 'file_show 缺少 path 参数' })
+      }
+      if (window.electronAPI?.fileShow) {
+        try {
+          const result = await window.electronAPI.fileShow(showPath)
+          return JSON.stringify(result, null, 2)
+        } catch (e: any) {
+          return JSON.stringify({ error: `显示文件失败: ${e.message}`, path: showPath })
+        }
+      }
+      return JSON.stringify({ error: 'file_show 不可用', path: showPath })
     }
 
     case 'navigate_to_page': {

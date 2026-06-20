@@ -108,6 +108,14 @@ window.electronAPI = {
   fileRead: (path: string, maxLines?: number) => ipcRenderer.invoke('file-read', path, maxLines),
   fileWrite: (path: string, content: string) => ipcRenderer.invoke('file-write', path, content),
   fileEdit: (path: string, search: string, replace: string) => ipcRenderer.invoke('file-edit', path, search, replace),
+  fileRename: (oldPath: string, newPath: string) => ipcRenderer.invoke('file-rename', oldPath, newPath),
+  fileDelete: (path: string) => ipcRenderer.invoke('file-delete', path),
+  fileCopy: (srcPath: string, destPath: string) => ipcRenderer.invoke('file-copy', srcPath, destPath),
+  fileSearch: (dirPath: string, pattern: string, maxResults?: number) => ipcRenderer.invoke('file-search', dirPath, pattern, maxResults),
+  fileMkdir: (path: string) => ipcRenderer.invoke('file-mkdir', path),
+  fileInfo: (path: string) => ipcRenderer.invoke('file-info', path),
+  fileOpen: (path: string) => ipcRenderer.invoke('file-open', path),
+  fileShow: (path: string) => ipcRenderer.invoke('file-show', path),
 
   // Update
   startUpdateDownload: (downloadUrl: string, version: string) => ipcRenderer.invoke('update-start-download', downloadUrl, version),
