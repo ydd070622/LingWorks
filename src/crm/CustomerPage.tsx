@@ -95,7 +95,7 @@ export default function CustomerPage({ data, viewMode, setViewMode, setEditingCu
                     </td>
                     <td><span className="crm-source-link">{c.sourceIcon} {c.sourceLabel}</span></td>
                     <td><span className={`crm-tag stage-${c.stage}`}><span className="crm-dot-sm" style={{ background: stage?.dotColor }} />{stage?.label}</span></td>
-                    <td><span className="crm-info-text">{[c.houseType, c.budget, c.style].filter(Boolean).join(' · ') || '未填'}</span></td>
+                    <td><span className="crm-info-text">{[c.houseType, c.city, c.style].filter(Boolean).join(' · ') || '未填'}</span></td>
                     <td>{fu ? <span className={`crm-tag ${fu.cls}`}>{fu.text}</span> : <span className="crm-muted">—</span>}</td>
                     <td><span className="crm-muted">{fmtDate(c.updatedAt)}</span></td>
                     <td>
@@ -138,7 +138,7 @@ export default function CustomerPage({ data, viewMode, setViewMode, setEditingCu
                       </div>
                       <div className="crm-card-tags">
                         {c.houseType && <span className="crm-card-tag tag-blue">{c.houseType}</span>}
-                        {c.budget && <span className="crm-card-tag tag-yellow">{c.budget}</span>}
+                        {c.city && <span className="crm-card-tag tag-yellow">{c.city}</span>}
                         {c.style && <span className="crm-card-tag" style={{ background: (TAG_COLORS[c.style] || {}).bg || 'var(--bg-tertiary)', color: (TAG_COLORS[c.style] || {}).text || 'var(--text-secondary)' }}>{c.style}</span>}
                       </div>
                       <div className="crm-card-footer">

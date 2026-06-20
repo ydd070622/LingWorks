@@ -66,7 +66,7 @@ export default function ContractModal({ customers, onSaveNew, onUpdateExisting, 
           </div>
           {selectedCust && (
             <div className="crm-cust-link-info">
-              关联客户：{selectedCust.name} · {selectedCust.phone} · {selectedCust.houseType || '未填户型'} · {selectedCust.budget || '未填预算'} — 将更新此客户为已成交状态
+              关联客户：{selectedCust.name} · {selectedCust.phone} · {selectedCust.houseType || '未填户型'} · {selectedCust.city || '未填城市'} — 将更新此客户为已成交状态
             </div>
           )}
           <div className="crm-form-row">
@@ -98,7 +98,7 @@ export default function ContractModal({ customers, onSaveNew, onUpdateExisting, 
               onSaveNew({
                 name: form.name,
                 phone: selectedCust?.phone || '', wechat: selectedCust?.wechat || '',
-                houseType: selectedCust?.houseType || '', budget: selectedCust?.budget || '',
+                houseType: selectedCust?.houseType || '', city: selectedCust?.city || '',
                 source: selectedCust?.source || 'other', sourceNoteId: selectedCust?.sourceNoteId || null,
                 stage: 'closed',
                 style: form.style || selectedCust?.style || '',

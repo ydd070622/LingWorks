@@ -43,8 +43,9 @@ export default function NotesPage({ data, updateNote, deleteNotes, setEditingNot
             <tr>
               {batchMode && <th style={{ width: 36 }}><input type="checkbox" checked={notesWithLeads.length > 0 && notesWithLeads.every(n => selectedIds.has(n.id))} onChange={e => { if (e.target.checked) setSelectedIds(new Set(notesWithLeads.map(n => n.id))); else setSelectedIds(new Set()) }} /></th>}
               <th>笔记标题</th>
+              <th style={{ width: 80 }}>风格</th>
               <th style={{ width: 100 }}>发布时间</th>
-              <th style={{ width: 90 }}>状态</th>
+              <th style={{ width: 70 }}>状态</th>
               <th style={{ width: 100, textAlign: 'center' }}>带来客户</th>
             </tr>
           </thead>
@@ -53,17 +54,9 @@ export default function NotesPage({ data, updateNote, deleteNotes, setEditingNot
               <tr key={n.id} onClick={() => { if (batchMode) toggleSel(n.id); else setEditingNote(n) }}>
                 {batchMode && <td onClick={e => e.stopPropagation()}><input type="checkbox" checked={selectedIds.has(n.id)} onChange={() => toggleSel(n.id)} /></td>}
                 <td className="crm-note-title">{n.title}</td>
+                <td className="crm-muted">{n.style || '—'}</td>
                 <td className="crm-muted">{n.publishDate ? fmtDate(n.publishDate) : '—'}</td>
-                <td onClick={e => e.stopPropagation()}>
-                  <select
-                    className="crm-table-select"
-                    value={n.status}
-                    onChange={e => updateNote(n.id, { status: e.target.value as Note['status'] })}
-                  >
-                    <option value="published">已发布</option>
-                    <option value="draft">草稿</option>
-                  </select>
-                </td>
+                <td><span className="crm-tag stage-closed" style={{ fontSize: 11, padding: '2px 8px' }}>已发布</span></td>
                 <td style={{ textAlign: 'center' }}>
                   <button className="crm-link-btn" onClick={e => { e.stopPropagation(); setFilterNoteId(n.id); setTab('customers') }}>
                     {n.leads} 人 <ChevronRight size={12} />

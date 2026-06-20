@@ -75,7 +75,7 @@ export default function CRMPanel() {
     const c: Customer = {
       id: 'c' + Date.now(), name: cust.name || '', phone: cust.phone || '', wechat: cust.wechat || '',
       source: cust.source || 'xiaohongshu', sourceNoteId: cust.sourceNoteId || null,
-      stage: cust.stage || 'lead', houseType: cust.houseType || '', budget: cust.budget || '',
+      stage: cust.stage || 'lead', houseType: cust.houseType || '', city: cust.city || '',
       style: cust.style || '', followUpDate: cust.followUpDate || '', followUpNote: cust.followUpNote || '',
       dealAmount: cust.dealAmount ?? null, notes: cust.notes || '', createdAt: ts, updatedAt: ts,
       projectId: cust.projectId,
@@ -110,8 +110,9 @@ export default function CRMPanel() {
   const addNote = useCallback((note: Partial<Note>) => {
     const n: Note = {
       id: 'n' + Date.now(), title: note.title || '', publishDate: note.publishDate || '',
-      status: note.status || 'draft', views: 0, likes: 0, comments: 0,
+      status: 'published' as Note['status'], views: 0, likes: 0, comments: 0,
       account: note.account || (data.accounts && data.accounts[0]) || '',
+      style: note.style || '',
     }
     persist({ ...data, notes: [...(data.notes || []), n] })
   }, [data, persist])

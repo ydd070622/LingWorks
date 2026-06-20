@@ -2,13 +2,14 @@ export interface Note {
   id: string; title: string; publishDate: string; status: 'published' | 'draft'
   views: number; likes: number; comments: number
   account: string
+  style: string
 }
 
 export interface Customer {
   id: string; name: string; phone: string; wechat: string
   source: 'xiaohongshu' | 'referral' | 'other'; sourceNoteId: string | null
   stage: 'lead' | 'wechat' | 'communicating' | 'followup' | 'closed'
-  houseType: string; budget: string; style: string
+  houseType: string; city: string; style: string
   followUpDate: string; followUpNote: string
   dealAmount: number | null; notes: string
   createdAt: string; updatedAt: string

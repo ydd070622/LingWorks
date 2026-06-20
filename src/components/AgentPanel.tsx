@@ -86,7 +86,7 @@ function TableBlock({ text }: { text: string }) {
       .replace(/\*(.+?)\*/g, '<i>$1</i>')
       .replace(/`(.+?)`/g, '<code>$1</code>')
   return (
-    <table className="agent-table">
+    <div className="agent-table-wrap"><table className="agent-table">
       <thead>
         <tr>{header.map((h, i) => <th key={i} dangerouslySetInnerHTML={{ __html: renderCell(h) }} />)}</tr>
       </thead>
@@ -95,7 +95,7 @@ function TableBlock({ text }: { text: string }) {
           <tr key={ri}>{parseRow(row).map((c, ci) => <td key={ci} dangerouslySetInnerHTML={{ __html: renderCell(c) }} />)}</tr>
         ))}
       </tbody>
-    </table>
+    </table></div>
   )
 }
 
@@ -270,8 +270,12 @@ export default function AgentPanel({ isOpen, onClose, currentUrl, currentContent
     return saved ? parseInt(saved) : 13
   })
   const [quotedText, setQuotedText] = useState<string | null>(null)
+  const [panelWidth, setPanelWidth] = useState(400)
+  const MIN_PANEL = 400
+  const MAX_PANEL = 800
 
   const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const abortRefs = useRef<Map<string, AbortController>>(new Map())
   const sessionInputs = useRef<Map<string, string>>(new Map())
@@ -372,8 +376,32 @@ export default function AgentPanel({ isOpen, onClose, currentUrl, currentContent
     }
   }, [activeSessionId])
 
-  // Auto-scroll to bottom during streaming (new messages + content growth)
+  // Auto-expand panel when table content overflows
+  useEffect(() => {
+    if (!isOpen || !messagesContainerRef.current) return
+    const wraps = messagesContainerRef.current.querySelectorAll('.agent-table-wrap')
+    let maxW = MIN_PANEL
+    wraps.forEach(el => {
+      const wrap = el as HTMLElement
+      // Temporarily remove width constraint to measure true content width
+      const prevMaxW = wrap.style.maxWidth
+      wrap.style.maxWidth = 'none'
+      const sw = wrap.scrollWidth
+      wrap.style.maxWidth = prevMaxW
+      if (sw > maxW) maxW = sw
+    })
+    // Also check if any single message has horizontal overflow
+    const msgs = messagesContainerRef.current.querySelectorAll('.agent-msg')
+    msgs.forEach(el => {
+      const sw = (el as HTMLElement).scrollWidth
+      if (sw > maxW) maxW = sw
+    })
+    const newW = Math.min(Math.max(maxW + 16, MIN_PANEL), MAX_PANEL)
+    setPanelWidth(prev => prev === newW ? prev : newW)
+  }, [messages, streamTick, isOpen])
+
   const prevMsgCount = useRef(0)
+  // Auto-scroll to bottom during streaming (new messages + content growth)
   useEffect(() => {
     const container = messagesContainerRef.current
     if (!container || !activeSessionId) return
@@ -681,8 +709,8 @@ export default function AgentPanel({ isOpen, onClose, currentUrl, currentContent
   }
 
   return (
-    <div className={`agent-panel ${isOpen ? 'open' : ''}`} style={isOpen ? { width: 400 } : undefined}>
-      <div className="agent-panel-inner" style={isOpen ? { width: 400 } : undefined}>
+    <div className={`agent-panel ${isOpen ? 'open' : ''}`} ref={panelRef} style={isOpen ? { width: panelWidth } : undefined}>
+      <div className="agent-panel-inner" style={isOpen ? { width: panelWidth } : undefined}>
         {/* Header + Tabs */}
         <div className="agent-panel-header">
           <span className="agent-panel-title">智能体助手</span>

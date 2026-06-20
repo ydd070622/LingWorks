@@ -16,6 +16,8 @@
 import type { AgentModel, ToolCall, AgentEvent } from '../types'
 import { getProviderEndpoint, AGENT_PROVIDERS } from './agent'
 import { searchWeb } from './search'
+import type { CRMData, Customer, Note } from '../crm/types'
+import { STORAGE_KEY, STAGES, SOURCES } from '../crm/constants'
 
 // ===== Agent Chat Options =====
 
@@ -52,6 +54,11 @@ async function tavilySearch(query: string, apiKey: string, signal?: AbortSignal)
   }
   return resp.json()
 }
+
+// ===== Dynamic CRM helpers for tool descriptions (always in sync with constants) =====
+const STAGE_OPTIONS = STAGES.map(s => `${s.id}(${s.label})`).join('、')
+const SOURCE_OPTIONS = SOURCES.map(s => `${s.id}(${s.label})`).join('、')
+const STAGE_ICON_LIST = STAGES.map(s => `${s.icon} ${s.label}`).join('/')
 
 // ===== Tool Definitions (OpenAI function-calling format) =====
 const TOOL_DEFS = [
@@ -414,6 +421,67 @@ const TOOL_DEFS = [
       },
     },
   },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'crm_stats',
+      description:
+        '获取CRM客户管理中心的数据概览。' +
+        '返回：总客户数、各阶段客户分布（' + STAGE_ICON_LIST + '）、' +
+        '设有跟进日期的客户数（今日/未来/逾期）、成交总额、笔记数量。' +
+        '当用户询问"CRM怎么样"、"客户情况"、"今天有什么跟进"、"成交了多少"时使用此工具。',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: [],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'crm_search_customers',
+      description:
+        '搜索或筛选CRM中的客户。' +
+        '支持按姓名/电话搜索、按阶段筛选、按来源筛选、按笔记风格筛选、按是否有跟进日期筛选。' +
+        '当用户询问"帮我查一下xx客户"、"有哪些待跟进的客户"、"需要跟进的客户"、"xx笔记的获客"、"xx风格笔记来了多少客户"时使用此工具。' +
+        '⚠️ 用户问"需要跟进"时，务必传 hasFollowUp: true，只有设置了跟进日期的客户才算需要跟进（已成交的客户即使有日期也不算）。' +
+        '⚠️ CRM中笔记和客户的关联：客户的 sourceNoteId 字段指向来源笔记的id。用户问"xx笔记的获客"时，先用 crm_search_notes 查笔记id，再用本工具传 query 搜客户。',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: '搜索关键词，按姓名或电话模糊匹配，可选' },
+          stage: { type: 'string', description: `筛选阶段：${STAGE_OPTIONS}` },
+          source: { type: 'string', description: `筛选来源：${SOURCE_OPTIONS}` },
+          hasFollowUp: { type: 'boolean', description: '是否只返回设置了跟进日期的客户。用户问"需要跟进"时传true。' },
+          noteStyle: { type: 'string', description: '按来源笔记的风格筛选，如"意式极简"或"法式风格"。用户问"xx风格的笔记获客"时使用。' },
+          limit: { type: 'number', description: '最多返回条数，默认10' },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'crm_search_notes',
+      description:
+        '搜索CRM中的笔记/文章。' +
+        '支持按标题搜索、按状态筛选、按风格筛选。返回结果包含每篇笔记带来的客户数(customerCount)和客户名单(customerNames)。' +
+        '当用户询问"有哪些笔记"、"找一下xx笔记"、"xx风格的笔记"时使用此工具。' +
+        '如果用户追问"这些笔记的获客/带来多少客户"，直接用返回的 customerCount 回答。',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: '搜索关键词，按标题模糊匹配，可选' },
+          style: { type: 'string', description: '按笔记风格筛选，如"意式极简"或"法式风格"' },
+          status: { type: 'string', description: '筛选状态：published(已发布)、draft(草稿)' },
+          limit: { type: 'number', description: '最多返回条数，默认10' },
+        },
+        required: [],
+      },
+    },
+  },
 ]
 
 // ===== City Detection (IP geolocation, cached) =====
@@ -585,6 +653,7 @@ async function buildSystemPrompt(modelName?: string, providerName?: string): Pro
     '\n- 更不要把用户原本要问另一个 AI 的问题自己也回答一遍——你只做优化，不做执行' +
     '\n\n重要：你已经知道当前日期和用户所在城市，不要再询问用户这些信息。' +
     '\n用户的桌面路径通常是 C:\\Users\\<用户名>\\Desktop，用户文档路径通常是 C:\\Users\\<用户名>\\Documents。' +
+    `\n\nCRM 数据输出要求：查询客户列表、笔记列表时，必须使用 Markdown 表格格式展示。CRM 阶段包括：${STAGE_ICON_LIST}。表头应包含关键字段（如姓名、阶段、来源、跟进状态等），方便用户一目了然。` +
     '\n\n请用中文回复。' +
     memoryContent
   )
@@ -641,6 +710,25 @@ async function* parseStreamResponse(response: Response): AsyncGenerator<StreamCh
       } catch {}
     }
   }
+}
+
+// ===== Load CRM data from storage =====
+async function loadCRMData(): Promise<CRMData | null> {
+  try {
+    if (window.electronAPI) {
+      const saved = await window.electronAPI.getStore(STORAGE_KEY)
+      if (saved && typeof saved === 'object' && Array.isArray(saved.customers)) {
+        return saved as CRMData
+      }
+    } else {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (parsed && Array.isArray(parsed.customers)) return parsed as CRMData
+      }
+    }
+  } catch {}
+  return null
 }
 
 // ===== Execute a single tool call =====
@@ -1158,6 +1246,132 @@ async function executeTool(tc: ToolCall, options?: AgentChatOptions, signal?: Ab
       }
 
       return JSON.stringify({ ...result, __autoNavigate: 'dashboard' }, null, 2)
+    }
+
+    case 'crm_stats': {
+      const crmData = await loadCRMData()
+      if (!crmData) return JSON.stringify({ error: 'CRM 数据不可用，请先在CRM中录入数据' })
+      const { customers, notes } = crmData
+      const now = new Date()
+      const todayStr = now.toISOString().split('T')[0]
+      const diffDays = (d: string) => Math.ceil((new Date(todayStr).getTime() - new Date(d).getTime()) / 86400000)
+
+      const stageCount: Record<string, number> = {}
+      for (const s of STAGES) stageCount[s.id] = 0
+      for (const c of customers) {
+        if (stageCount[c.stage] !== undefined) stageCount[c.stage]++
+      }
+
+      const followUps = customers.filter(c => c.stage !== 'closed' && c.followUpDate && c.followUpDate.trim())
+      const todayFu = followUps.filter(c => c.followUpDate === todayStr).length
+      const overdueFu = followUps.filter(c => diffDays(c.followUpDate) > 0).length
+      const upcomingFu = followUps.filter(c => diffDays(c.followUpDate) < 0).length
+      const nextFu = followUps
+        .filter(c => diffDays(c.followUpDate) < 0)
+        .sort((a, b) => a.followUpDate.localeCompare(b.followUpDate))[0]
+      const closed = customers.filter(c => c.stage === 'closed')
+      const revenue = closed.reduce((s, c) => s + (c.dealAmount || 0), 0)
+
+      return JSON.stringify({
+        totalCustomers: customers.length,
+        byStage: STAGES.map(s => ({ stage: s.id, label: s.label, icon: s.icon, count: stageCount[s.id] })),
+        totalWithFollowUp: followUps.length,
+        todayFollowUps: todayFu,
+        upcomingFollowUps: upcomingFu,
+        overdueFollowUps: overdueFu,
+        nextFollowUpDate: nextFu?.followUpDate,
+        nextFollowUpName: nextFu?.name,
+        nextFollowUpNote: nextFu?.followUpNote,
+        closedCount: closed.length,
+        totalRevenue: revenue,
+        noteCount: notes.length,
+        publishedNotes: notes.filter(n => n.status === 'published').length,
+      }, null, 2)
+    }
+
+    case 'crm_search_customers': {
+      const crmData = await loadCRMData()
+      if (!crmData) return JSON.stringify({ error: 'CRM 数据不可用' })
+      let results = [...crmData.customers]
+      const query = args.query?.trim()
+      if (query) {
+        const q = query.toLowerCase()
+        results = results.filter(c => c.name.toLowerCase().includes(q) || c.phone.includes(q))
+      }
+      if (args.stage) results = results.filter(c => c.stage === args.stage)
+      if (args.source) results = results.filter(c => c.source === args.source)
+      if (args.hasFollowUp === true) results = results.filter(c => c.stage !== 'closed' && c.followUpDate && c.followUpDate.trim())
+      if (args.noteStyle) {
+        const noteIds = crmData.notes.filter(n => n.style === args.noteStyle).map(n => n.id)
+        if (noteIds.length > 0) results = results.filter(c => noteIds.includes(c.sourceNoteId || ''))
+        else results = []
+      }
+      // Sort by follow-up date (urgent first) when filtering for follow-ups
+      if (args.hasFollowUp === true) results.sort((a, b) => a.followUpDate.localeCompare(b.followUpDate))
+      const limit = args.limit || 10
+      results = results.slice(0, limit)
+
+      const stageLabel = (id: string) => STAGES.find(s => s.id === id)?.label || id
+      const sourceLabel = (id: string) => SOURCES.find(s => s.id === id)?.label || id
+      const getNoteTitle = (noteId: string | null) => noteId ? (crmData.notes.find(n => n.id === noteId)?.title || '') : ''
+      const todayStr2 = new Date().toISOString().split('T')[0]
+      const fuDiff = (d: string) => Math.ceil((new Date(todayStr2).getTime() - new Date(d).getTime()) / 86400000)
+
+      return JSON.stringify({
+        total: results.length,
+        customers: results.map(c => {
+          let fuStatus = ''
+          if (c.followUpDate && c.followUpDate.trim()) {
+            const d = fuDiff(c.followUpDate)
+            if (d > 0) fuStatus = `逾期${d}天`
+            else if (d === 0) fuStatus = '今天'
+            else fuStatus = `${Math.abs(d)}天后`
+          }
+          return ({
+            name: c.name, phone: c.phone, stage: stageLabel(c.stage),
+            source: getNoteTitle(c.sourceNoteId) || sourceLabel(c.source),
+            wechat: c.wechat,
+            houseType: c.houseType, city: c.city, style: c.style,
+            followUpDate: c.followUpDate || undefined,
+            followUpStatus: fuStatus || undefined,
+            followUpNote: c.followUpNote || undefined,
+            dealAmount: c.dealAmount,
+            notes: c.notes?.slice(0, 200) || undefined,
+            createdAt: c.createdAt, updatedAt: c.updatedAt,
+          })
+        }),
+      }, null, 2)
+    }
+
+    case 'crm_search_notes': {
+      const crmData = await loadCRMData()
+      if (!crmData) return JSON.stringify({ error: 'CRM 数据不可用' })
+      let results = [...crmData.notes]
+      const query = args.query?.trim()
+      if (query) {
+        const q = query.toLowerCase()
+        results = results.filter(n => n.title.toLowerCase().includes(q))
+      }
+      if (args.status) results = results.filter(n => n.status === args.status)
+      if (args.style) results = results.filter(n => n.style === args.style)
+      const limit = args.limit || 10
+      results = results.slice(0, limit)
+
+      return JSON.stringify({
+        total: results.length,
+        notes: results.map(n => {
+          const linkedCustomers = crmData.customers.filter(c => c.sourceNoteId === n.id)
+          return {
+            title: n.title, status: n.status === 'published' ? '已发布' : '草稿',
+            publishDate: n.publishDate || undefined,
+            style: n.style || undefined,
+            customerCount: linkedCustomers.length,
+            customerNames: linkedCustomers.length > 0 ? linkedCustomers.map(c => c.name) : undefined,
+            views: n.views, likes: n.likes, comments: n.comments,
+            account: n.account,
+          }
+        }),
+      }, null, 2)
     }
 
     default:

@@ -14,7 +14,7 @@ export default function CustomerModal({ customer, notes, onSave, onDelete, onClo
     name: customer.name || '', phone: customer.phone || '', wechat: customer.wechat || '',
     source: customer.source || 'xiaohongshu', sourceNoteId: customer.sourceNoteId || '',
     stage: customer.stage || 'lead', houseType: customer.houseType || '',
-    budget: customer.budget || '', style: customer.style || '',
+    city: customer.city || '', style: customer.style || '',
     followUpDate: customer.followUpDate || '', followUpNote: customer.followUpNote || '',
     notes: customer.notes || '',
   })
@@ -63,7 +63,7 @@ export default function CustomerModal({ customer, notes, onSave, onDelete, onClo
           </div>
           <div className="crm-form-row">
             <div className="crm-form-group"><label className="crm-form-label">户型</label><input className="crm-form-input" value={form.houseType} onChange={e => h('houseType', e.target.value)} /></div>
-            <div className="crm-form-group"><label className="crm-form-label">预算</label><input className="crm-form-input" value={form.budget} onChange={e => h('budget', e.target.value)} /></div>
+            <div className="crm-form-group"><label className="crm-form-label">城市</label><input className="crm-form-input" value={form.city} onChange={e => h('city', e.target.value)} /></div>
             <div className="crm-form-group"><label className="crm-form-label">风格</label>
               <select className="crm-form-input" value={form.style} onChange={e => h('style', e.target.value)}>
                 <option value="">-- 选择 --</option>

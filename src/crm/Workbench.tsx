@@ -52,7 +52,7 @@ export default function Workbench({ data, followUps, todayCount, overdueCount, c
                   <div className="crm-avatar" style={{ background: `linear-gradient(135deg,${g1},${g2})` }}>{c.name[0]}</div>
                   <div className="crm-fu-info">
                     <div className="crm-fu-name">{c.name}</div>
-                    <div className="crm-fu-detail">{c.houseType || '未填'} · {c.budget || '未填'} · {c.followUpNote || '需跟进'}</div>
+                    <div className="crm-fu-detail">{c.houseType || '未填'} · {c.city || '未填'} · {c.followUpNote || '需跟进'}</div>
                   </div>
                   {fu && <span className={`crm-tag ${fu.cls}`}>{fu.text}</span>}
                 </div>

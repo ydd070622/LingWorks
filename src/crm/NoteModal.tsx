@@ -9,7 +9,8 @@ export default function NoteModal({ note, onSave, onClose }: {
 }) {
   const [form, setForm] = useState({
     title: note.title || '', publishDate: note.publishDate || '',
-    status: note.status || 'draft',
+    status: 'published' as Note['status'],
+    style: note.style || '',
   })
   const h = (f: string, v: string) => setForm(p => ({ ...p, [f]: v }))
 
@@ -27,10 +28,11 @@ export default function NoteModal({ note, onSave, onClose }: {
           </div>
           <div className="crm-form-row">
             <div className="crm-form-group">
-              <label className="crm-form-label">状态</label>
-              <select className="crm-form-input" value={form.status} onChange={e => h('status', e.target.value)}>
-                <option value="published">已发布</option>
-                <option value="draft">草稿</option>
+              <label className="crm-form-label">风格</label>
+              <select className="crm-form-input" value={form.style} onChange={e => h('style', e.target.value)}>
+                <option value="">-- 选择 --</option>
+                <option value="意式极简">意式极简</option>
+                <option value="法式风格">法式风格</option>
               </select>
             </div>
             <div className="crm-form-group">

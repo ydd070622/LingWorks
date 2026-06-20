@@ -2186,10 +2186,14 @@ textarea.input-base {
 }
 
 /* Markdown Table — Excel-style grid */
-.agent-table {
-  width: 100%;
-  border-collapse: collapse;
+.agent-table-wrap {
+  overflow-x: auto;
+  max-width: 100%;
   margin: 8px 0;
+}
+.agent-table {
+  min-width: 100%;
+  border-collapse: collapse;
   font-size: 12px;
   line-height: 1.6;
   border: 1px solid var(--border-color);
