@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import ReactMarkdown from 'react-markdown'
 import type { AgentModel, AgentMessage, AgentContext } from '../types'
 import { AGENT_PROVIDERS, loadModels, streamChat, parseSSEStream, generateId } from '../services/agent'
 import { agentChat } from '../services/agent-loop'
+import { loadSessions, saveSessions } from '../services/session-store'
 import { Copy, X, Plus, ChevronDown, History, Trash2, Check, RefreshCw, Loader2, Sparkles } from 'lucide-react'
 
 // ===== Code Block with Copy Button =====
@@ -141,83 +143,55 @@ function extractTables(text: string): Array<{ type: 'text' | 'table'; content: s
   return result.length > 0 ? result : [{ type: 'text', content: text }]
 }
 
-// ===== Simple Markdown Renderer =====
+// ===== Simple Markdown Renderer (via react-markdown) =====
 function SimpleMarkdown({ content }: { content: string }) {
-  const renderInline = (text: string) => {
-    return text
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
-      .replace(/\*(.+?)\*/g, '<i>$1</i>')
-      .replace(/`(.+?)`/g, '<code>$1</code>')
-  }
-
-  const segments: Array<{ type: 'text' | 'code'; content: string }> = []
-  const codeRegex = /```(\w*)\n?([\s\S]*?)```/g
-  let lastIndex = 0
-  let match
-  while ((match = codeRegex.exec(content)) !== null) {
-    if (match.index > lastIndex) {
-      segments.push({ type: 'text', content: content.slice(lastIndex, match.index) })
-    }
-    segments.push({ type: 'code', content: match[2] || '' })
-    lastIndex = codeRegex.lastIndex
-  }
-  if (lastIndex < content.length) {
-    segments.push({ type: 'text', content: content.slice(lastIndex) })
-  }
-  if (segments.length === 0) {
-    segments.push({ type: 'text', content })
-  }
-
   return (
-    <>
-      {segments.map((seg, i) => {
-        if (seg.type === 'code') {
-          return <CodeBlock key={i} code={seg.content.trim()} />
-        }
-        const paragraphs = seg.content.split(/\n\n+/)
-        return (
-          <span key={i}>
-            {paragraphs.map((p, pi) => {
-              // Extract tables from the paragraph
-              const parts = extractTables(p)
-              return (
-                <span key={pi}>
-                  {pi > 0 && <><br /><br /></>}
-                  {parts.map((part, idx) => {
-                    if (part.type === 'table') {
-                      return <TableBlock key={idx} text={part.content} />
-                    }
-                    // Process text part: detect blockquotes
-                    const textLines = part.content.split('\n')
-                    const quoteLines = textLines.filter(l => l.trim().startsWith('>'))
-                    const firstQuoteIdx = textLines.findIndex(l => l.trim().startsWith('>'))
-                    const labelLines = firstQuoteIdx >= 0
-                      ? textLines.slice(0, firstQuoteIdx).filter(l => {
-                          const t = l.trim()
-                          return t && !t.startsWith('---')
-                        })
-                      : []
-                    if (quoteLines.length > 0) {
-                      const quoteText = quoteLines.map(l => l.replace(/^> ?/, '')).join('\n').trim()
-                      const labelRaw = labelLines.map(l => l.trim()).join(' / ')
-                      const labelClean = labelRaw.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1').trim()
-                      return <QuoteBlock key={idx} text={quoteText} label={labelClean || undefined} />
-                    }
-                    return (
-                      <span key={idx} dangerouslySetInnerHTML={{
-                        __html: renderInline(part.content).replace(/\n/g, '<br/>'),
-                      }} />
-                    )
-                  })}
-                </span>
-              )
-            })}
-          </span>
-        )
-      })}
-    </>
+    <ReactMarkdown
+      components={{
+        code({ className, children, ...props }) {
+          const match = /language-(\w+)/.exec(className || '')
+          const codeStr = String(children).replace(/\n$/, '')
+          if (match || !String(children).includes('\n')) {
+            // Block code: use CodeBlock with copy button (inline code falls through to <code>)
+            if (match) return <CodeBlock code={codeStr} />
+            return <code className={className} {...props}>{children}</code>
+          }
+          // Fallback: multi-line code without language tag
+          return <CodeBlock code={codeStr} />
+        },
+        blockquote({ children }) {
+          const text = extractTextFromChildren(children)
+          // 检测文生图提示词块（正向 Prompt / 负向 Prompt）
+          const promptMatch = text.match(/\*\*(正[向面].*Prompt.*|负[向面].*Prompt.*)\*\*/)
+          if (promptMatch) {
+            const lines = text.split('\n')
+            const quoteLines = lines.filter(l => l.trim().startsWith('>'))
+            const labelLines = lines.filter(l => !l.trim().startsWith('>') && l.trim() && !l.trim().startsWith('---'))
+            const quoteText = quoteLines.map(l => l.replace(/^> ?/, '')).join('\n').trim()
+            const labelClean = labelLines.join(' / ').replace(/\*\*(.+?)\*\*/g, '$1').trim()
+            return <QuoteBlock text={quoteText} label={labelClean || promptMatch[1]} />
+          }
+          return <blockquote className="agent-blockquote">{children}</blockquote>
+        },
+        table({ children }) {
+          return <div className="agent-table-wrap"><table className="agent-table">{children}</table></div>
+        },
+        a({ href, children }) {
+          return <a href={href} target="_blank" rel="noopener noreferrer" onClick={e => { e.preventDefault(); window.electronAPI?.openExternal?.(href || '') }}>{children}</a>
+        },
+      }}
+    >
+      {content}
+    </ReactMarkdown>
   )
+}
+
+// Helper: extract plain text from ReactMarkdown children for prompt detection
+function extractTextFromChildren(children: any): string {
+  if (typeof children === 'string') return children
+  if (Array.isArray(children)) return children.map(extractTextFromChildren).join('')
+  if (children?.props?.children) return extractTextFromChildren(children.props.children)
+  return ''
 }
 
 // ===== Check if content contains prompt blocks (for "一键采用" button) =====
@@ -330,16 +304,30 @@ export default function AgentPanel({ isOpen, onClose, currentUrl, currentContent
     }
   }
 
-  // Init: load models + start fresh session (never restore old chats)
+  // Init: load models + restore sessions from IndexedDB
   useEffect(() => {
-    loadModels().then((modelList) => {
+    loadModels().then(async (modelList) => {
       setModels(modelList)
-      const sid = generateId()
-      const s: Session = { id: sid, title: '新对话', modelId: modelList[0]?.id || null, messages: [] }
-      setSessions([s])
-      setActiveSessionId(sid)
+      const saved = await loadSessions()
+      if (saved.length > 0) {
+        setSessions(saved)
+        setActiveSessionId(saved[0].id)
+      } else {
+        const sid = generateId()
+        const s: Session = { id: sid, title: '新对话', modelId: modelList[0]?.id || null, messages: [] }
+        setSessions([s])
+        setActiveSessionId(sid)
+      }
     })
   }, [])
+
+  // Persist sessions to IndexedDB on change
+  useEffect(() => {
+    if (sessions.length > 0) {
+      const rows = sessions.map(s => ({ ...s, updatedAt: Date.now() }))
+      saveSessions(rows)
+    }
+  }, [sessions])
 
   // Reload models when changed from Settings
   useEffect(() => {

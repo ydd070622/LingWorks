@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Search, X, Plus, GripVertical } from 'lucide-react'
 import { pinyin } from 'pinyin-pro'
+import Fuse from 'fuse.js'
 import type { SharedProps, Customer, EnrichedCustomer } from './types'
 import { STAGES, TAG_COLORS } from './constants'
 import { avatarGrad, fuDisplay, fmtDate } from './helpers'
@@ -13,21 +14,24 @@ export default function CustomerPage({ data, viewMode, setViewMode, setEditingCu
 
   const customers = data.customers.filter(c => c.stage !== 'closed' && c.stage !== 'lead').map(enrichCust)
 
+  const fuse = useMemo(() => new Fuse(customers, {
+    keys: ['name', 'phone', 'houseType', 'city', 'style', 'followUpNote', 'notes'],
+    threshold: 0.4,
+  }), [customers])
+
   const filtered = useMemo(() => {
     let list = customers
     if (search) {
+      const results = fuse.search(search)
+      list = results.map(r => r.item)
+      // Also check pinyin for exact pinyin search
       const q = search.toLowerCase()
-      list = list.filter(c =>
-        c.name.includes(search) ||
-        c.phone.includes(search) ||
-        c.houseType.includes(search) ||
-        pinyin(c.name).toLowerCase().includes(q)
-      )
+      const pinyinMatches = customers.filter(c => pinyin(c.name).toLowerCase().includes(q) && !list.some(m => m.id === c.id))
+      list = [...list, ...pinyinMatches]
     }
     if (filterNoteId) list = list.filter(c => c.sourceNoteId === filterNoteId)
-    // 拼音 A-Z 排序
     return list.sort((a, b) => pinyin(a.name).localeCompare(pinyin(b.name)))
-  }, [customers, search, filterNoteId])
+  }, [customers, search, filterNoteId, fuse])
 
   const kanbanGroups = useMemo(() => {
     const m: Record<string, EnrichedCustomer[]> = {}
