@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>LingWorks — 库提升演示</title>
+<style>
+:root{
+  --bg:#0a0a0f;--bg2:#12121a;--bg3:#1a1a25;--bg4:#22222e;
+  --bdr:rgba(255,255,255,0.08);--bdr2:rgba(255,255,255,0.14);
+  --txt:#e8e8ed;--txt2:rgba(255,255,255,0.5);--txt3:rgba(255,255,255,0.3);
+  --accent:#6366f1;--accent2:#818cf8;
+  --green:#22c55e;--amber:#f59e0b;--red:#ef4444;--blue:#3b82f6;
+  --r:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  background:var(--bg);color:var(--txt);font-size:13px;line-height:1.55;
+  padding:24px;max-width:1100px;margin:0 auto;
+  -webkit-font-smoothing:antialiased;
+}
+h1{font-size:18px;margin-bottom:4px;font-weight:700}
+.hint{color:var(--txt3);font-size:12px;margin-bottom:24px}
+section{margin-bottom:32px;border-top:1px solid var(--bdr);padding-top:20px}
+section:first-of-type{border-top:none;padding-top:0}
+.sec-title{font-size:15px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.sec-title .lib{font-size:10px;padding:2px 8px;border-radius:8px;background:rgba(99,102,241,0.15);color:var(--accent2);font-weight:600}
+.sec-desc{font-size:12px;color:var(--txt2);margin-bottom:16px;line-height:1.6}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.compare-label{font-size:10px;color:var(--txt3);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600}
+.box-old{background:var(--bg2);border:1px solid var(--bdr);border-radius:8px;padding:14px}
+.box-new{background:var(--bg2);border:1px solid var(--bdr);border-radius:8px;padding:14px}
+
+/* === Framer Motion demo === */
+.demo-card{
+  background:var(--bg3);border:1px solid var(--bdr);border-radius:10px;
+  padding:14px;display:flex;align-items:center;gap:10px;cursor:pointer;
+}
+.demo-card:hover{transform:translateY(-2px)}
+.demo-card.fm-hover{transition:none}
+.demo-card .av{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600}
+.demo-card .nm{font-size:13px;font-weight:600;flex:1}
+.demo-card .tg{font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(34,197,94,0.12);color:var(--green)}
+
+/* Old toast (alert) */
+.old-alert{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:var(--red);padding:10px 14px;border-radius:6px;font-size:12px;margin-top:8px}
+.old-alert .ttl{font-weight:600;margin-bottom:2px}
+
+/* Sonner toast */
+.sonner-wrap{position:relative;height:60px}
+.sonner-toast{
+  position:absolute;left:0;bottom:0;
+  background:var(--bg3);border:1px solid var(--bdr2);border-radius:10px;
+  padding:10px 16px;display:flex;align-items:center;gap:10px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.4);font-size:12px;
+  animation:sonnerIn 0.3s cubic-bezier(0.22,1,0.36,1);
+}
+@keyframes sonnerIn{from{transform:translateY(20px) scale(0.95);opacity:0}to{transform:translateY(0) scale(1);opacity:1}}
+.sonner-toast .ic{width:18px;height:18px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700}
+.sonner-toast.success .ic{background:var(--green)}
+.sonner-toast.info .ic{background:var(--blue)}
+.sonner-toast.warn .ic{background:var(--amber)}
+.sonner-toast.err .ic{background:var(--red)}
+
+/* === recharts demo === */
+.chart-wrap{background:var(--bg3);border:1px solid var(--bdr);border-radius:10px;padding:16px;margin-top:8px}
+.chart-title{font-size:11px;color:var(--txt3);margin-bottom:12px;font-weight:600}
+
+/* CSS bar chart (old) */
+.css-funnel{display:flex;flex-direction:column;gap:6px}
+.css-funnel-row{display:flex;align-items:center;gap:8px;font-size:11px}
+.css-funnel-lbl{width:70px;text-align:right;color:var(--txt2)}
+.css-funnel-bar{height:20px;border-radius:4px;display:flex;align-items:center;padding:0 8px;color:#fff;font-size:10px;font-weight:500;min-width:30px}
+
+/* SVG chart (recharts-like) */
+.svg-chart{width:100%;height:140px}
+
+/* date comparison */
+.date-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.date-old,.date-new{background:var(--bg3);border:1px solid var(--bdr);border-radius:8px;padding:12px}
+.date-lbl{font-size:10px;color:var(--txt3);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px}
+.date-val{font-size:13px;font-family:"SF Mono","Consolas",monospace;color:var(--accent2);margin-bottom:4px}
+.date-note{font-size:10px;color:var(--txt3);line-height:1.5}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--bdr)}
+.tab{padding:8px 16px;font-size:13px;cursor:pointer;color:var(--txt2);border-bottom:2px solid transparent;font-weight:500}
+.tab.active{color:var(--txt);border-bottom-color:var(--accent)}
+
+/* FM animation demo */
+.fm-demo{display:flex;gap:12px;margin-top:8px}
+.fm-btn{padding:10px 20px;border-radius:8px;border:1px solid var(--bdr);background:var(--bg3);color:var(--txt);cursor:pointer;font-size:13px;font-family:inherit;transition:all 0.15s}
+.fm-btn:hover{background:var(--bg4)}
+.fm-btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.fm-panel{margin-top:12px;background:var(--bg3);border:1px solid var(--bdr);border-radius:10px;padding:16px;display:none}
+.fm-panel.show{display:block;animation:fmSlide 0.35s cubic-bezier(0.22,1,0.36,1)}
+@keyframes fmSlide{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* Old panel (no animation) */
+.old-panel{margin-top:12px;background:var(--bg3);border:1px solid var(--bdr);border-radius:10px;padding:16px;display:none}
+.old-panel.show{display:block}
+
+.badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:8px;font-weight:600;margin-left:6px}
+.badge.good{background:rgba(34,197,94,0.15);color:var(--green)}
+.badge.neutral{background:rgba(255,255,255,0.08);color:var(--txt2)}
+</style>
+</head>
+<body>
+
+<h1>LingWorks — 库提升演示</h1>
+<p class="hint">对比"现状 vs 引入库之后"。点击各个按钮体验差异。</p>
+
+<!-- ===== Framer Motion ===== -->
+<section>
+  <div class="sec-title">Framer Motion <span class="lib">动画引擎</span></div>
+  <div class="sec-desc">
+    让弹窗、卡片、面板的进出有物理感（弹簧、缓动），而不是生硬的 display:none/block 切换。<br>
+    <b>提升点</b>：① 客户弹窗滑出更流畅 ② 卡片 hover 有弹性上浮 ③ tab 切换淡入 ④ 拖拽时有跟随感
+  </div>
+
+  <div class="compare">
+    <div>
+      <div class="compare-label">现状：CSS transition（生硬）</div>
+      <div class="box-old">
+        <button class="fm-btn pri" onclick="toggleOld()">打开跟进面板</button>
+        <div class="old-panel" id="old-panel">
+          <div style="font-size:13px;font-weight:600;margin-bottom:6px">张女士的跟进</div>
+          <div style="font-size:11px;color:var(--txt2)">备注：<input style="background:var(--bg);border:1px solid var(--bdr);color:var(--txt);padding:5px 8px;border-radius:4px;font-size:11px;width:100%;margin-top:4px" value="客户说6.22有空"></div>
+          <div style="display:flex;gap:6px;margin-top:8px;justify-content:flex-end"><button class="fm-btn" style="padding:5px 12px;font-size:11px">取消</button><button class="fm-btn pri" style="padding:5px 12px;font-size:11px">完成</button></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="compare-label">引入 Framer Motion：弹簧缓动 <span class="badge good">更顺</span></div>
+      <div class="box-new">
+        <button class="fm-btn pri" onclick="toggleFM()">打开跟进面板</button>
+        <div class="fm-panel" id="fm-panel">
+          <div style="font-size:13px;font-weight:600;margin-bottom:6px">张女士的跟进</div>
+          <div style="font-size:11px;color:var(--txt2)">备注：<input style="background:var(--bg);border:1px solid var(--bdr);color:var(--txt);padding:5px 8px;border-radius:4px;font-size:11px;width:100%;margin-top:4px" value="客户说6.22有空"></div>
+          <div style="display:flex;gap:6px;margin-top:8px;justify-content:flex-end"><button class="fm-btn" style="padding:5px 12px;font-size:11px">取消</button><button class="fm-btn pri" style="padding:5px 12px;font-size:11px">完成</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:12px;font-size:11px;color:var(--txt3)">
+    💡 差异：左边突然出现（display 切换），右边带弹簧缓动淡入（cubic-bezier 曲线）。Framer Motion 在真实代码里会更明显——支持 AnimatePresence（退出动画）、layout 动画、手势跟随。
+  </div>
+</section>
+
+<!-- ===== sonner ===== -->
+<section>
+  <div class="sec-title">sonner <span class="lib">通知提示</span></div>
+  <div class="sec-desc">
+    替代现在的 <code>alert()</code> 和 <code>confirm()</code>。操作后右上角弹出小卡片提示，不打断流程。<br>
+    <b>提升点</b>：① 保存客户后弹"已保存"② 删除前弹确认 ③ 标记收款后弹"已收款 ¥8,400" ④ 错误提示不打断操作
+  </div>
+
+  <div class="compare">
+    <div>
+      <div class="compare-label">现状：alert 弹窗（阻塞 + 难看）</div>
+      <div class="box-old">
+        <button class="fm-btn pri" onclick="oldAlert()">保存客户</button>
+        <button class="fm-btn" onclick="oldDelete()" style="margin-left:6px">删除客户</button>
+        <div id="old-alert-box"></div>
+      </div>
+    </div>
+    <div>
+      <div class="compare-label">引入 sonner：右上角卡片 <span class="badge good">不阻塞</span></div>
+      <div class="box-new">
+        <button class="fm-btn pri" onclick="sonnerToast('success','已保存客户信息')">保存客户</button>
+        <button class="fm-btn" onclick="sonnerToast('info','已删除张女士')" style="margin-left:6px">删除客户</button>
+        <button class="fm-btn" onclick="sonnerToast('warn','尾款尚未收回')" style="margin-left:6px">提示欠款</button>
+        <button class="fm-btn" onclick="sonnerToast('err','手机号格式错误')" style="margin-left:6px">触发错误</button>
+        <div class="sonner-wrap" id="sonner-area" style="margin-top:14px;height:auto;min-height:50px"></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:12px;font-size:11px;color:var(--txt3)">
+    💡 差异：左边的 alert 是浏览器原生弹窗，必须点确定才能继续。右边的 sonner 提示 3 秒后自动消失，不打断操作。多个提示会堆叠。
+  </div>
+</section>
+
+<!-- ===== recharts ===== -->
+<section>
+  <div class="sec-title">recharts <span class="lib">数据图表</span></div>
+  <div class="sec-desc">
+    Dashboard 的漏斗图和排行现在是纯 CSS 条形，recharts 能做出真正的交互式图表。<br>
+    <b>提升点</b>：① 转化漏斗变可交互（hover 显示转化率）② 月度成交趋势折线图 ③ 回款进度环形图 ④ 客户来源饼图
+  </div>
+
+  <div class="compare">
+    <div>
+      <div class="compare-label">现状：CSS 条形（静态）</div>
+      <div class="box-old">
+        <div class="chart-title">转化漏斗</div>
+        <div class="css-funnel">
+          <div class="css-funnel-row"><span class="css-funnel-lbl">留资/咨询</span><div class="css-funnel-bar" style="background:#3b82f6;width:100%">8</div></div>
+          <div class="css-funnel-row"><span class="css-funnel-lbl">已加微信</span><div class="css-funnel-bar" style="background:#8b5cf6;width:75%">6</div></div>
+          <div class="css-funnel-row"><span class="css-funnel-lbl">深入沟通</span><div class="css-funnel-bar" style="background:#6366f1;width:60%">5</div></div>
+          <div class="css-funnel-row"><span class="css-funnel-lbl">报价跟进</span><div class="css-funnel-bar" style="background:#f59e0b;width:38%">3</div></div>
+          <div class="css-funnel-row"><span class="css-funnel-lbl">成交</span><div class="css-funnel-bar" style="background:#22c55e;width:25%">2</div></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="compare-label">引入 recharts：SVG 交互图表 <span class="badge good">可 hover</span></div>
+      <div class="box-new">
+        <div class="chart-title">月度成交趋势（hover 试试）</div>
+        <div class="chart-wrap" style="padding:8px">
+          <svg class="svg-chart" viewBox="0 0 400 140" id="trend-chart">
+            <defs>
+              <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#6366f1" stop-opacity="0.4"/>
+                <stop offset="100%" stop-color="#6366f1" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <!-- grid lines -->
+            <line x1="40" y1="20" x2="380" y2="20" stroke="rgba(255,255,255,0.05)"/>
+            <line x1="40" y1="60" x2="380" y2="60" stroke="rgba(255,255,255,0.05)"/>
+            <line x1="40" y1="100" x2="380" y2="100" stroke="rgba(255,255,255,0.05)"/>
+            <!-- area -->
+            <path d="M 40,90 L 110,70 L 180,80 L 250,45 L 320,30 L 380,25 L 380,120 L 40,120 Z" fill="url(#grad)"/>
+            <!-- line -->
+            <path d="M 40,90 L 110,70 L 180,80 L 250,45 L 320,30 L 380,25" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <!-- dots -->
+            <g id="chart-dots">
+              <circle cx="40" cy="90" r="4" fill="#6366f1" class="dot" data-val="1月: 1单"/>
+              <circle cx="110" cy="70" r="4" fill="#6366f1" class="dot" data-val="2月: 2单"/>
+              <circle cx="180" cy="80" r="4" fill="#6366f1" class="dot" data-val="3月: 2单"/>
+              <circle cx="250" cy="45" r="4" fill="#6366f1" class="dot" data-val="4月: 4单"/>
+              <circle cx="320" cy="30" r="4" fill="#6366f1" class="dot" data-val="5月: 5单"/>
+              <circle cx="380" cy="25" r="4" fill="#6366f1" class="dot" data-val="6月: 6单"/>
+            </g>
+            <!-- x labels -->
+            <text x="40" y="135" fill="rgba(255,255,255,0.3)" font-size="9">1月</text>
+            <text x="105" y="135" fill="rgba(255,255,255,0.3)" font-size="9">2月</text>
+            <text x="175" y="135" fill="rgba(255,255,255,0.3)" font-size="9">3月</text>
+            <text x="245" y="135" fill="rgba(255,255,255,0.3)" font-size="9">4月</text>
+            <text x="315" y="135" fill="rgba(255,255,255,0.3)" font-size="9">5月</text>
+            <text x="375" y="135" fill="rgba(255,255,255,0.3)" font-size="9">6月</text>
+          </svg>
+          <div id="chart-tooltip" style="font-size:11px;color:var(--accent2);text-align:center;margin-top:4px;min-height:14px">把鼠标移到圆点上看数据</div>
+        </div>
+
+        <div style="margin-top:12px">
+          <div class="chart-title">回款进度（环形图）</div>
+          <div style="display:flex;align-items:center;gap:16px;padding:8px 0">
+            <svg width="80" height="80" viewBox="0 0 80 80">
+              <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="8"/>
+              <circle cx="40" cy="40" r="32" fill="none" stroke="#22c55e" stroke-width="8" stroke-dasharray="140 201" stroke-linecap="round" transform="rotate(-90 40 40)"/>
+              <text x="40" y="44" text-anchor="middle" fill="#e8e8ed" font-size="14" font-weight="700">70%</text>
+            </svg>
+            <div style="font-size:11px;color:var(--txt2);line-height:1.8">
+              <div>✅ 已收款 ¥19,600</div>
+              <div>⏳ 待收款 ¥8,400</div>
+              <div style="color:var(--txt3)">合同总额 ¥28,000</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:12px;font-size:11px;color:var(--txt3)">
+    💡 差异：左边是固定不变的 CSS 条形。右边是 SVG 图表，hover 圆点显示数据、环形图直观展示回款比例。recharts 还支持柱状图、饼图、雷达图等。
+  </div>
+</section>
+
+<!-- ===== date-fns ===== -->
+<section>
+  <div class="sec-title">date-fns <span class="lib">日期处理</span></div>
+  <div class="sec-desc">
+    替代 <code>helpers.ts</code> 里手写的 <code>daysDiff</code>/<code>fmtDate</code>/<code>today</code>。<br>
+    <b>提升点</b>：① "3天前"/"明天"/"逾期2天"自动算 ② 日期格式统一 ③ 处理时区/跨月不再出错 ④ 跟进日期显示更人性化
+  </div>
+
+  <div class="date-grid">
+    <div class="date-old">
+      <div class="date-lbl">现状：手写函数（简陋）</div>
+      <div class="date-val">fmtDate('2026-06-15') → "6月15日"</div>
+      <div class="date-val">daysDiff(a, b) → -2</div>
+      <div class="date-val">fuDisplay(date) → "逾期2天"</div>
+      <div class="date-note" style="margin-top:8px">
+        ⚠️ 只能输出固定格式<br>
+        ⚠️ 没有"3天前"/"刚刚"/"下周三"这种相对时间<br>
+        ⚠️ 跨月/跨年时容易算错<br>
+        ⚠️ 函数都是自己写的，没经过测试
+      </div>
+    </div>
+    <div class="date-new">
+      <div class="date-lbl">引入 date-fns（专业）</div>
+      <div class="date-val">formatDistanceToNow(date) → "3天前"</div>
+      <div class="date-val">format(date, 'M月d日 EEEE') → "6月15日 星期日"</div>
+      <div class="date-val">differenceInCalendarDays → -2</div>
+      <div class="date-val">isToday / isTomorrow / isYesterday</div>
+      <div class="date-note" style="margin-top:8px">
+        ✅ "刚刚"/"3分钟前"/"2小时前"/"昨天"<br>
+        ✅ "下周三跟进"/"3天后到期"<br>
+        ✅ 跨月跨年自动正确<br>
+        ✅ 200+ 个日期函数，按需引入
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:12px;font-size:11px;color:var(--txt3)">
+    💡 这个提升最"隐形"——用户不会直接看到，但跟进时间线、工作台提醒、合同签约日期的显示都会更准确、更人性化。
+  </div>
+</section>
+
+<!-- ===== 总结 ===== -->
+<section>
+  <div class="sec-title">总结：该不该引入？</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px">
+    <div class="box-new">
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px">✅ 推荐引入</div>
+      <table style="width:100%;font-size:11px">
+        <tr><td style="padding:4px 0"><b>sonner</b></td><td style="color:var(--green)">极低成本</td><td>替代 alert，体验立刻变好</td></tr>
+        <tr><td style="padding:4px 0"><b>date-fns</b></td><td style="color:var(--green)">极低成本</td><td>日期显示更准更人性化</td></tr>
+        <tr><td style="padding:4px 0"><b>Framer Motion</b></td><td style="color:var(--amber)">中等成本</td><td>动画质感提升明显</td></tr>
+        <tr><td style="padding:4px 0"><b>recharts</b></td><td style="color:var(--amber)">中等成本</td><td>Dashboard 数据可视化</td></tr>
+      </table>
+    </div>
+    <div class="box-old">
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px">⚠️ 引入成本</div>
+      <div style="font-size:11px;color:var(--txt2);line-height:1.7">
+        • 每个库需要 <code>npm install</code><br>
+        • 需要逐个组件替换调用点<br>
+        • sonner/date-fns 改动小（几小时）<br>
+        • Framer Motion/recharts 改动中等（1-2天）<br>
+        • 不影响现有功能，可逐步引入
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+// Framer Motion demo
+function toggleOld(){
+  const p=document.getElementById('old-panel')
+  p.classList.toggle('show')
+}
+function toggleFM(){
+  const p=document.getElementById('fm-panel')
+  p.classList.toggle('show')
+}
+
+// Sonner demo
+let sonnerTimer=null
+function oldAlert(){
+  document.getElementById('old-alert-box').innerHTML='<div class="old-alert"><div class="ttl">⚠️ 浏览器弹窗</div>必须点"确定"才能继续操作，打断流程</div>'
+}
+function oldDelete(){
+  document.getElementById('old-alert-box').innerHTML='<div class="old-alert"><div class="ttl">⚠️ confirm 弹窗</div>确定删除张女士？[确定/取消] — 同样阻塞</div>'
+}
+function sonnerToast(type,msg){
+  const area=document.getElementById('sonner-area')
+  const icons={success:'✓',info:'i',warn:'!',err:'✕'}
+  const toast=document.createElement('div')
+  toast.className='sonner-toast '+type
+  toast.innerHTML='<div class="ic">'+icons[type]+'</div><div>'+msg+'</div>'
+  // remove old toasts
+  area.innerHTML=''
+  area.appendChild(toast)
+  setTimeout(()=>{toast.style.transition='all 0.3s';toast.style.opacity='0';toast.style.transform='translateY(10px)';setTimeout(()=>toast.remove(),300)},2500)
+}
+
+// recharts hover
+document.querySelectorAll('#chart-dots .dot').forEach(d=>{
+  d.style.cursor='pointer'
+  d.style.transition='r 0.15s'
+  d.addEventListener('mouseenter',function(){
+    this.setAttribute('r','6')
+    document.getElementById('chart-tooltip').textContent=this.getAttribute('data-val')
+  })
+  d.addEventListener('mouseleave',function(){
+    this.setAttribute('r','4')
+    document.getElementById('chart-tooltip').textContent='把鼠标移到圆点上看数据'
+  })
+})
+</script>
+</body>
+</html>

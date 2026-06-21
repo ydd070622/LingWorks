@@ -1,0 +1,8 @@
+version: 3.8.0
+files:
+  - url: LingWorks-Setup-3.8.0.exe
+    sha512: hDziryYr59lQMxHdJ1KNCoio6q/IDvJ18WelVHrgxjkgLmjMf4ly3PYu9Uz24Gd6nfXeGaiZV1T1C7ggoQzpng==
+    size: 87947745
+path: LingWorks-Setup-3.8.0.exe
+sha512: hDziryYr59lQMxHdJ1KNCoio6q/IDvJ18WelVHrgxjkgLmjMf4ly3PYu9Uz24Gd6nfXeGaiZV1T1C7ggoQzpng==
+releaseDate: '2026-06-21T15:07:35.041Z'

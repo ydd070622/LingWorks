@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { X, Check, Pencil, Trash2, Plus } from 'lucide-react'
 import type { Customer, Payment } from './types'
 import { CONTRACT_STATUS, defaultPaymentPlan } from './constants'
@@ -42,13 +43,16 @@ export default function ContractDetailModal({ contract, onSave, onDelete, onClos
       paymentPlan,
       ...overrides,
     })
+    toast.success('合同已保存')
   }
 
   const markPaid = (p: Payment) => {
     setPaymentPlan(prev => prev.map(x => x.id === p.id ? { ...x, paid: true, date: todayStr() } : x))
+    toast.success(`已记录收款 ¥${p.amount.toLocaleString()} · ${p.label}`)
   }
   const unmarkPaid = (p: Payment) => {
     setPaymentPlan(prev => prev.map(x => x.id === p.id ? { ...x, paid: false, date: '' } : x))
+    toast('已撤销「' + p.label + '」的收款')
   }
   const startEdit = (p: Payment) => {
     setEditingPayId(p.id); setEditLabel(p.label); setEditAmount(String(p.amount))
@@ -57,10 +61,12 @@ export default function ContractDetailModal({ contract, onSave, onDelete, onClos
     if (!editLabel.trim() || isNaN(parseInt(editAmount))) return
     setPaymentPlan(prev => prev.map(x => x.id === editingPayId ? { ...x, label: editLabel.trim(), amount: parseInt(editAmount) || 0 } : x))
     setEditingPayId(null)
+    toast.success('回款计划已更新')
   }
   const deletePay = (id: string) => {
     if (!confirm('删除这一期回款计划？')) return
     setPaymentPlan(prev => prev.filter(x => x.id !== id))
+    toast.success('已删除该期回款')
   }
   const addPay = () => {
     if (!newLabel.trim() || isNaN(parseInt(newAmount)) || parseInt(newAmount) <= 0) return
@@ -71,10 +77,12 @@ export default function ContractDetailModal({ contract, onSave, onDelete, onClos
     }
     setPaymentPlan(prev => [...prev, p])
     setNewLabel(''); setNewAmount(''); setNewPaid(false)
+    toast.success(`已添加「${p.label}」¥${p.amount.toLocaleString()}`)
   }
   const applyTemplate = () => {
     if (!confirm('用标准分期模板（定金30%/进度款40%/尾款30%）覆盖当前回款计划？')) return
     setPaymentPlan(defaultPaymentPlan(dealAmount))
+    toast.success('已应用标准分期模板')
   }
 
   const contractStatus = CONTRACT_STATUS.find(s => s.id === form.contractStatus)

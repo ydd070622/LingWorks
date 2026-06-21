@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { X } from 'lucide-react'
 import type { Note } from './types'
 
@@ -43,7 +44,7 @@ export default function NoteModal({ note, onSave, onClose }: {
         </div>
         <div className="crm-modal-footer">
           <button className="crm-btn-ghost" onClick={onClose}>取消</button>
-          <button className="crm-btn-primary" onClick={() => { if (form.title.trim()) { try { onSave({ id: note.id, ...form }) } catch (e) { alert('保存失败: ' + String(e)) } } }}>保存</button>
+          <button className="crm-btn-primary" onClick={() => { if (form.title.trim()) { try { onSave({ id: note.id, ...form }); toast.success(note.id ? '笔记已保存' : '已新增笔记') } catch (e) { toast.error('保存失败: ' + String(e)) } } }}>保存</button>
         </div>
       </div>
     </div>

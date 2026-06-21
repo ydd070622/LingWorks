@@ -1,10 +1,19 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { Toaster } from 'sonner'
 import App from './App'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />
+    <Toaster
+      position="bottom-right"
+      theme="dark"
+      richColors
+      toastOptions={{
+        style: { background: 'rgba(18,18,26,0.95)', border: '1px solid rgba(255,255,255,0.08)', color: '#e8e8ed' },
+      }}
+    />
   </React.StrictMode>,
 )

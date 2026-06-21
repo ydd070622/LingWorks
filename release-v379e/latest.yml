@@ -1,0 +1,8 @@
+version: 3.7.9
+files:
+  - url: LingWorks-Setup-3.7.9.exe
+    sha512: iAI9mhVRMB+kjZDk/ubgv7w2u8JU24JiL56GrDqAWmAytSYEqubm9Z7BRhP7Haok9/qSer01xrR93tMTkZGhsA==
+    size: 87981363
+path: LingWorks-Setup-3.7.9.exe
+sha512: iAI9mhVRMB+kjZDk/ubgv7w2u8JU24JiL56GrDqAWmAytSYEqubm9Z7BRhP7Haok9/qSer01xrR93tMTkZGhsA==
+releaseDate: '2026-06-21T12:02:30.879Z'

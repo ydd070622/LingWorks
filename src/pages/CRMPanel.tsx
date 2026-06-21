@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { toast } from 'sonner'
 import type { CRMData, Customer, Note, EnrichedCustomer, FollowUp } from '../crm/types'
 import { STAGES, SOURCES, TABS, STORAGE_KEY } from '../crm/constants'
 import { today as todayStr, daysDiff } from '../crm/helpers'
@@ -118,11 +119,13 @@ export default function CRMPanel() {
   const deleteCust = useCallback((id: string) => {
     if (!confirm('确定删除？')) return
     persist({ ...data, customers: data.customers.filter(c => c.id !== id) })
+    toast.success('已删除客户')
   }, [data, persist])
 
   const deleteCusts = useCallback((ids: string[]) => {
     if (!confirm(`确定删除选中的 ${ids.length} 位客户？`)) return
     persist({ ...data, customers: data.customers.filter(c => !ids.includes(c.id)) })
+    toast.success(`已删除 ${ids.length} 位客户`)
   }, [data, persist])
 
   const moveCust = useCallback((id: string, newStage: string) => {
@@ -131,9 +134,13 @@ export default function CRMPanel() {
       const amt = prompt('成交金额（元）：', '28000')
       if (!amt) return
       upd.dealAmount = parseInt(amt) || 0
+      toast.success(`已成交 ¥${(parseInt(amt) || 0).toLocaleString()}`)
+    } else {
+      const cust = data.customers.find(c => c.id === id)
+      toast.success(`${cust?.name || '客户'} → ${STAGES.find(s => s.id === newStage)?.label || newStage}`)
     }
     updateCust(id, upd)
-  }, [updateCust])
+  }, [updateCust, data.customers])
 
   const updateNote = useCallback((id: string, upd: Partial<Note>) => {
     persist({ ...data, notes: data.notes.map(n => n.id === id ? { ...n, ...upd } : n) })
@@ -152,6 +159,7 @@ export default function CRMPanel() {
   const deleteNotes = useCallback((ids: string[]) => {
     if (!confirm(`确定删除选中的 ${ids.length} 条笔记？`)) return
     persist({ ...data, notes: data.notes.filter(n => !ids.includes(n.id)) })
+    toast.success(`已删除 ${ids.length} 条笔记`)
   }, [data, persist])
 
   const followUps = useMemo(() =>

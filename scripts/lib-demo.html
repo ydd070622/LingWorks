@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>动效对比 + 库效果演示</title>
+<style>
+:root{--bg:#0a0a0f;--bg2:#12121a;--bg3:#1a1a25;--bdr:rgba(255,255,255,.08);--txt:#e8e8ed;--txt2:rgba(255,255,255,.5);--txt3:rgba(255,255,255,.3);--accent:#6366f1;--green:#22c55e;--red:#ef4444;--amber:#f59e0b}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--txt);font-size:13px;line-height:1.5;padding:24px;-webkit-font-smoothing:antialiased}
+h2{font-size:15px;margin:28px 0 4px}
+h2:first-child{margin-top:0}
+.sub{font-size:10px;color:var(--txt3);margin-bottom:12px}
+
+/* ====== A/B comparison row ====== */
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+.compare .box{background:var(--bg2);border:1px solid var(--bdr);border-radius:10px;padding:14px;position:relative}
+.compare .box .label{position:absolute;top:-10px;left:12px;font-size:10px;padding:2px 8px;border-radius:6px;font-weight:600}
+.compare .box.before .label{background:rgba(255,255,255,.1);color:var(--txt2)}
+.compare .box.after .label{background:var(--accent);color:#fff}
+
+/* Cards inside boxes */
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.card{
+  background:var(--bg);border:1px solid var(--bdr);border-radius:8px;
+  padding:10px 12px;cursor:pointer;
+}
+.card-h{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.card-av{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:600}
+.card-name{font-size:12px;font-weight:600;flex:1}
+.card-tag{font-size:9px;padding:1px 6px;border-radius:6px;background:rgba(239,68,68,.12);color:var(--red)}
+.card-body{font-size:10px;color:var(--txt2)}
+
+/* BEFORE: no animations */
+.before .card{transition:none}
+.before .card:hover{background:var(--bg);border-color:var(--bdr)}
+
+/* AFTER: with Framer Motion style */
+.after .card{transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .25s ease,border-color .25s ease;border:2px solid transparent}
+.after .card:hover{transform:translateY(-4px) scale(1.03);border-color:var(--accent);box-shadow:0 10px 30px rgba(99,102,241,.2);z-index:2}
+.after .card:active{transform:scale(.96);transition:transform .1s}
+
+/* ===== Stat cards ===== */
+.stat-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.stat-card{
+  background:var(--bg);border:1px solid var(--bdr);border-radius:10px;
+  padding:14px 16px;position:relative;overflow:hidden;cursor:pointer;
+}
+.stat-card .sv{font-size:24px;font-weight:700}
+.stat-card .sl{font-size:10px;color:var(--txt3);margin-top:2px}
+.stat-card .glow{position:absolute;top:-30px;right:-16px;width:70px;height:70px;border-radius:50%;opacity:.05;pointer-events:none}
+.before .stat-card{transition:none}
+.after .stat-card{transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .25s ease}
+.after .stat-card:hover{transform:translateY(-3px);box-shadow:0 6px 20px rgba(0,0,0,.25)}
+.after .stat-card:active{transform:scale(.97);transition:transform .1s}
+
+/* ===== Button ===== */
+.btn{
+  padding:6px 14px;border-radius:6px;font-size:11px;cursor:pointer;border:1px solid var(--bdr);
+  background:var(--bg);color:var(--txt2);font-family:inherit;
+}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.before .btn{transition:none}
+.after .btn{transition:transform .2s cubic-bezier(.34,1.56,.64,1),background .2s ease}
+.after .btn:hover{transform:scale(1.06)}
+.after .btn:active{transform:scale(.92);transition:transform .08s}
+
+/* ===== Panel slide ===== */
+.panel-trigger{display:flex;gap:8px;margin-top:8px}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;z-index:50;align-items:stretch;justify-content:flex-end}
+.overlay.show{display:flex}
+.panel{width:380px;background:var(--bg2);overflow-y:auto;padding:20px;box-shadow:-8px 0 30px rgba(0,0,0,.3)}
+.panel-h{font-weight:600;margin-bottom:12px;display:flex;justify-content:space-between}
+.before .panel{transition:none}
+.after .panel{transition:transform .4s cubic-bezier(.16,1,.3,1),opacity .2s ease}
+.after .overlay:not(.show) .panel{transform:translateX(30px);opacity:0}
+
+/* ===== sonner toast ===== */
+.toast-area{position:fixed;bottom:16px;right:16px;display:flex;flex-direction:column-reverse;gap:6px;z-index:100;pointer-events:none}
+.toast{background:var(--bg2);border:1px solid var(--bdr);padding:10px 16px;border-radius:10px;font-size:12px;pointer-events:auto;box-shadow:0 4px 16px rgba(0,0,0,.3);animation:toastIn .4s cubic-bezier(.16,1,.3,1)}
+@keyframes toastIn{from{opacity:0;transform:translateX(20px) scale(.95)}to{opacity:1;transform:translateX(0) scale(1)}}
+.toast.out{animation:toastOut .25s ease forwards}
+@keyframes toastOut{to{opacity:0;transform:translateX(20px) scale(.95)}}
+
+/* ===== recharts section ===== */
+.chart-box{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.chart{background:var(--bg);border:1px solid var(--bdr);border-radius:8px;padding:12px}
+.chart-title{font-size:10px;color:var(--txt3);margin-bottom:8px;font-weight:600}
+.bar{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.bar-label{font-size:9px;color:var(--txt2);width:36px;text-align:right}
+.bar-track{flex:1;height:14px;background:var(--bg3);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;display:flex;align-items:center;padding:0 4px;font-size:8px;color:#fff;font-weight:600}
+
+/* date-fns */
+.code-cmp{display:flex;gap:12px;font-size:10px}
+.code-cmp pre{padding:8px 12px;border-radius:6px;overflow-x:auto;line-height:1.7}
+.code-cmp .old{flex:1;background:rgba(255,255,255,.03);color:var(--txt3)}
+.code-cmp .new{flex:1;background:rgba(34,197,94,.06);color:var(--green)}
+
+/* Enter stagger demo */
+@keyframes popIn{from{opacity:0;transform:scale(.9) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.stagger-demo .card{opacity:0;animation:popIn .4s cubic-bezier(.16,1,.3,1) forwards}
+.stagger-demo .card:nth-child(1){animation-delay:0s}
+.stagger-demo .card:nth-child(2){animation-delay:.06s}
+.stagger-demo .card:nth-child(3){animation-delay:.12s}
+.stagger-demo .card:nth-child(4){animation-delay:.18s}
+
+/* Urgent breathe */
+@keyframes breathe{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.3)}50%{box-shadow:0 0 0 10px rgba(239,68,68,0)}}
+.urgent-pulse{animation:breathe 2.2s ease-in-out infinite}
+</style>
+</head>
+<body>
+
+<h2>🎬 Framer Motion 对比</h2>
+<div class="sub">左边 = v3.7.9现状 · 右边 = 加上Framer Motion后的效果（hover卡片、点按钮、点"打开面板"试试差异）</div>
+
+<!-- Customer Cards A/B -->
+<div class="compare">
+  <div class="box before"><div class="label">现状 · 无动效</div>
+    <div class="cards">
+      <div class="card"><div class="card-h"><div class="card-av" style="background:linear-gradient(135deg,#f97316,#fb923c)">孙</div><div class="card-name">孙女士</div><span class="card-tag">逾期2天</span></div><div class="card-body">三室两厅 · 28万</div></div>
+      <div class="card"><div class="card-h"><div class="card-av" style="background:linear-gradient(135deg,#6366f1,#818cf8)">张</div><div class="card-name">张女士</div><span class="card-tag">明天</span></div><div class="card-body">三室两厅 · 20万</div></div>
+    </div>
+  </div>
+  <div class="box after"><div class="label">Framer Motion · 弹簧动效</div>
+    <div class="cards">
+      <div class="card"><div class="card-h"><div class="card-av" style="background:linear-gradient(135deg,#f97316,#fb923c)">孙</div><div class="card-name">孙女士</div><span class="card-tag">逾期2天</span></div><div class="card-body">三室两厅 · 28万</div></div>
+      <div class="card"><div class="card-h"><div class="card-av" style="background:linear-gradient(135deg,#6366f1,#818cf8)">张</div><div class="card-name">张女士</div><span class="card-tag">明天</span></div><div class="card-body">三室两厅 · 20万</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Stats + Buttons A/B -->
+<div class="compare">
+  <div class="box before"><div class="label">现状</div>
+    <div class="stat-row">
+      <div class="stat-card"><div class="sv" style="color:var(--accent)">6</div><div class="sl">活跃客户</div><div class="glow" style="background:var(--accent)"></div></div>
+      <div class="stat-card"><div class="sv" style="color:var(--red)">2</div><div class="sl">需要跟进</div><div class="glow" style="background:var(--red)"></div></div>
+    </div>
+    <div style="display:flex;gap:6px">
+      <button class="btn pri">保存</button>
+      <button class="btn" onclick="document.getElementById('panel-before').classList.add('show')">打开面板</button>
+    </div>
+  </div>
+  <div class="box after"><div class="label">Framer Motion</div>
+    <div class="stat-row">
+      <div class="stat-card"><div class="sv" style="color:var(--accent)">6</div><div class="sl">活跃客户</div><div class="glow" style="background:var(--accent)"></div></div>
+      <div class="stat-card urgent-pulse"><div class="sv" style="color:var(--red)">2</div><div class="sl">需要跟进</div><div class="glow" style="background:var(--red)"></div></div>
+    </div>
+    <div style="display:flex;gap:6px">
+      <button class="btn pri">保存</button>
+      <button class="btn" onclick="document.getElementById('panel-after').classList.add('show')">打开面板</button>
+    </div>
+  </div>
+</div>
+
+<!-- Panels -->
+<div class="overlay before" id="panel-before" onclick="this.classList.remove('show')">
+  <div class="panel" onclick="event.stopPropagation()">
+    <div class="panel-h"><span>客户详情</span><button class="btn" onclick="document.getElementById('panel-before').classList.remove('show')">✕</button></div>
+    <div style="font-size:11px;color:var(--txt2)">现状：无过渡动画，瞬间出现</div>
+  </div>
+</div>
+<div class="overlay after" id="panel-after" onclick="this.classList.remove('show')">
+  <div class="panel" onclick="event.stopPropagation()">
+    <div class="panel-h"><span>客户详情</span><button class="btn" onclick="document.getElementById('panel-after').classList.remove('show')">✕</button></div>
+    <div style="font-size:11px;color:var(--txt2)">Framer Motion：弹簧缓入 + 模糊遮罩</div>
+  </div>
+</div>
+
+<!-- Stagger entrance demo -->
+<h2>🎬 列表入场交错动画</h2>
+<div class="sub">刷新页面看到4张卡片依次弹出（0→60→120→180ms延迟），这是 Framer Motion 的 staggerChildren</div>
+<div class="box after stagger-demo">
+  <div class="cards">
+    <div class="card"><div class="card-h"><div class="card-av" style="background:linear-gradient(135deg,#f97316,#fb923c)">孙</div><div class="card-name">孙女士</div><span class="card-tag">逾期</span></div><div class="card-body">已发报价</div></div>
+    <div class="card"><div class="card-h"><div class="card-av" style="background:linear-gradient(135deg,#6366f1,#818cf8)">张</div><div class="card-name">张女士</div><span class="card-tag">明天</span></div><div class="card-body">6.22看方案</div></div>
+    <div class="card"><div class="card-h"><div class="card-av" style="background:linear-gradient(135deg,#8b5cf6,#a78bfa)">李</div><div class="card-name">李先生</div><span class="card-tag">沟通中</span></div><div class="card-body">四室两厅</div></div>
+    <div class="card"><div class="card-h"><div class="card-av" style="background:linear-gradient(135deg,#3b82f6,#60a5fa)">刘</div><div class="card-name">刘女士</div><span class="card-tag">新客户</span></div><div class="card-body">三室两厅</div></div>
+  </div>
+</div>
+
+<!-- ===== sonner ===== -->
+<h2>🔔 sonner — 替代 alert()</h2>
+<div class="sub">现状：操作反馈用 alert() 弹框阻断操作 · sonner：右下角 Toast 非阻断、自动消失、可堆叠</div>
+<div class="compare">
+  <div class="box before"><div class="label">现状 · alert()</div>
+    <button class="btn pri" onclick="alert('已保存')" style="margin-right:6px">alert('已保存')</button>
+    <button class="btn" onclick="alert('已删除')">alert('已删除')</button>
+    <div style="font-size:10px;color:var(--txt3);margin-top:8px">⚠ 阻断式弹窗，必须点确定才能继续操作</div>
+  </div>
+  <div class="box after"><div class="label">sonner · Toast</div>
+    <button class="btn pri" onclick="showToast('✅ 客户信息已保存')" style="margin-right:6px">保存</button>
+    <button class="btn" onclick="showToast('🗑 已删除 张女士')">删除</button>
+    <button class="btn" onclick="showToast('⚠ 2人逾期未跟进')">提醒</button>
+    <div style="font-size:10px;color:var(--txt3);margin-top:8px">✅ 非阻断 · 2秒自动消失 · 可堆叠多条</div>
+  </div>
+</div>
+
+<!-- ===== date-fns ===== -->
+<h2>📅 date-fns — 替代手写日期函数</h2>
+<div class="sub">v3.7.9 的 helpers.ts 手写了 daysDiff/fmtDate/today 约 20 行 · date-fns 一行替代</div>
+<div class="code-cmp">
+  <pre class="old">// 现状：helpers.ts 手写
+function daysDiff(a,b){
+  return Math.ceil(
+    (new Date(a)-new Date(b))/86400000
+  )
+}
+function fmtDate(d){
+  const [y,m,day]=d.split('-')
+  return parseInt(m)+'月'+parseInt(day)+'日'
+}
+// 不支持"3天前"等相对时间</pre>
+  <pre class="new">// date-fns 一行搞定
+import { format,
+  differenceInDays,
+  formatDistanceToNow }
+from 'date-fns'
+
+format(new Date(), 'M月d日')
+differenceInDays(a, b)
+formatDistanceToNow(date)
+// → "3天前" "约2个月后"</pre>
+</div>
+
+<!-- ===== recharts ===== -->
+<h2>📊 recharts — 替代 CSS 条形图</h2>
+<div class="sub">v3.7.9 Dashboard 用纯 CSS div 做漏斗图 · recharts 是真 SVG 图表，支持 tooltip、动画、导出</div>
+<div class="chart-box">
+  <div class="chart"><div class="chart-title">现状 · CSS div 条形图</div>
+    <div class="bar"><span class="bar-label">留资</span><div class="bar-track"><div class="bar-fill" style="width:100%;background:#3b82f6">8</div></div></div>
+    <div class="bar"><span class="bar-label">加微信</span><div class="bar-track"><div class="bar-fill" style="width:75%;background:#8b5cf6">6</div></div><span style="font-size:9px;color:var(--txt3)">75%</span></div>
+    <div class="bar"><span class="bar-label">沟通</span><div class="bar-track"><div class="bar-fill" style="width:60%;background:#6366f1">5</div></div><span style="font-size:9px;color:var(--txt3)">80%</span></div>
+    <div class="bar"><span class="bar-label">跟进</span><div class="bar-track"><div class="bar-fill" style="width:38%;background:#f59e0b">3</div></div><span style="font-size:9px;color:var(--txt3)">60%</span></div>
+    <div class="bar"><span class="bar-label">成交</span><div class="bar-track"><div class="bar-fill" style="width:25%;background:#22c55e">2</div></div><span style="font-size:9px;color:var(--txt3)">67%</span></div>
+    <div style="font-size:9px;color:var(--txt3);margin-top:6px">无 tooltip · 无动画 · 不支持导出</div>
+  </div>
+  <div class="chart"><div class="chart-title">recharts · SVG 真图表</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:9px">
+      <div style="padding:8px;background:var(--bg3);border-radius:6px;text-align:center">
+        <div style="color:var(--accent);font-weight:600">📊 漏斗图</div><div style="color:var(--txt3)">支持 tooltip 悬停</div>
+      </div>
+      <div style="padding:8px;background:var(--bg3);border-radius:6px;text-align:center">
+        <div style="color:var(--green);font-weight:600">📈 折线图</div><div style="color:var(--txt3)">月度趋势动画</div>
+      </div>
+      <div style="padding:8px;background:var(--bg3);border-radius:6px;text-align:center">
+        <div style="color:var(--amber);font-weight:600">🥧 饼图</div><div style="color:var(--txt3)">回款分布占比</div>
+      </div>
+      <div style="padding:8px;background:var(--bg3);border-radius:6px;text-align:center">
+        <div style="color:var(--red);font-weight:600">📉 柱状图</div><div style="color:var(--txt3)">月度成交对比</div>
+      </div>
+    </div>
+    <div style="font-size:9px;color:var(--txt3);margin-top:6px">✅ tooltip · 入场动画 · 可导出图片</div>
+  </div>
+</div>
+
+<div class="toast-area" id="toasts"></div>
+
+<script>
+function showToast(msg){
+  const c=document.getElementById('toasts')
+  const t=document.createElement('div')
+  t.className='toast';t.textContent=msg
+  c.appendChild(t)
+  setTimeout(()=>{t.classList.add('out');setTimeout(()=>t.remove(),300)},2000)
+}
+</script>
+</body>
+</html>

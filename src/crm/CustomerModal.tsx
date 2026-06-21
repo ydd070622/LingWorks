@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { X } from 'lucide-react'
 import type { Note, Customer, FollowUp } from './types'
 import { STAGES, SOURCES } from './constants'
@@ -46,6 +47,7 @@ export default function CustomerModal({ customer, notes, onSave, onDelete, onClo
     }
 
     onSave(upd)
+    toast.success(customer.id ? '客户信息已保存' : '已新增客户')
   }
 
   return (
