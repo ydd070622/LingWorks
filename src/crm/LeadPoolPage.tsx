@@ -1,9 +1,10 @@
 import { Plus } from 'lucide-react'
+import { pinyin } from 'pinyin-pro'
 import type { SharedProps } from './types'
 import { avatarGrad, fmtDate } from './helpers'
 
 export default function LeadPoolPage({ data, setEditingCustomer, enrichCust, moveCust }: SharedProps) {
-  const leads = data.customers.filter(c => c.stage === 'lead').map(enrichCust)
+  const leads = data.customers.filter(c => c.stage === 'lead').map(enrichCust).sort((a, b) => pinyin(a.name).localeCompare(pinyin(b.name)))
   return (
     <div className="crm-page">
       <div className="crm-toolbar">

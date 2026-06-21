@@ -11,3 +11,4 @@ dashboard-detail-mockup.html
 reasonix.toml
 
 electron-dist/
+release-*/

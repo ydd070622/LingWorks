@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { Search, X, Plus, GripVertical } from 'lucide-react'
+import { pinyin } from 'pinyin-pro'
 import type { SharedProps, Customer, EnrichedCustomer } from './types'
 import { STAGES, TAG_COLORS } from './constants'
 import { avatarGrad, fuDisplay, fmtDate } from './helpers'
@@ -14,9 +15,18 @@ export default function CustomerPage({ data, viewMode, setViewMode, setEditingCu
 
   const filtered = useMemo(() => {
     let list = customers
-    if (search) list = list.filter(c => c.name.includes(search) || c.phone.includes(search) || c.houseType.includes(search))
+    if (search) {
+      const q = search.toLowerCase()
+      list = list.filter(c =>
+        c.name.includes(search) ||
+        c.phone.includes(search) ||
+        c.houseType.includes(search) ||
+        pinyin(c.name).toLowerCase().includes(q)
+      )
+    }
     if (filterNoteId) list = list.filter(c => c.sourceNoteId === filterNoteId)
-    return list
+    // 拼音 A-Z 排序
+    return list.sort((a, b) => pinyin(a.name).localeCompare(pinyin(b.name)))
   }, [customers, search, filterNoteId])
 
   const kanbanGroups = useMemo(() => {

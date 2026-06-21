@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>pinyin-pro 拼音排序/搜索 演示</title>
+<style>
+:root{--bg:#0a0a0f;--bg2:#12121a;--bg3:#1a1a25;--bdr:rgba(255,255,255,.08);--txt:#e8e8ed;--txt2:rgba(255,255,255,.5);--txt3:rgba(255,255,255,.3);--accent:#6366f1;--green:#22c55e}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--txt);font-size:13px;line-height:1.5;padding:24px;-webkit-font-smoothing:antialiased}
+h2{font-size:15px;margin:24px 0 4px}
+.sub{font-size:10px;color:var(--txt3);margin-bottom:12px}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+.box{background:var(--bg2);border:1px solid var(--bdr);border-radius:10px;padding:12px 14px;position:relative}
+.box .label{position:absolute;top:-9px;left:10px;font-size:10px;padding:2px 8px;border-radius:6px;font-weight:600}
+.box.before .label{background:rgba(255,255,255,.1);color:var(--txt2)}
+.box.after .label{background:var(--accent);color:#fff}
+
+/* Search bar */
+.search{display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--bdr);border-radius:8px;padding:7px 12px;margin-bottom:10px}
+.search input{background:none;border:none;outline:none;color:var(--txt);font-size:12px;font-family:inherit;flex:1}
+.search span{font-size:10px;color:var(--txt3)}
+
+/* Customer row */
+.row{display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid rgba(45,54,64,.5);font-size:12px;transition:background .15s}
+.row:hover{background:var(--bg3)}
+.row .av{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:600;flex-shrink:0}
+.row .n{font-weight:600;flex:1}
+.row .py{font-size:10px;color:var(--txt3);font-family:"SF Mono",Consolas,monospace;margin-right:8px}
+.row .tag{font-size:9px;padding:2px 7px;border-radius:8px;background:rgba(245,158,11,.12);color:#f59e0b;white-space:nowrap}
+.hl{background:rgba(245,158,11,.25);padding:0 2px;border-radius:2px}
+.no-sort{font-size:10px;color:var(--txt3);text-align:center;padding:8px;font-style:italic}
+
+/* Interactive */
+.btn-bar{display:flex;gap:6px;margin:12px 0}
+.btn{padding:6px 13px;border-radius:7px;font-size:11px;cursor:pointer;border:1px solid var(--bdr);background:var(--bg3);color:var(--txt2);font-family:inherit}
+.btn:hover{background:var(--bg2);color:var(--txt)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.arrow{font-size:14px;color:var(--txt3);margin:0 4px}
+</style>
+</head>
+<body>
+
+<h2>拼音排序 对比</h2>
+<div class="sub">左边 = 现状无序 · 右边 = 加上 pinyin-pro 后按 A-Z 排序（陈→李→刘→孙→吴→张→赵→周）</div>
+
+<div class="compare">
+  <div class="box before"><div class="label">现状 · 无序</div>
+    <div class="no-sort">⚠ 按存储顺序排列，无排序规则</div>
+    <div class="row"><div class="av" style="background:#ff9500">张</div><span class="n">张女士</span><span class="tag">待跟进</span></div>
+    <div class="row"><div class="av" style="background:#af52de">李</div><span class="n">李先生</span><span class="tag">沟通中</span></div>
+    <div class="row"><div class="av" style="background:#34c759">周</div><span class="n">周先生</span><span class="tag">已成交</span></div>
+    <div class="row"><div class="av" style="background:#007aff">赵</div><span class="n">赵先生</span><span class="tag">待引流</span></div>
+    <div class="row"><div class="av" style="background:#ff3b30">陈</div><span class="n">陈女士</span><span class="tag">沟通中</span></div>
+    <div class="row"><div class="av" style="background:#34c759">刘</div><span class="n">刘女士</span><span class="tag">已加微信</span></div>
+    <div class="row"><div class="av" style="background:#5856d6">孙</div><span class="n">孙女士</span><span class="tag">待跟进</span></div>
+    <div class="row"><div class="av" style="background:#ff3b30">吴</div><span class="n">吴女士</span><span class="tag">待跟进</span></div>
+  </div>
+  <div class="box after"><div class="label">pinyin-pro · A-Z 排序</div>
+    <div style="font-size:10px;color:var(--txt3);margin-bottom:8px">✅ 按拼音首字母排列，一目了然</div>
+    <div class="row"><div class="av" style="background:#ff3b30">陈</div><span class="n">陈女士</span><span class="py">chen</span><span class="tag">沟通中</span></div>
+    <div class="row"><div class="av" style="background:#af52de">李</div><span class="n">李先生</span><span class="py">li</span><span class="tag">沟通中</span></div>
+    <div class="row"><div class="av" style="background:#34c759">刘</div><span class="n">刘女士</span><span class="py">liu</span><span class="tag">已加微信</span></div>
+    <div class="row"><div class="av" style="background:#5856d6">孙</div><span class="n">孙女士</span><span class="py">sun</span><span class="tag">待跟进</span></div>
+    <div class="row"><div class="av" style="background:#ff3b30">吴</div><span class="n">吴女士</span><span class="py">wu</span><span class="tag">待跟进</span></div>
+    <div class="row"><div class="av" style="background:#ff9500">张</div><span class="n">张女士</span><span class="py">zhang</span><span class="tag">待跟进</span></div>
+    <div class="row"><div class="av" style="background:#007aff">赵</div><span class="n">赵先生</span><span class="py">zhao</span><span class="tag">待引流</span></div>
+    <div class="row"><div class="av" style="background:#34c759">周</div><span class="n">周先生</span><span class="py">zhou</span><span class="tag">已成交</span></div>
+  </div>
+</div>
+
+<h2>拼音搜索 <span style="font-size:11px;color:var(--txt3);font-weight:400">— 在搜索框里试试</span></h2>
+<div class="sub">左边 = 只能搜中文 · 右边 = 拼音/中文都能搜</div>
+
+<div class="compare">
+  <div class="box before"><div class="label">现状 · 只能搜中文</div>
+    <div class="search"><input placeholder="搜" value="zhang" oninput="searchBefore(this.value)" id="sb"><span>搜"zhang"→无结果</span></div>
+    <div id="list-before">
+      <div class="row"><div class="av" style="background:#ff9500">张</div><span class="n">张女士</span><span class="tag">待跟进</span></div>
+      <div class="row"><div class="av" style="background:#af52de">李</div><span class="n">李先生</span><span class="tag">沟通中</span></div>
+      <div class="row"><div class="av" style="background:#ff3b30">陈</div><span class="n">陈女士</span><span class="tag">沟通中</span></div>
+      <div class="row"><div class="av" style="background:#34c759">刘</div><span class="n">刘女士</span><span class="tag">已加微信</span></div>
+      <div class="row"><div class="av" style="background:#5856d6">孙</div><span class="n">孙女士</span><span class="tag">待跟进</span></div>
+    </div>
+  </div>
+  <div class="box after"><div class="label">pinyin-pro · 中英都能搜</div>
+    <div class="search"><input placeholder="试试: zhang / sun / 陈 / li" oninput="searchAfter(this.value)" id="sa"><span id="sa-hint">搜"zhang"→命中张女士</span></div>
+    <div id="list-after"></div>
+  </div>
+</div>
+
+<script>
+const names=[
+  {n:'张女士',py:'zhang',st:'待跟进',c:['#ff9500','#ffaa40']},
+  {n:'李先生',py:'li',st:'沟通中',c:['#af52de','#c77df0']},
+  {n:'周先生',py:'zhou',st:'已成交',c:['#34c759','#5edc7a']},
+  {n:'赵先生',py:'zhao',st:'待引流',c:['#007aff','#40a0ff']},
+  {n:'陈女士',py:'chen',st:'沟通中',c:['#ff3b30','#ff6b60']},
+  {n:'刘女士',py:'liu',st:'已加微信',c:['#34c759','#5edc7a']},
+  {n:'孙女士',py:'sun',st:'待跟进',c:['#5856d6','#7b79e0']},
+  {n:'吴女士',py:'wu',st:'待跟进',c:['#ff3b30','#ff6b60']},
+]
+
+function renderAfter(filter){
+  const el=document.getElementById('list-after')
+  const q=(filter||'').toLowerCase()
+  const filtered=names.filter(x=>!q||x.n.toLowerCase().includes(q)||x.py.toLowerCase().includes(q))
+  const hint=document.getElementById('sa-hint')
+  if(q&&filtered.length>0)hint.textContent=`搜"${q}"→命中 ${filtered.length} 人`
+  else if(q)hint.textContent=`搜"${q}"→无结果`
+  else hint.textContent='试试: zhang / sun / 陈 / li'
+
+  el.innerHTML=filtered.map(x=>{
+    let name=x.n
+    if(q){
+      if(x.n.includes(q))name=x.n.replace(q,`<span class="hl">${q}</span>`)
+      else if(x.py.includes(q)){
+        const start=x.py.indexOf(q)
+        name=x.n.slice(0,start)+'<span class="hl">'+x.n.slice(start,start+q.length)+'</span>'+x.n.slice(start+q.length)
+      }
+    }
+    return`<div class="row"><div class="av" style="background:linear-gradient(135deg,${x.c[0]},${x.c[1]})">${x.n[0]}</div><span class="n">${name}</span><span class="py">${x.py}</span><span class="tag">${x.st}</span></div>`
+  }).join('')
+}
+
+function searchAfter(v){renderAfter(v)}
+function searchBefore(v){
+  const q=(v||'').toLowerCase()
+  const list=names.filter(x=>!q||x.n.toLowerCase().includes(q))
+  document.getElementById('list-before').innerHTML=list.length>0?list.map(x=>`<div class="row"><div class="av" style="background:linear-gradient(135deg,${x.c[0]},${x.c[1]})">${x.n[0]}</div><span class="n">${x.n}</span><span class="tag">${x.st}</span></div>`).join(''):'<div class="no-sort">无匹配结果</div>'
+  document.getElementById('sb').dispatchEvent(new Event('input'))
+}
+
+renderAfter('')
+</script>
+</body>
+</html>
