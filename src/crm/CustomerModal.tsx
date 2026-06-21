@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
-import type { Note, Customer } from './types'
+import type { Note, Customer, FollowUp } from './types'
 import { STAGES, SOURCES } from './constants'
+import { fmtDate } from './helpers'
 
 export default function CustomerModal({ customer, notes, onSave, onDelete, onClose }: {
   customer: Partial<Customer>
@@ -20,9 +21,36 @@ export default function CustomerModal({ customer, notes, onSave, onDelete, onClo
   })
   const h = (f: string, v: string) => setForm(p => ({ ...p, [f]: v }))
 
+  const history = customer.followUpHistory ?? []
+  const reversedHistory = [...history].reverse()  // 倒序，最新在上
+
+  const handleSave = () => {
+    if (!form.name.trim()) return
+    const upd: Partial<Customer> & { id?: string } = { id: customer.id, ...form }
+
+    // 保存去重：编辑已有客户且跟进备注或沟通记录发生变化时，追加一条历史
+    if (customer.id) {
+      const fuChanged = form.followUpNote.trim() && form.followUpNote !== (customer.followUpNote || '')
+      const notesChanged = form.notes.trim() && form.notes !== (customer.notes || '')
+      if (fuChanged || notesChanged) {
+        const todayStr = new Date().toISOString().split('T')[0]
+        const content = fuChanged ? form.followUpNote : form.notes
+        const newEntry: FollowUp = {
+          id: 'fu_' + Date.now(),
+          date: todayStr,
+          content,
+          nextDate: form.followUpDate || undefined,
+        }
+        upd.followUpHistory = [...history, newEntry]
+      }
+    }
+
+    onSave(upd)
+  }
+
   return (
     <div className="crm-modal-overlay" onClick={onClose}>
-      <div className="crm-modal" onClick={e => e.stopPropagation()}>
+      <div className="crm-modal crm-modal-lg" onClick={e => e.stopPropagation()}>
         <div className="crm-modal-header">
           <span className="crm-modal-title">{customer.id ? '编辑客户' : '添加客户'}</span>
           <button className="crm-modal-close" onClick={onClose}><X size={18} /></button>
@@ -73,18 +101,39 @@ export default function CustomerModal({ customer, notes, onSave, onDelete, onClo
           </div>
           <div className="crm-form-row">
             <div className="crm-form-group"><label className="crm-form-label">下次跟进日期</label><input type="date" className="crm-form-input" value={form.followUpDate} onChange={e => h('followUpDate', e.target.value)} /></div>
-            <div className="crm-form-group"><label className="crm-form-label">跟进备注</label><input className="crm-form-input" value={form.followUpNote} onChange={e => h('followUpNote', e.target.value)} placeholder="客户说了什么" /></div>
+            <div className="crm-form-group"><label className="crm-form-label">跟进备注 <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>(改动会记录到历史)</span></label><input className="crm-form-input" value={form.followUpNote} onChange={e => h('followUpNote', e.target.value)} placeholder="客户说了什么" /></div>
           </div>
           <div className="crm-form-group">
             <label className="crm-form-label">沟通记录</label>
             <textarea className="crm-form-textarea" value={form.notes} onChange={e => h('notes', e.target.value)} rows={3} />
           </div>
+
+          {/* 跟进历史时间线 */}
+          <div className="crm-section-title" style={{ marginTop: 8 }}>
+            📋 跟进历史
+            {history.length > 0 && <span className="crm-section-count">{history.length} 条</span>}
+          </div>
+          {history.length === 0 ? (
+            <div className="crm-fu-history-empty">暂无跟进记录</div>
+          ) : (
+            <div className="crm-fu-history">
+              {reversedHistory.map(fu => (
+                <div key={fu.id} className="crm-fu-history-item">
+                  <div className="crm-fu-history-dot" />
+                  <div className="crm-fu-history-body">
+                    <div className="crm-fu-history-date">{fmtDate(fu.date)}{fu.nextDate ? ` · 约定 ${fmtDate(fu.nextDate)} 跟进` : ''}</div>
+                    <div className="crm-fu-history-content">{fu.content}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <div className="crm-modal-footer">
           {onDelete && <button className="crm-btn-ghost crm-btn-danger" onClick={onDelete}>删除</button>}
           <div style={{ flex: 1 }} />
           <button className="crm-btn-ghost" onClick={onClose}>取消</button>
-          <button className="crm-btn-primary" onClick={() => { if (form.name.trim()) onSave({ id: customer.id, ...form }) }}>保存</button>
+          <button className="crm-btn-primary" onClick={handleSave}>保存</button>
         </div>
       </div>
     </div>

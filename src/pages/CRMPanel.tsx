@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import type { CRMData, Customer, Note, EnrichedCustomer } from '../crm/types'
+import type { CRMData, Customer, Note, EnrichedCustomer, FollowUp } from '../crm/types'
 import { STAGES, SOURCES, TABS, STORAGE_KEY } from '../crm/constants'
 import { today as todayStr, daysDiff } from '../crm/helpers'
 import { createDefaultData } from '../crm/defaultData'
@@ -27,15 +27,33 @@ export default function CRMPanel() {
 
   useEffect(() => {
     const load = async () => {
-      // 数据迁移：给老合同补新字段默认值（无感升级）
+      // 数据迁移：给老客户补新字段默认值（无感升级）
       const migrate = (raw: CRMData): CRMData => ({
         ...raw,
-        customers: raw.customers.map(c => c.stage === 'closed' ? {
-          ...c,
-          contractStatus: c.contractStatus || 'signed',
-          paymentPlan: c.paymentPlan?.length ? c.paymentPlan : [],
-          signDate: c.signDate || '',
-        } : c),
+        customers: raw.customers.map(c => {
+          // 合同字段（仅 closed 客户）
+          const contractBase = c.stage === 'closed' ? {
+            contractStatus: c.contractStatus || 'signed' as const,
+            paymentPlan: c.paymentPlan?.length ? c.paymentPlan : [],
+            signDate: c.signDate || '',
+          } : {}
+          // 跟进历史：已有则保留；老客户有 followUpNote 的，转成一条历史
+          let followUpHistory = c.followUpHistory
+          if (!followUpHistory) {
+            if (c.followUpNote && c.followUpNote.trim()) {
+              const entry: FollowUp = {
+                id: 'fu_mig_' + c.id,
+                date: c.updatedAt || c.createdAt || todayStr(),
+                content: c.followUpNote,
+                nextDate: c.followUpDate || undefined,
+              }
+              followUpHistory = [entry]
+            } else {
+              followUpHistory = []
+            }
+          }
+          return { ...c, ...contractBase, followUpHistory }
+        }),
       })
       if (window.electronAPI) {
         const saved = await window.electronAPI.getStore(STORAGE_KEY)
@@ -92,6 +110,7 @@ export default function CRMPanel() {
       contractStatus: cust.contractStatus,
       paymentPlan: cust.paymentPlan,
       signDate: cust.signDate,
+      followUpHistory: cust.followUpHistory ?? [],
     }
     persist({ ...data, customers: [...data.customers, c] })
   }, [data, ts, persist])

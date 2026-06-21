@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { SharedProps } from './types'
+import type { SharedProps, FollowUp } from './types'
 import { STAGES } from './constants'
 import { avatarGrad, fuDisplay, fmtDate } from './helpers'
 
@@ -23,29 +23,44 @@ export default function Workbench({ data, followUps, todayCount, overdueCount, c
   const [fuNote, setFuNote] = useState('')
   const [fuDate, setFuDate] = useState('')
 
-  const openFU = (id: string, note: string, date: string) => {
+  const openFU = (id: string, _note: string, date: string) => {
     if (expandedFuId === id) { setExpandedFuId(null); return }
     setExpandedFuId(id)
-    setFuNote(note)
-    setFuDate(date)
+    setFuNote('')  // 每次跟进是新的一次，不预填旧备注
+    setFuDate(date || today)
   }
 
   const doneFU = (id: string, newStage?: string) => {
+    const cust = data.customers.find(c => c.id === id)
+    const existingHistory = cust?.followUpHistory ?? []
+    const todayStr = new Date().toISOString().split('T')[0]
+    const newEntry: FollowUp = {
+      id: 'fu_' + Date.now(),
+      date: todayStr,
+      content: fuNote || (newStage === 'closed' ? '已成交' : '完成跟进'),
+      nextDate: newStage === 'closed' ? undefined : (fuDate || undefined),
+    }
+
     if (newStage === 'closed') {
       const amt = prompt('成交金额（元）：', '28000')
       if (!amt) return
       const dealAmount = parseInt(amt) || 0
       updateCust(id, {
-        stage: 'closed', followUpNote: fuNote, followUpDate: '',
+        stage: 'closed', followUpNote: fuNote || '已成交', followUpDate: '',
         dealAmount, contractStatus: 'signed',
         paymentPlan: [
           { id: 'p_dep_' + Date.now(), label: '定金', amount: Math.round(dealAmount * 0.3), paid: false, date: '' },
           { id: 'p_pro_' + Date.now(), label: '进度款', amount: Math.round(dealAmount * 0.4), paid: false, date: '' },
           { id: 'p_fin_' + Date.now(), label: '尾款', amount: dealAmount - Math.round(dealAmount * 0.3) - Math.round(dealAmount * 0.4), paid: false, date: '' },
         ],
+        followUpHistory: [...existingHistory, newEntry],
       })
     } else {
-      updateCust(id, { followUpNote: fuNote, followUpDate: fuDate })
+      updateCust(id, {
+        followUpNote: fuNote || (cust?.followUpNote || ''),
+        followUpDate: fuDate,
+        followUpHistory: [...existingHistory, newEntry],
+      })
     }
     setExpandedFuId(null)
   }

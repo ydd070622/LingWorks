@@ -7,6 +7,14 @@ export interface Payment {
   date: string      // 收款日期（YYYY-MM-DD），未收为空串
 }
 
+// 跟进历史中的单次跟进记录（追加写，永不覆盖）
+export interface FollowUp {
+  id: string        // 'fu' + Date.now() + 随机后缀
+  date: string      // 跟进日期（YYYY-MM-DD，记录时的时间）
+  content: string   // 跟进内容
+  nextDate?: string // 约定的下次跟进日期（可选，YYYY-MM-DD）
+}
+
 export interface Note {
   id: string; title: string; publishDate: string; status: 'published' | 'draft'
   views: number; likes: number; comments: number
@@ -27,6 +35,8 @@ export interface Customer {
   contractStatus?: 'signed' | 'progress' | 'done'   // 合同状态，默认 'signed'
   paymentPlan?: Payment[]                            // 回款计划，默认 []
   signDate?: string                                  // 签约日期（YYYY-MM-DD），独立于 updatedAt
+  // —— 跟进历史（追加写，followUpNote 是最新一条的快照）——
+  followUpHistory?: FollowUp[]                        // 跟进历史时间线，按时间正序，默认 []
 }
 
 export interface CRMData { accounts: string[]; notes: Note[]; customers: Customer[] }
