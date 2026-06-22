@@ -94,10 +94,12 @@ export default function CustomerModal({ customer, notes, onSave, onDelete, onClo
           <div className="crm-form-row">
             <div className="crm-form-group"><label className="crm-form-label">户型</label><input className="crm-form-input" value={form.houseType} onChange={e => h('houseType', e.target.value)} /></div>
             <div className="crm-form-group"><label className="crm-form-label">城市</label><input className="crm-form-input" value={form.city} onChange={e => h('city', e.target.value)} /></div>
-            <div className="crm-form-group"><label className="crm-form-label">风格</label>
+            <div className="crm-form-group"><label className="crm-form-label">归属账号</label>
               <select className="crm-form-input" value={form.style} onChange={e => h('style', e.target.value)}>
                 <option value="">-- 选择 --</option>
-                <option value="意式极简">意式极简</option><option value="法式风格">法式风格</option>
+                <option value="守一意式">守一意式</option>
+                <option value="守中意式">守中意式</option>
+                <option value="守中法式">守中法式</option>
               </select>
             </div>
           </div>

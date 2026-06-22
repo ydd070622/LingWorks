@@ -16,7 +16,7 @@ export default function LeadPoolPage({ data, setEditingCustomer, enrichCust, mov
           <table className="crm-table">
             <thead>
               <tr>
-                <th>客户</th><th>来源</th><th>风格偏好</th><th>留言时间</th><th>备注</th><th style={{ width: 120 }}>操作</th>
+                <th>客户</th><th>来源</th><th>城市</th><th>归属账号</th><th>留言时间</th><th>备注</th><th style={{ width: 120 }}>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -29,6 +29,7 @@ export default function LeadPoolPage({ data, setEditingCustomer, enrichCust, mov
                     </div>
                   </td>
                   <td><span className="crm-source-link">{c.sourceIcon} {c.sourceLabel}</span></td>
+                  <td>{c.city || <span className="crm-muted">未填</span>}</td>
                   <td>{c.style || <span className="crm-muted">未填</span>}</td>
                   <td><span className="crm-muted">{fmtDate(c.createdAt)}</span></td>
                   <td className="crm-notes-cell">{c.notes}</td>

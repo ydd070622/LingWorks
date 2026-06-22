@@ -86,7 +86,9 @@ export default function CustomerPage({ data, viewMode, setViewMode, setEditingCu
                 <th style={{ width: 140 }}>客户</th>
                 <th style={{ width: 130 }}>来源</th>
                 <th style={{ width: 80 }}>阶段</th>
-                <th style={{ width: 160 }}>需求</th>
+                <th style={{ width: 70 }}>户型</th>
+                <th style={{ width: 70 }}>城市</th>
+                <th style={{ width: 100 }}>归属账号</th>
                 <th style={{ width: 100 }}>跟进</th>
                 <th style={{ width: 90 }}>更新时间</th>
                 <th style={{ width: 70 }}>操作</th>
@@ -109,7 +111,9 @@ export default function CustomerPage({ data, viewMode, setViewMode, setEditingCu
                     </td>
                     <td><span className="crm-source-link">{c.sourceIcon} {c.sourceLabel}</span></td>
                     <td><span className={`crm-tag stage-${c.stage}`}><span className="crm-dot-sm" style={{ background: stage?.dotColor }} />{stage?.label}</span></td>
-                    <td><span className="crm-info-text">{[c.houseType, c.city, c.style].filter(Boolean).join(' · ') || '未填'}</span></td>
+                    <td><span className="crm-info-text">{c.houseType || <span className="crm-muted">未填</span>}</span></td>
+                    <td><span className="crm-info-text">{c.city || <span className="crm-muted">未填</span>}</span></td>
+                    <td><span className="crm-info-text">{c.style || <span className="crm-muted">未填</span>}</span></td>
                     <td>{fu ? <span className={`crm-tag ${fu.cls}`}>{fu.text}</span> : <span className="crm-muted">—</span>}</td>
                     <td><span className="crm-muted">{fmtDate(c.updatedAt)}</span></td>
                     <td>

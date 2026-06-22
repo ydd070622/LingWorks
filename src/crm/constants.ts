@@ -42,8 +42,9 @@ export const AVATAR_GRADS: [string, string][] = [
 ]
 
 export const TAG_COLORS: Record<string, { bg: string; text: string }> = {
-  '意式极简': { bg: '#1e293b', text: '#94a3b8' },
-  '法式风格': { bg: '#3d1a4a', text: '#e879f9' },
+  '守一意式': { bg: '#3b82f6', text: '#fff' },
+  '守中意式': { bg: '#8b5cf6', text: '#fff' },
+  '守中法式': { bg: '#ec4899', text: '#fff' },
 }
 
 export const TABS = [
