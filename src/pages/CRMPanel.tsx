@@ -23,6 +23,7 @@ export default function CRMPanel() {
   const [loaded, setLoaded] = useState(false)
   const [syncStatus, setSyncStatus] = useState({ configured: false, lastSyncAt: '' })
   const [syncing, setSyncing] = useState(false)
+  const [followUpFilter, setFollowUpFilter] = useState<{ start: string; end: string } | null>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -198,7 +199,7 @@ export default function CRMPanel() {
     return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
   }
 
-  const sharedProps = { data, followUps, todayCount, overdueCount, closedCusts, leadCount: 0, enrichCust, updateCust, addCust, deleteCust, deleteCusts, moveCust, viewMode, setViewMode, setEditingCustomer, setEditingContract, setViewingContract, setTab }
+  const sharedProps = { data, followUps, todayCount, overdueCount, closedCusts, leadCount: 0, enrichCust, updateCust, addCust, deleteCust, deleteCusts, moveCust, viewMode, setViewMode, setEditingCustomer, setEditingContract, setViewingContract, setTab, followUpFilter, setFollowUpFilter }
 
   const sidebarItems = [
     { ...TABS[0], badge: todayCount > 0 ? { count: todayCount, cls: overdueCount > 0 ? 'danger' : 'warn' } : null },

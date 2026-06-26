@@ -1,12 +1,12 @@
 import { useState, useMemo } from 'react'
-import { Search, Plus, GripVertical, ArrowUp, ArrowDown } from 'lucide-react'
+import { Search, X, Plus, GripVertical, ArrowUp, ArrowDown, Download } from 'lucide-react'
 import { pinyin } from 'pinyin-pro'
 import Fuse from 'fuse.js'
 import type { SharedProps, Customer, EnrichedCustomer } from './types'
 import { STAGES, TAG_COLORS, ACCOUNTS } from './constants'
 import { avatarGrad, fuDisplay, fmtDate } from './helpers'
 
-export default function CustomerPage({ data, viewMode, setViewMode, setEditingCustomer, enrichCust, updateCust, moveCust, deleteCusts }: SharedProps) {
+export default function CustomerPage({ data, viewMode, setViewMode, setEditingCustomer, enrichCust, updateCust, moveCust, deleteCusts, followUpFilter, setFollowUpFilter }: SharedProps) {
   const [search, setSearch] = useState('')
   const [dragId, setDragId] = useState<string | null>(null)
   const [batchMode, setBatchMode] = useState(false)
@@ -31,6 +31,10 @@ export default function CustomerPage({ data, viewMode, setViewMode, setEditingCu
       const pinyinMatches = customers.filter(c => pinyin(c.name).toLowerCase().includes(q) && !list.some(m => m.id === c.id))
       list = [...list, ...pinyinMatches]
     }
+    // followUpFilter: filter by follow-up date range
+    if (followUpFilter) {
+      list = list.filter(c => c.followUpDate >= followUpFilter.start && c.followUpDate <= followUpFilter.end)
+    }
     return list.sort((a, b) => {
       const da = a.followUpDate || '0000-00-00'
       const db = b.followUpDate || '0000-00-00'
@@ -52,12 +56,46 @@ export default function CustomerPage({ data, viewMode, setViewMode, setEditingCu
 
   const onAdd = (account?: string) => setEditingCustomer(account ? { style: account } as Partial<Customer> : {})
 
+  // CSV download
+  const handleDownload = () => {
+    const headers = ['客户','日期','地区','小区名称','房子面积','喜欢风格','客户归属','跟进','下次跟进时间','跟进情况']
+    const rows = filtered.map(c => {
+      const fu = fuDisplay(c.followUpDate || null)
+      const shortStyle = c.stylePreference === '意式极简' ? '意式' : c.stylePreference === '法式风格' ? '法式' : c.stylePreference
+      return [
+        c.name,
+        c.recordDate ? fmtDate(c.recordDate) : '',
+        c.city || '',
+        c.community || '',
+        c.houseArea || '',
+        shortStyle || c.stylePreference || '',
+        c.style || '',
+        fu ? fu.text : (c.followUpDate ? fmtDate(c.followUpDate) : '—'),
+        c.followUpDate || '',
+        c.followUpNote || '',
+      ]
+    })
+    const BOM = '\uFEFF'
+    const csv = BOM + [headers.join(','), ...rows.map(r => r.map(c => `"${(c||'').replace(/"/g,'""')}"`).join(','))].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = `客户列表_${new Date().toISOString().split('T')[0]}.csv`; a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="crm-page">
       <div className="crm-toolbar">
         <div className="crm-toolbar-left">
           <Search size={14} style={{ opacity: 0.4 }} />
           <input className="crm-search" placeholder="搜索客户、微信名、电话、户型…" value={search} onChange={e => setSearch(e.target.value)} />
+          {followUpFilter && (
+            <span className="crm-filter-chip">
+              📅 {followUpFilter.start} ~ {followUpFilter.end}
+              <button onClick={() => setFollowUpFilter(null)}><X size={12} /></button>
+            </span>
+          )}
         </div>
         <div className="crm-toolbar-right">
           <span className="crm-count-label">{filtered.length} 位客户</span>
@@ -75,6 +113,7 @@ export default function CustomerPage({ data, viewMode, setViewMode, setEditingCu
           ) : (
             <>
               <button className="crm-btn-ghost" onClick={() => { setBatchMode(true); setViewMode('table') }}>管理</button>
+              <button className="crm-btn-ghost" onClick={handleDownload} title="下载为CSV表格"><Download size={13} /></button>
               <button className="crm-btn-primary" onClick={() => onAdd()}><Plus size={14} /> 添加客户</button>
             </>
           )}

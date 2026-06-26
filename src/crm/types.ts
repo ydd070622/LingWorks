@@ -65,4 +65,6 @@ export interface SharedProps {
   setEditingContract: (v: boolean) => void
   setViewingContract: (c: Customer | null) => void
   setTab: (tab: string) => void
+  followUpFilter: { start: string; end: string } | null
+  setFollowUpFilter: (f: { start: string; end: string } | null) => void
 }

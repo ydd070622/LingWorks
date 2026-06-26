@@ -1,22 +1,77 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
-import type { SharedProps, FollowUp } from './types'
+import type { SharedProps, FollowUp, Customer } from './types'
 import { avatarGrad, fmtDate } from './helpers'
+import { TAG_COLORS } from './constants'
 
-export default function Workbench({ data, followUps, todayCount, overdueCount, closedCusts, updateCust, setEditingCustomer, setTab }: SharedProps) {
+type Urgency = 'urgent' | 'normal' | 'calm'
+
+function getUrgency(days: number | null): Urgency {
+  if (days === null) return 'calm'
+  if (days <= 3) return 'urgent'
+  if (days <= 7) return 'normal'
+  return 'calm'
+}
+
+function urgencyLabel(u: Urgency) {
+  if (u === 'urgent') return { emoji: '🔴', text: '紧急' }
+  if (u === 'normal') return { emoji: '🟡', text: '一般' }
+  return { emoji: '🟢', text: '不急' }
+}
+
+export default function Workbench({ data, followUps, closedCusts, updateCust, setEditingCustomer, setTab, setFollowUpFilter }: SharedProps) {
   const active = data.customers.filter(c => c.stage !== 'closed')
   const closed = closedCusts.length
-
   const today = new Date().toISOString().split('T')[0]
-  // Split: overdue (before today) vs on-time (today) vs future
-  const overdueFU = followUps.filter(c => c.followUpDate < today)
-  const ontimeFU = followUps.filter(c => c.followUpDate === today)
-  const futureFU = followUps.filter(c => c.followUpDate > today)
 
+  // Natural weeks (Mon-Sun) — local-date-safe
+  function fmtLocal(d: Date) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` }
+
+  const now = new Date()
+  const dow = now.getDay()
+  const thisMon = new Date(now); thisMon.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1)); thisMon.setHours(0,0,0,0)
+  const thisSun = new Date(thisMon); thisSun.setDate(thisMon.getDate() + 6)
+  const nextMon = new Date(thisMon); nextMon.setDate(thisMon.getDate() + 7)
+  const nextSun = new Date(nextMon); nextSun.setDate(nextMon.getDate() + 6)
+  const thisMonStr = fmtLocal(thisMon)
+  const thisSunStr = fmtLocal(thisSun)
+  const nextMonStr = fmtLocal(nextMon)
+  const nextSunStr = fmtLocal(nextSun)
+
+  const thisWeekFU = followUps.filter(c => c.followUpDate >= thisMonStr && c.followUpDate <= thisSunStr)
+  const nextWeekFU = followUps.filter(c => c.followUpDate >= nextMonStr && c.followUpDate <= nextSunStr)
+
+  // Days until follow-up
+  const daysUntil = (dateStr: string): number | null => {
+    const d = new Date(dateStr + 'T00:00:00')
+    const diff = d.getTime() - now.setHours(0,0,0,0)
+    return Math.round(diff / 86400000)
+  }
+
+  // Group by urgency
+  const groupByUrgency = (list: (Customer & { diff: number })[]) => {
+    const groups: Record<Urgency, (Customer & { diff: number })[]> = { urgent: [], normal: [], calm: [] }
+    list.forEach(c => {
+      const d = daysUntil(c.followUpDate)
+      groups[getUrgency(d)].push(c)
+    })
+    return groups
+  }
+
+  const fuGroups = groupByUrgency(followUps)
+  // Add customers without follow-up date to "calm" group
+  const noDateCusts = data.customers.filter(c => !c.followUpDate && c.stage !== 'closed')
+  if (noDateCusts.length > 0) {
+    fuGroups.calm = [...fuGroups.calm, ...noDateCusts.map(c => ({ ...c, diff: 999 }))]
+  }
+
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
   const [expandedFuId, setExpandedFuId] = useState<string | null>(null)
   const [fuNote, setFuNote] = useState('')
   const [fuDate, setFuDate] = useState('')
+
+  const toggleGroup = (key: string) => setCollapsedGroups(s => ({ ...s, [key]: !s[key] }))
 
   const openFU = (id: string, _note: string, date: string) => {
     if (expandedFuId === id) { setExpandedFuId(null); return }
@@ -29,16 +84,10 @@ export default function Workbench({ data, followUps, todayCount, overdueCount, c
     const cust = data.customers.find(c => c.id === id)
     const existingHistory = cust?.followUpHistory ?? []
     const todayStr = new Date().toISOString().split('T')[0]
-    const newEntry: FollowUp = {
-      id: 'fu_' + Date.now(),
-      date: todayStr,
-      content: '已完成跟进',
-      nextDate: undefined,
-    }
     updateCust(id, {
       followUpDate: '',
       followUpNote: cust?.followUpNote || '',
-      followUpHistory: [...existingHistory, newEntry],
+      followUpHistory: [...existingHistory, { id: 'fu_' + Date.now(), date: todayStr, content: '已完成跟进', nextDate: undefined }],
     })
     toast.success(`已标记完成 · ${cust?.name || ''}`)
   }
@@ -48,12 +97,10 @@ export default function Workbench({ data, followUps, todayCount, overdueCount, c
     const existingHistory = cust?.followUpHistory ?? []
     const todayStr = new Date().toISOString().split('T')[0]
     const newEntry: FollowUp = {
-      id: 'fu_' + Date.now(),
-      date: todayStr,
+      id: 'fu_' + Date.now(), date: todayStr,
       content: fuNote || (newStage === 'closed' ? '已成交' : '完成跟进'),
       nextDate: newStage === 'closed' ? undefined : (fuDate || undefined),
     }
-
     if (newStage === 'closed') {
       const amt = prompt('成交金额（元）：', '28000')
       if (!amt) return
@@ -80,220 +127,123 @@ export default function Workbench({ data, followUps, todayCount, overdueCount, c
     setExpandedFuId(null)
   }
 
-  // Helper: Chinese weekday name
-  const weekdayName = (dateStr: string) => {
-    const d = new Date(dateStr + 'T00:00:00')
-    return ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][d.getDay()]
+  const weekdayName = (d: string) => ['周日','周一','周二','周三','周四','周五','周六'][new Date(d + 'T00:00:00').getDay()]
+  const monthLabel = (d: string) => `${parseInt(d.split('-')[1])}月`
+  const dayNum = (d: string) => d.split('-')[2]
+
+  const renderCard = (c: Customer) => {
+    const [g1, g2] = avatarGrad(c.name)
+    const urgency = getUrgency(daysUntil(c.followUpDate))
+    const dateRaw = c.followUpDate
+    const isOpen = expandedFuId === c.id
+
+    return (
+      <div key={c.id}>
+        <div className={`wb-v2-card ${urgency}`}
+          onClick={() => setEditingCustomer(c)}
+          title="点击编辑客户信息"
+        >
+          <div className="wb-v2-card-date">
+            <div className="wb-v2-card-day">{dateRaw ? dayNum(dateRaw) : '—'}</div>
+            <div className="wb-v2-card-mon">{dateRaw ? `${monthLabel(dateRaw)} · ${weekdayName(dateRaw)}` : '待定'}</div>
+          </div>
+          <div className="wb-v2-card-info">
+            <div className="wb-v2-card-top">
+              <div className="wb-v2-card-av" style={{ background: `linear-gradient(135deg,${g1},${g2})` }}>{c.name[0]}</div>
+              <span className="wb-v2-card-name">{c.name}</span>
+              {c.city && <span className="wb-v2-card-city">{c.city}</span>}
+              {c.stylePreference && (
+                <span className="wb-v2-card-tag" style={{ background: (TAG_COLORS[c.stylePreference] || {}).bg || 'var(--bg-tertiary)', color: (TAG_COLORS[c.stylePreference] || {}).text || 'var(--text-secondary)' }}>
+                  {c.stylePreference === '意式极简' ? '意式' : c.stylePreference === '法式风格' ? '法式' : c.stylePreference}
+                </span>
+              )}
+            </div>
+            <div className="wb-v2-card-note">{c.followUpNote || '暂无跟进备注'}</div>
+          </div>
+          <button className="wb-v2-card-btn" onClick={e => { e.stopPropagation(); markDone(c.id) }}>
+            完成跟进
+          </button>
+        </div>
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div className="wb-v3-fu-inline" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} onClick={e => e.stopPropagation()}>
+              <div className="wb-v3-fu-inline-row">
+                <div className="wb-v3-fu-inline-group" style={{ flex: 2 }}>
+                  <label className="wb-v3-fu-inline-label">跟进备注</label>
+                  <textarea className="wb-v3-fu-inline-input" value={fuNote} onChange={e => setFuNote(e.target.value)} />
+                </div>
+                <div className="wb-v3-fu-inline-group">
+                  <label className="wb-v3-fu-inline-label">下次跟进</label>
+                  <input type="date" className="wb-v3-fu-inline-input" value={fuDate} onChange={e => setFuDate(e.target.value)} />
+                </div>
+              </div>
+              <div className="wb-v3-fu-inline-actions">
+                <button className="wb-v3-fu-btn edit" onClick={() => doneFU(c.id, 'closed')}>已成交</button>
+                <button className="wb-v3-fu-btn done" onClick={() => doneFU(c.id)}>保存跟进</button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    )
   }
 
-  // Helper: month label from date string
-  const monthLabel = (dateStr: string) => {
-    const p = dateStr.split('-')
-    return `${parseInt(p[1])}月`
-  }
-
-  // Helper: day from date string
-  const dayNum = (dateStr: string) => dateStr.split('-')[2]
+  const urgencyKeys: Urgency[] = ['urgent', 'normal', 'calm']
 
   return (
     <div className="wb-v3">
 
-      {/* Metric Cards */}
+      {/* Metric Cards — 4 clickable */}
       <div className="wb-v3-metrics">
-        <div className="wb-v3-metric">
+        <div className="wb-v3-metric" onClick={() => { setFollowUpFilter(null); setTab('customers') }} title="查看全部客户">
           <div className="wb-v3-metric-icon" style={{ background: 'rgba(129,140,248,0.12)', color: '#818cf8' }}>👥</div>
           <div><div className="wb-v3-metric-value">{active.length}</div><div className="wb-v3-metric-label">全部客户</div></div>
         </div>
-        <div className="wb-v3-metric">
-          <div className="wb-v3-metric-icon" style={{ background: 'rgba(245,158,11,0.12)', color: '#fbbf24' }}>⏰</div>
-          <div><div className="wb-v3-metric-value" style={{ color: '#fbbf24' }}>{followUps.length}</div><div className="wb-v3-metric-label">待跟进</div></div>
+        <div className="wb-v3-metric" onClick={() => { setFollowUpFilter({ start: thisMonStr, end: thisSunStr }); setTab('customers') }} title="本周待跟进">
+          <div className="wb-v3-metric-icon" style={{ background: 'rgba(239,68,68,0.12)', color: '#f87171' }}>❗</div>
+          <div><div className="wb-v3-metric-value" style={{ color: '#f87171' }}>{thisWeekFU.length}</div><div className="wb-v3-metric-label">本周待跟进</div></div>
         </div>
-        <div className="wb-v3-metric">
+        <div className="wb-v3-metric" onClick={() => { setFollowUpFilter({ start: nextMonStr, end: nextSunStr }); setTab('customers') }} title="下周待跟进">
+          <div className="wb-v3-metric-icon" style={{ background: 'rgba(245,158,11,0.12)', color: '#fbbf24' }}>📅</div>
+          <div><div className="wb-v3-metric-value" style={{ color: '#fbbf24' }}>{nextWeekFU.length}</div><div className="wb-v3-metric-label">下周待跟进</div></div>
+        </div>
+        <div className="wb-v3-metric" onClick={() => setTab('contracts')} title="已成交客户">
           <div className="wb-v3-metric-icon" style={{ background: 'rgba(34,197,94,0.12)', color: '#4ade80' }}>✅</div>
           <div><div className="wb-v3-metric-value" style={{ color: '#4ade80' }}>{closed}</div><div className="wb-v3-metric-label">已成交</div></div>
         </div>
       </div>
 
-      {/* Follow-up Timeline */}
-      <div className="wb-v3-card">
-        <div className="wb-v3-card-body">
-
-          {/* Overdue */}
-          {overdueFU.length > 0 && (
-            <>
-              <div className="wb-v3-section">
-                <span className="wb-v3-section-badge overdue">已逾期</span>
-                <div className="wb-v3-section-line" />
+      {/* Follow-up Cards grouped by urgency */}
+      <div className="wb-v2-body">
+        {urgencyKeys.map(key => {
+          const list = fuGroups[key] || []
+          const label = urgencyLabel(key)
+          const collapsed = collapsedGroups[key] || false
+          return (
+            <div key={key} className="wb-v2-group">
+              <div className="wb-v2-group-head" onClick={() => toggleGroup(key)}>
+                <span className="wb-v2-group-dot" style={{ background: key === 'urgent' ? '#ef4444' : key === 'normal' ? '#f59e0b' : '#6b7280' }} />
+                <span className="wb-v2-group-title" style={{ color: key === 'urgent' ? '#f87171' : key === 'normal' ? '#fbbf24' : '#9ca3af' }}>
+                  {label.emoji} {label.text}
+                </span>
+                <span className="wb-v2-group-count">{list.length} 位</span>
+                <span className="wb-v2-group-line" />
+                <span className={`wb-v2-group-arrow ${collapsed ? '' : 'open'}`}>▶</span>
               </div>
-              {overdueFU.map(c => {
-                const [g1, g2] = avatarGrad(c.name)
-                const isOpen = expandedFuId === c.id
-                return (
-                  <div key={c.id}>
-                    <div className="wb-v3-fu-card urgent">
-                      <div className="wb-v3-fu-date overdue">
-                        <div className="wb-v3-fu-day">{dayNum(c.followUpDate)}</div>
-                        <div className="wb-v3-fu-month">{monthLabel(c.followUpDate)} · {weekdayName(c.followUpDate)}</div>
-                      </div>
-                      <div className="wb-v3-fu-body">
-                        <div className="wb-v3-fu-top">
-                          <div className="wb-v3-fu-av" style={{ background: `linear-gradient(135deg,${g1},${g2})` }}>{c.name[0]}</div>
-                          <span className="wb-v3-fu-name">{c.name}</span>
-                        </div>
-                        <div className={`wb-v3-fu-note${!c.followUpNote ? ' empty' : ''}`}>
-                          {c.followUpNote || '暂无跟进备注'}
-                        </div>
-                      </div>
-                      <div className="wb-v3-fu-actions">
-                        <button className="wb-v3-fu-btn done" onClick={e => { e.stopPropagation(); markDone(c.id) }}>✓ 完成</button>
-                        <button className="wb-v3-fu-btn edit" onClick={e => { e.stopPropagation(); openFU(c.id, c.followUpNote, c.followUpDate || today) }}>编辑</button>
-                      </div>
-                    </div>
-                    <AnimatePresence>
-                      {isOpen && (
-                        <motion.div className="wb-v3-fu-inline" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} onClick={e => e.stopPropagation()}>
-                          <div className="wb-v3-fu-inline-row">
-                            <div className="wb-v3-fu-inline-group" style={{ flex: 2 }}>
-                              <label className="wb-v3-fu-inline-label">跟进备注</label>
-                              <textarea className="wb-v3-fu-inline-input" value={fuNote} onChange={e => setFuNote(e.target.value)} />
-                            </div>
-                            <div className="wb-v3-fu-inline-group">
-                              <label className="wb-v3-fu-inline-label">下次跟进</label>
-                              <input type="date" className="wb-v3-fu-inline-input" value={fuDate} onChange={e => setFuDate(e.target.value)} />
-                            </div>
-                          </div>
-                          <div className="wb-v3-fu-inline-actions">
-                            <button className="wb-v3-fu-btn edit" onClick={() => doneFU(c.id, 'closed')}>已成交</button>
-                            <button className="wb-v3-fu-btn done" onClick={() => doneFU(c.id)}>保存跟进</button>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )
-              })}
-            </>
-          )}
-
-          {/* Today */}
-          {ontimeFU.length > 0 && (
-            <>
-              <div className="wb-v3-section">
-                <span className="wb-v3-section-badge today">今天 {fmtDate(today)}</span>
-                <div className="wb-v3-section-line" />
-              </div>
-              {ontimeFU.map(c => {
-                const [g1, g2] = avatarGrad(c.name)
-                const isOpen = expandedFuId === c.id
-                return (
-                  <div key={c.id}>
-                    <div className="wb-v3-fu-card warn">
-                      <div className="wb-v3-fu-date today">
-                        <div className="wb-v3-fu-day">{dayNum(c.followUpDate)}</div>
-                        <div className="wb-v3-fu-month">{monthLabel(c.followUpDate)} · {weekdayName(c.followUpDate)}</div>
-                      </div>
-                      <div className="wb-v3-fu-body">
-                        <div className="wb-v3-fu-top">
-                          <div className="wb-v3-fu-av" style={{ background: `linear-gradient(135deg,${g1},${g2})` }}>{c.name[0]}</div>
-                          <span className="wb-v3-fu-name">{c.name}</span>
-                        </div>
-                        <div className={`wb-v3-fu-note${!c.followUpNote ? ' empty' : ''}`}>
-                          {c.followUpNote || '暂无跟进备注'}
-                        </div>
-                      </div>
-                      <div className="wb-v3-fu-actions">
-                        <button className="wb-v3-fu-btn done" onClick={e => { e.stopPropagation(); markDone(c.id) }}>✓ 完成</button>
-                        <button className="wb-v3-fu-btn edit" onClick={e => { e.stopPropagation(); openFU(c.id, c.followUpNote, c.followUpDate || today) }}>编辑</button>
-                      </div>
-                    </div>
-                    <AnimatePresence>
-                      {isOpen && (
-                        <motion.div className="wb-v3-fu-inline" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} onClick={e => e.stopPropagation()}>
-                          <div className="wb-v3-fu-inline-row">
-                            <div className="wb-v3-fu-inline-group" style={{ flex: 2 }}>
-                              <label className="wb-v3-fu-inline-label">跟进备注</label>
-                              <textarea className="wb-v3-fu-inline-input" value={fuNote} onChange={e => setFuNote(e.target.value)} />
-                            </div>
-                            <div className="wb-v3-fu-inline-group">
-                              <label className="wb-v3-fu-inline-label">下次跟进</label>
-                              <input type="date" className="wb-v3-fu-inline-input" value={fuDate} onChange={e => setFuDate(e.target.value)} />
-                            </div>
-                          </div>
-                          <div className="wb-v3-fu-inline-actions">
-                            <button className="wb-v3-fu-btn edit" onClick={() => doneFU(c.id, 'closed')}>已成交</button>
-                            <button className="wb-v3-fu-btn done" onClick={() => doneFU(c.id)}>保存跟进</button>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )
-              })}
-            </>
-          )}
-
-          {/* Upcoming */}
-          {futureFU.length > 0 && (
-            <>
-              <div className="wb-v3-section" style={{ marginTop: 4 }}>
-                <span className="wb-v3-section-badge upcoming">即将跟进</span>
-                <div className="wb-v3-section-line" />
-              </div>
-              {futureFU.map(c => {
-                const [g1, g2] = avatarGrad(c.name)
-                const isOpen = expandedFuId === c.id
-                return (
-                  <div key={c.id}>
-                    <div className="wb-v3-fu-card">
-                      <div className="wb-v3-fu-date upcoming">
-                        <div className="wb-v3-fu-day">{dayNum(c.followUpDate)}</div>
-                        <div className="wb-v3-fu-month">{monthLabel(c.followUpDate)} · {weekdayName(c.followUpDate)}</div>
-                      </div>
-                      <div className="wb-v3-fu-body">
-                        <div className="wb-v3-fu-top">
-                          <div className="wb-v3-fu-av" style={{ background: `linear-gradient(135deg,${g1},${g2})` }}>{c.name[0]}</div>
-                          <span className="wb-v3-fu-name">{c.name}</span>
-                        </div>
-                        <div className={`wb-v3-fu-note${!c.followUpNote ? ' empty' : ''}`}>
-                          {c.followUpNote || '暂无跟进备注'}
-                        </div>
-                      </div>
-                      <div className="wb-v3-fu-actions">
-                        <button className="wb-v3-fu-btn done" onClick={e => { e.stopPropagation(); markDone(c.id) }}>✓ 完成</button>
-                        <button className="wb-v3-fu-btn edit" onClick={e => { e.stopPropagation(); openFU(c.id, c.followUpNote, c.followUpDate || today) }}>编辑</button>
-                      </div>
-                    </div>
-                    <AnimatePresence>
-                      {isOpen && (
-                        <motion.div className="wb-v3-fu-inline" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} onClick={e => e.stopPropagation()}>
-                          <div className="wb-v3-fu-inline-row">
-                            <div className="wb-v3-fu-inline-group" style={{ flex: 2 }}>
-                              <label className="wb-v3-fu-inline-label">跟进备注</label>
-                              <textarea className="wb-v3-fu-inline-input" value={fuNote} onChange={e => setFuNote(e.target.value)} />
-                            </div>
-                            <div className="wb-v3-fu-inline-group">
-                              <label className="wb-v3-fu-inline-label">下次跟进</label>
-                              <input type="date" className="wb-v3-fu-inline-input" value={fuDate} onChange={e => setFuDate(e.target.value)} />
-                            </div>
-                          </div>
-                          <div className="wb-v3-fu-inline-actions">
-                            <button className="wb-v3-fu-btn edit" onClick={() => doneFU(c.id, 'closed')}>已成交</button>
-                            <button className="wb-v3-fu-btn done" onClick={() => doneFU(c.id)}>保存跟进</button>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )
-              })}
-            </>
-          )}
-
-          {followUps.length === 0 && (
-            <div className="wb-v3-empty">🎉 暂无待跟进客户</div>
-          )}
-
-        </div>
+              {!collapsed && list.length > 0 && (
+                <div className="wb-v2-grid">
+                  {list.map(renderCard)}
+                </div>
+              )}
+              {!collapsed && list.length === 0 && (
+                <div className="wb-v3-empty" style={{ padding: '10px 0' }}>暂无</div>
+              )}
+            </div>
+          )
+        })}
+        {followUps.length === 0 && (
+          <div className="wb-v3-empty">🎉 暂无待跟进客户</div>
+        )}
       </div>
 
     </div>

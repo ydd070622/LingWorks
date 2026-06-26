@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=1100"><title>工作台 v2 模拟</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"Microsoft YaHei",sans-serif;background:#1a1b1e;padding:30px;color:#d4d4d8}
+
+.panel{display:flex;gap:30px;max-width:1100px}
+.info{flex:1}
+.info h2{color:#fff;font-size:18px;margin-bottom:4px}
+.info .sub{color:#71717a;font-size:12px;margin-bottom:20px}
+.info .note{font-size:12px;color:#888;margin-top:12px;line-height:1.8}
+.info .note b{color:#fff}
+
+/* === Metric Cards === */
+.metrics{display:flex;gap:10px;margin-bottom:16px}
+.metric{
+  flex:1;background:#232428;border:1px solid #2f3037;border-radius:10px;
+  padding:14px;display:flex;align-items:center;gap:10px;cursor:pointer;
+  transition:all .15s
+}
+.metric:hover{background:#2a2b30;border-color:#6366f1;transform:translateY(-1px)}
+.metric:active{transform:translateY(0)}
+.metric-icon{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.metric-value{font-size:22px;font-weight:800;line-height:1}
+.metric-label{font-size:10px;color:#71717a;margin-top:2px}
+.metric-badge{font-size:10px;padding:1px 6px;border-radius:6px;margin-left:6px}
+
+/* === Collapsible Section === */
+.section{margin-bottom:4px}
+.section-head{
+  display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;
+  user-select:none;border-radius:6px;transition:all .15s
+}
+.section-head:hover{background:rgba(255,255,255,.02)}
+.section-head .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.section-head .title{font-size:13px;font-weight:700}
+.section-head .count{font-size:11px;color:#71717a;margin-left:auto}
+.section-head .arrow{font-size:10px;color:#52525b;transition:transform .2s}
+.section-head .arrow.open{transform:rotate(90deg)}
+.section-line{flex:1;height:1px;background:linear-gradient(90deg,#3f3f46,transparent);min-width:20px}
+
+/* === Follow-up Card Grid (2 per row) === */
+.fu-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fu-card2{
+  background:#232428;border:1px solid #2f3037;border-radius:8px;
+  padding:12px 14px;cursor:pointer;transition:all .15s;
+  display:flex;flex-direction:column;gap:8px
+}
+.fu-card2:hover{background:#2a2b30;border-color:#3f3f46}
+.fu-card2.urgent{border-left:3px solid #ef4444}
+.fu-card2.normal{border-left:3px solid #f59e0b}
+.fu-card2.calm{border-left:3px solid #6b7280}
+
+.fu2-header{display:flex;align-items:center;gap:10px}
+.fu2-date{text-align:center;min-width:42px}
+.fu2-day{font-size:22px;font-weight:800;line-height:1}
+.fu2-month{font-size:10px;color:#71717a;margin-top:2px}
+.urgent .fu2-day{color:#f87171}
+.normal .fu2-day{color:#fbbf24}
+.calm .fu2-day{color:#9ca3af}
+
+.fu2-info{flex:1;min-width:0}
+.fu2-row{display:flex;align-items:center;gap:6px;margin-bottom:2px}
+.fu2-av{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+.fu2-name{font-size:13px;font-weight:700}
+.fu2-city{font-size:10px;color:#71717a;margin-left:2px}
+.fu2-tag{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600}
+.fu2-note{font-size:11px;color:#71717a;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.fu2-footer{display:flex;align-items:center;justify-content:space-between;margin-top:2px}
+.fu2-status{font-size:10px}
+.fu2-btn{
+  padding:4px 10px;border-radius:5px;font-size:10px;font-weight:600;border:none;
+  cursor:pointer;white-space:nowrap
+}
+.fu2-btn.done{background:rgba(34,197,94,.12);color:#4ade80}
+.fu2-btn.done:hover{background:rgba(34,197,94,.25)}
+
+/* Empty */
+.empty{text-align:center;padding:30px;color:#52525b;font-size:13px}
+
+/* === Mock hovers === */
+.click-hint{font-size:10px;color:#818cf8;opacity:0;transition:opacity .2s}
+.metric:hover .click-hint,.fu-card:hover .click-hint{opacity:1}
+</style>
+</head>
+<body>
+
+<div class="panel">
+  <div>
+    <h2>📊 工作台 v2</h2>
+    <div class="sub">卡片可点击筛选 · 跟进按紧急度分组 · 点击客户卡片编辑</div>
+
+    <!-- Metric Cards - Clickable -->
+    <div class="metrics">
+      <div class="metric" title="点击查看全部客户">
+        <div class="metric-icon" style="background:rgba(129,140,248,.12);color:#818cf8">👥</div>
+        <div>
+          <div class="metric-value">11<span class="click-hint"> 点击</span></div>
+          <div class="metric-label">全部客户</div>
+        </div>
+      </div>
+      <div class="metric" title="点击查看本周待跟进">
+        <div class="metric-icon" style="background:rgba(239,68,68,.12);color:#f87171">❗</div>
+        <div>
+          <div class="metric-value" style="color:#f87171">3<span class="click-hint"> 点击</span></div>
+          <div class="metric-label">本周待跟进</div>
+        </div>
+      </div>
+      <div class="metric" title="点击查看下周待跟进">
+        <div class="metric-icon" style="background:rgba(245,158,11,.12);color:#fbbf24">📅</div>
+        <div>
+          <div class="metric-value" style="color:#fbbf24">7<span class="click-hint"> 点击</span></div>
+          <div class="metric-label">下周待跟进</div>
+        </div>
+      </div>
+      <div class="metric" title="点击查看已成交客户">
+        <div class="metric-icon" style="background:rgba(34,197,94,.12);color:#4ade80">✅</div>
+        <div>
+          <div class="metric-value" style="color:#4ade80">1<span class="click-hint"> 点击</span></div>
+          <div class="metric-label">已成交</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Follow-up Cards - Grouped by urgency -->
+    <div class="section">
+      <!-- === 紧急 (1-3天) === -->
+      <div class="section-head">
+        <span class="dot" style="background:#ef4444"></span>
+        <span class="title" style="color:#f87171">🔴 紧急</span>
+        <span class="count">3 位</span>
+        <span class="section-line"></span>
+        <span class="arrow open">▶</span>
+      </div>
+
+      <div class="fu-grid">
+        <div class="fu-card2 urgent" title="点击编辑客户信息">
+          <div class="fu2-header">
+            <div class="fu2-date"><div class="fu2-day">26</div><div class="fu2-month">6月 · 周五</div></div>
+            <div class="fu2-info">
+              <div class="fu2-row">
+                <div class="fu2-av" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">甲</div>
+                <span class="fu2-name">甲子Albert</span>
+                <span class="fu2-city">甲子</span>
+                <span class="fu2-tag" style="background:rgba(99,102,241,.15);color:#818cf8">意式</span>
+              </div>
+              <div class="fu2-note">今天约了交流</div>
+            </div>
+          </div>
+          <div class="fu2-footer">
+            <span class="click-hint">点击编辑</span>
+            <button class="fu2-btn done" onclick="event.stopPropagation();alert('已标记完成跟进')">完成跟进</button>
+          </div>
+        </div>
+
+        <div class="fu-card2 urgent" title="点击编辑客户信息">
+          <div class="fu2-header">
+            <div class="fu2-date"><div class="fu2-day">29</div><div class="fu2-month">6月 · 周一</div></div>
+            <div class="fu2-info">
+              <div class="fu2-row">
+                <div class="fu2-av" style="background:linear-gradient(135deg,#ec4899,#f43f5e)">陈</div>
+                <span class="fu2-name">陈锡彬</span>
+                <span class="fu2-city">深圳</span>
+                <span class="fu2-tag" style="background:rgba(63,63,70,.5);color:#a1a1aa">—</span>
+              </div>
+              <div class="fu2-note">再询问业主签设计合同</div>
+            </div>
+          </div>
+          <div class="fu2-footer">
+            <span class="click-hint">点击编辑</span>
+            <button class="fu2-btn done" onclick="event.stopPropagation();alert('已标记完成跟进')">完成跟进</button>
+          </div>
+        </div>
+
+        <div class="fu-card2 urgent" title="点击编辑客户信息">
+          <div class="fu2-header">
+            <div class="fu2-date"><div class="fu2-day">29</div><div class="fu2-month">6月 · 周一</div></div>
+            <div class="fu2-info">
+              <div class="fu2-row">
+                <div class="fu2-av" style="background:linear-gradient(135deg,#10b981,#34d399)">映</div>
+                <span class="fu2-name">映6-25</span>
+                <span class="fu2-city">深圳</span>
+                <span class="fu2-tag" style="background:rgba(236,72,153,.15);color:#f472b6">法式</span>
+              </div>
+              <div class="fu2-note">纯设计需求，180元/㎡</div>
+            </div>
+          </div>
+          <div class="fu2-footer">
+            <span class="click-hint">点击编辑</span>
+            <button class="fu2-btn done" onclick="event.stopPropagation();alert('已标记完成跟进')">完成跟进</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- === 一般 (3-7天) === -->
+    <div class="section">
+      <div class="section-head">
+        <span class="dot" style="background:#f59e0b"></span>
+        <span class="title" style="color:#fbbf24">🟡 一般</span>
+        <span class="count">1 位</span>
+        <span class="section-line"></span>
+        <span class="arrow">▶</span>
+      </div>
+    </div>
+
+    <!-- === 不急 (7天+) === -->
+    <div class="section">
+      <div class="section-head">
+        <span class="dot" style="background:#6b7280"></span>
+        <span class="title" style="color:#9ca3af">🟢 不急</span>
+        <span class="count">6 位</span>
+        <span class="section-line"></span>
+        <span class="arrow open">▶</span>
+      </div>
+
+      <div class="fu-grid">
+        <div class="fu-card2 calm" title="点击编辑客户信息">
+          <div class="fu2-header">
+            <div class="fu2-date"><div class="fu2-day">—</div><div class="fu2-month">待定</div></div>
+            <div class="fu2-info">
+              <div class="fu2-row">
+                <div class="fu2-av" style="background:linear-gradient(135deg,#8b5cf6,#6366f1)">赖</div>
+                <span class="fu2-name">赖先生</span>
+                <span class="fu2-city">—</span>
+              </div>
+              <div class="fu2-note">之前加微信未沟通，跟进日期未定</div>
+            </div>
+          </div>
+          <div class="fu2-footer">
+            <span class="click-hint">点击编辑</span>
+            <button class="fu2-btn done" onclick="event.stopPropagation();alert('已标记完成跟进')">完成跟进</button>
+          </div>
+        </div>
+
+        <div class="fu-card2 calm" title="点击编辑客户信息">
+          <div class="fu2-header">
+            <div class="fu2-date"><div class="fu2-day">3</div><div class="fu2-month">7月 · 周五</div></div>
+            <div class="fu2-info">
+              <div class="fu2-row">
+                <div class="fu2-av" style="background:linear-gradient(135deg,#f43f5e,#ec4899)">胡</div>
+                <span class="fu2-name">胡小姐5-31</span>
+                <span class="fu2-city">—</span>
+              </div>
+              <div class="fu2-note">房子手续办理中，一周后跟进</div>
+            </div>
+          </div>
+          <div class="fu2-footer">
+            <span class="click-hint">点击编辑</span>
+            <button class="fu2-btn done" onclick="event.stopPropagation();alert('已标记完成跟进')">完成跟进</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right side: summary -->
+  <div class="info" style="max-width:280px">
+    <h2>改动说明</h2>
+    <div class="sub" style="margin-bottom:16px">对比旧版工作台</div>
+    <div class="note">
+      <b>① 顶部4卡片可点击</b><br>
+      点击「全部客户」「本周待跟进」「下周待跟进」「已成交」→ 跳转到客户管理页并自动筛选<br><br>
+
+      <b>② 待跟进拆为2张卡</b><br>
+      本周 = 周一到周日<br>
+      下周 = 下周一到周日<br><br>
+
+      <b>③ 跟进按紧急度分组</b><br>
+      🔴 紧急：1-3天内 | 🟡 一般：3-7天 | 🟢 不急：7天+或未定<br>
+      每组可折叠/展开<br><br>
+
+      <b>④ 卡片交互改进</b><br>
+      · 点击卡片 → 打开客户编辑弹窗<br>
+      · 「编辑」按钮删除<br>
+      · 「✓ 完成」→「完成跟进」<br><br>
+
+      <b>⑤ 跟进卡片可在弹窗内修改</b><br>
+      点击卡片后弹出的编辑窗口中修改跟进信息
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
