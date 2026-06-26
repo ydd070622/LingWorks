@@ -2955,7 +2955,7 @@ textarea.input-base {
 /* CRM Table */
 .crm-table-wrap {
   background: var(--bg-card); border: 1px solid var(--border-color);
-  border-radius: 10px; overflow: hidden;
+  border-radius: 10px; overflow-y: auto; flex: 1; min-height: 0;
 }
 .crm-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .crm-table th {
