@@ -38,9 +38,21 @@ export interface Customer {
   signDate?: string                                  // 签约日期（YYYY-MM-DD），独立于 updatedAt
   // —— 跟进历史（追加写，followUpNote 是最新一条的快照）——
   followUpHistory?: FollowUp[]                        // 跟进历史时间线，按时间正序，默认 []
+  // —— 归档（放弃客户不会再出现在客户管理页面）——
+  archived?: boolean
 }
 
-export interface CRMData { accounts: string[]; notes: Note[]; customers: Customer[] }
+// 项目管理：在做项目 / 已做项目
+export interface Project {
+  id: string              // 'proj_' + Date.now()
+  customerId: string      // 关联客户 ID
+  startDate: string       // 开始日期 YYYY-MM-DD
+  estEndDate: string      // 预估完成日期 YYYY-MM-DD
+  designer: string        // 设计师（自动取客户 account）
+  completedDate: string | null  // 确认完成日期，null=进行中，有值=已做
+}
+
+export interface CRMData { accounts: string[]; notes: Note[]; customers: Customer[]; projects: Project[]; designers: string[] }
 
 export interface EnrichedCustomer extends Customer {
   sourceLabel: string; sourceIcon: string
@@ -67,4 +79,14 @@ export interface SharedProps {
   setTab: (tab: string) => void
   followUpFilter: { start: string; end: string } | null
   setFollowUpFilter: (f: { start: string; end: string } | null) => void
+  // 项目管理
+  activeProjects: Project[]
+  doneProjects: Project[]
+  addProject: (proj: Omit<Project, 'id'>) => void
+  completeProject: (id: string, completedDate: string) => void
+  deleteProject: (id: string) => void
+  designers: string[]
+  addDesigner: (name: string) => void
+  deleteDesigner: (name: string) => void
+  updateProject: (id: string, upd: Partial<Project>) => void
 }

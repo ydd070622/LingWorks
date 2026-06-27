@@ -339,6 +339,7 @@ app.on('web-contents-created', (_e, contents) => {
 
 // ===== App Lifecycle =====
 app.whenReady().then(() => {
+  app.setName('LingWorks')  // 设置对话框标题显示名称
   // Restore saved theme
   const savedTheme = readConfigSync('theme')
   if (savedTheme === 'dark' || savedTheme === 'light' || savedTheme === 'system') {

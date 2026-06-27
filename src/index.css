@@ -457,6 +457,25 @@ textarea.input-base {
   background: rgba(239, 68, 68, 0.2);
 }
 
+.btn-success {
+  background: rgba(34, 197, 94, 0.12);
+  color: #4ade80;
+  border-color: rgba(34, 197, 94, 0.2);
+}
+.btn-success:hover {
+  background: rgba(34, 197, 94, 0.25);
+}
+
+.btn-complete {
+  background: #16a34a;
+  color: #fff;
+  border-color: #16a34a;
+}
+.btn-complete:hover {
+  background: #15803d;
+  border-color: #15803d;
+}
+
 .btn-sm {
   padding: 5px 10px;
   font-size: 12px;
@@ -2800,7 +2819,7 @@ textarea.input-base {
   flex: 1; overflow: auto; padding: 16px 20px;
   background: var(--bg-secondary);
 }
-.crm-page { display: flex; flex-direction: column; height: 100%; }
+.crm-page { display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
 
 /* CRM Toolbar */
 .crm-toolbar {
@@ -2966,11 +2985,12 @@ textarea.input-base {
 .crm-table-wrap {
   background: var(--bg-card); border: 1px solid var(--border-color);
   border-radius: 10px; overflow-y: auto; flex: 1; min-height: 0;
+  max-height: 100%;
 }
 .crm-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .crm-table th {
   text-align: left; padding: 10px 14px; border-bottom: 1.5px solid var(--border-color);
-  color: var(--text-muted); font-weight: 600; font-size: 11px;
+  color: var(--text-secondary); font-weight: 700; font-size: 13px;
   background: var(--bg-primary); position: sticky; top: 0; z-index: 1;
 }
 .crm-th-sort {
@@ -3856,3 +3876,168 @@ textarea.input-base {
   border-color: #fff;
   box-shadow: 0 0 0 1px var(--border-color);
 }
+
+/* === Project Management Pages === */
+
+/* — Page header — */
+.crm-page-header {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+}
+.crm-page-header h2 { font-size: 18px; font-weight: 700; color: var(--text-primary); }
+.crm-page-count { font-size: 12px; color: var(--text-muted); }
+
+/* — Toolbar — */
+.crm-toolbar {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+}
+
+/* — Table — */
+.crm-table-wrap {
+  background: var(--bg-card); border: 1px solid var(--border-color);
+  border-radius: 8px; overflow: hidden;
+}
+.crm-table { width: 100%; border-collapse: collapse; }
+.crm-table thead th {
+  font-size: 11px; font-weight: 600; color: var(--text-muted); text-align: left;
+  padding: 10px 12px; border-bottom: 1px solid var(--border-color); white-space: nowrap;
+}
+.crm-table tbody td {
+  padding: 10px 12px; border-bottom: 1px solid rgba(47,48,55,.4); font-size: 13px;
+  vertical-align: middle; white-space: nowrap;
+}
+.crm-table tbody tr { transition: background .1s; }
+.crm-table tbody tr:hover { background: rgba(255,255,255,.02); }
+.crm-table tbody tr:last-child td { border-bottom: none; }
+
+.cell-mono { color: var(--text-secondary); font-size: 12px; font-variant-numeric: tabular-nums; }
+.cell-name { font-weight: 600; color: var(--text-primary); }
+.cell-muted { color: var(--text-secondary); max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+.cell-none { color: var(--text-muted); opacity: 0.45; }
+.cell-done { color: #4ade80; font-weight: 600; }
+.cell-av {
+  width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; font-size: 10px; font-weight: 700; color: #fff; flex-shrink: 0;
+}
+
+/* — Designer tag (matching existing style tags) — */
+.proj-designer {
+  display: inline-block; padding: 2px 8px; border-radius: 4px;
+  font-size: 11px; font-weight: 600;
+}
+.proj-designer.a1 { background: rgba(99,102,241,.12); color: #818cf8; }
+.proj-designer.a2 { background: rgba(139,92,246,.12); color: #a78bfa; }
+.proj-designer.a3 { background: rgba(236,72,153,.12); color: #f472b6; }
+
+/* — Follow-up status (synced from customer) — */
+.proj-fu { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; }
+.proj-fu-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.proj-fu.overdue { color: #f87171; }
+.proj-fu.today { color: #fb923c; }
+.proj-fu.upcoming { color: #60a5fa; }
+
+/* — Empty state — */
+.crm-empty { text-align: center; padding: 50px; color: var(--text-muted); font-size: 13px; }
+.crm-empty span { font-size: 32px; display: block; margin-bottom: 8px; }
+
+/* — Project Modal — */
+.proj-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.6);
+  z-index: 100; display: flex; align-items: center; justify-content: center;
+}
+.proj-modal {
+  background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px;
+  width: 440px; padding: 22px 24px; animation: proj-pop .15s ease;
+}
+@keyframes proj-pop { from { transform: scale(.96); opacity: 0; } }
+.proj-modal-sm { width: 360px; text-align: center; }
+.proj-modal h3 { font-size: 15px; color: var(--text-primary); margin-bottom: 16px; }
+.proj-modal label {
+  display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px; margin-top: 12px;
+}
+.proj-modal label:first-of-type { margin-top: 0; }
+.proj-hint { font-size: 10px; color: var(--accent); font-weight: 400; }
+.proj-input {
+  width: 100%; padding: 8px 10px; font-size: 12px; border-radius: 6px;
+  border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);
+  outline: none; font-family: inherit;
+}
+.proj-input:focus { border-color: var(--accent); }
+.proj-input[readonly] { color: var(--text-muted); background: rgba(255,255,255,.02); }
+.proj-modal-actions { display: flex; gap: 8px; margin-top: 18px; justify-content: flex-end; }
+.proj-confirm-hint { font-size: 12px; color: var(--text-muted); margin-bottom: 14px; }
+.proj-confirm-hint b { color: var(--text-primary); }
+
+/* — Customer search dropdown — */
+.proj-search-wrap { position: relative; }
+.proj-search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
+.proj-search-input {
+  width: 100%; padding: 8px 10px 8px 32px; font-size: 12px; border-radius: 6px;
+  border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);
+  outline: none; font-family: inherit;
+}
+.proj-search-input:focus { border-color: var(--accent); }
+.proj-dropdown {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 10;
+  background: #1e1f23; border: 1px solid var(--border-color);
+  border-radius: 6px; max-height: 180px; overflow-y: auto; margin-top: 2px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.5);
+}
+.theme-light .proj-dropdown { background: #f5f6fa; box-shadow: 0 4px 16px rgba(0,0,0,.08); }
+.theme-light .proj-dropdown-empty { background: #f5f6fa; }
+.theme-light .proj-dropdown-item:hover { background: #e8eaef; }
+.proj-dropdown-empty { padding: 12px; font-size: 12px; color: var(--text-muted); text-align: center; background: #1e1f23; }
+.proj-dropdown-item {
+  padding: 8px 12px; cursor: pointer; font-size: 12px; transition: background .1s;
+  border-bottom: 1px solid rgba(47,48,55,.3); display: flex; justify-content: space-between; align-items: center;
+}
+.proj-dropdown-item:last-child { border-bottom: none; }
+.proj-dropdown-item:hover { background: #2a2b30; }
+.proj-dropdown-name { font-weight: 600; color: var(--text-primary); }
+.proj-dropdown-info { font-size: 10px; color: var(--text-muted); }
+
+/* Light theme overrides for project pages */
+.theme-light .proj-input { background: #fff; }
+.theme-light .proj-search-input { background: #fff; }
+.theme-light .cell-mono { color: #6b7280; }
+
+/* — Time reminder — */
+.proj-reminder { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; }
+.proj-reminder-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.proj-reminder.overdue { color: #f87171; }
+.proj-reminder.today { color: #fbbf24; }
+.proj-reminder.soon { color: #fb923c; }
+.proj-reminder.normal { color: #60a5fa; }
+.proj-reminder.far { color: var(--text-muted); }
+
+/* — Follow-up note (synced note text with urgency dot) — */
+.proj-fu-note { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-secondary); }
+.proj-fu-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+/* — Designer row (select + button) — */
+.proj-designer-row { display: flex; gap: 6px; align-items: center; }
+
+/* — Designer management list — */
+.proj-designer-list { max-height: 160px; overflow-y: auto; margin-top: 4px; border: 1px solid var(--border-color); border-radius: 6px; }
+.proj-designer-list-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 10px; font-size: 12px; border-bottom: 1px solid rgba(47,48,55,.3);
+  color: var(--text-primary);
+}
+.proj-designer-list-item:last-child { border-bottom: none; }
+
+/* — Delete warning — */
+.proj-del-warn { color: var(--danger); font-size: 12px; margin-top: 8px; }
+
+/* — Edit hint on row — */
+.proj-edit-hint { font-size: 10px; color: var(--text-muted); margin-left: 4px; }
+
+/* — Date wrap with icon — */
+.proj-date-wrap { position: relative; }
+.proj-date-wrap input { padding-right: 36px; }
+.proj-date-wrap input::-webkit-calendar-picker-indicator { opacity: 0; width: 100%; height: 100%; position: absolute; right: 0; cursor: pointer; }
+.proj-date-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; font-size: 15px; color: var(--text-muted); }
+
+/* — Solid modal overlay (no transparency) — */
+.proj-modal-overlay { background: rgba(0,0,0,.75); }
+.proj-modal { background: #1e1f23; box-shadow: 0 8px 40px rgba(0,0,0,.6); }
+.theme-light .proj-modal { background: #fff; }

@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, FileText, BarChart3, FileEdit } from 'lucide-react'
+import { LayoutDashboard, Users, FileText, BarChart3, FileEdit, Hammer, CheckCircle, Archive } from 'lucide-react'
 import type { Payment } from './types'
 
 export const STAGES = [
@@ -63,7 +63,10 @@ export const TAG_COLORS: Record<string, { bg: string; text: string }> = {
 export const TABS = [
   { id: 'workbench', label: '工作台', icon: LayoutDashboard },
   { id: 'customers', label: '客户管理', icon: Users },
+  { id: 'active-projects', label: '在做项目', icon: Hammer },
+  { id: 'done-projects', label: '已做项目', icon: CheckCircle },
   { id: 'contracts', label: '合同管理', icon: FileText },
+  { id: 'archived', label: '已完成项', icon: Archive },
   { id: 'dashboard', label: '数据看板', icon: BarChart3 },
   { id: 'notes', label: '笔记管理', icon: FileEdit },
 ] as const

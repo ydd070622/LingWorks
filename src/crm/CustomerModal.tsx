@@ -38,16 +38,17 @@ export default function CustomerModal({ customer, onSave, onDelete, onClose }: {
       ...(customer.id ? {} : { stage: 'wechat' as const }),
     }
 
-    // 跟进备注有变化时追加跟进历史
+    // 跟进备注有变化时——把旧内容存进历史，新内容保留为当前备注
     if (customer.id) {
-      const fuChanged = form.followUpNote.trim() && form.followUpNote !== (customer.followUpNote || '')
-      if (fuChanged) {
+      const oldNote = customer.followUpNote || ''
+      const fuChanged = form.followUpNote.trim() && form.followUpNote !== oldNote
+      if (fuChanged && oldNote.trim()) {
         const todayStr = new Date().toISOString().split('T')[0]
         const newEntry: FollowUp = {
           id: 'fu_' + Date.now(),
           date: todayStr,
-          content: form.followUpNote,
-          nextDate: form.followUpDate || undefined,
+          content: oldNote,  // ← 存的是旧内容
+          nextDate: customer.followUpDate || undefined,
         }
         upd.followUpHistory = [...history, newEntry]
       }

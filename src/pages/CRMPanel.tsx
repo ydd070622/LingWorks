@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { toast } from 'sonner'
 import { CloudUpload, CloudDownload } from 'lucide-react'
-import type { CRMData, Customer, EnrichedCustomer, FollowUp } from '../crm/types'
+import type { CRMData, Customer, EnrichedCustomer, FollowUp, Project } from '../crm/types'
 import { STAGES, SOURCES, TABS, STORAGE_KEY } from '../crm/constants'
 import { today as todayStr, daysDiff } from '../crm/helpers'
 import { createDefaultData } from '../crm/defaultData'
@@ -12,6 +12,9 @@ import DashboardPage from '../crm/DashboardPage'
 import CustomerModal from '../crm/CustomerModal'
 import ContractModal from '../crm/ContractModal'
 import ContractDetailModal from '../crm/ContractDetailModal'
+import ActiveProjectsPage from '../crm/ActiveProjectsPage'
+import DoneProjectsPage from '../crm/DoneProjectsPage'
+import CrmArchivedPage from '../crm/CrmArchivedPage'
 
 export default function CRMPanel() {
   const [data, setData] = useState<CRMData>(createDefaultData)
@@ -30,6 +33,8 @@ export default function CRMPanel() {
       // 数据迁移：给老客户补新字段默认值（无感升级）
       const migrate = (raw: CRMData): CRMData => ({
         ...raw,
+        projects: raw.projects || [],
+        designers: raw.designers || [],
         customers: raw.customers.map(c => {
           // 合同字段（仅 closed 客户）
           const contractBase = c.stage === 'closed' ? {
@@ -101,7 +106,24 @@ export default function CRMPanel() {
   }, [data.notes])
 
   const updateCust = useCallback((id: string, upd: Partial<Customer>) => {
-    persist({ ...data, customers: data.customers.map(c => c.id === id ? { ...c, ...upd, updatedAt: ts } : c) })
+    const oldCust = data.customers.find(c => c.id === id)
+    let finalUpd = { ...upd }
+
+    // 跟进备注变化时——旧内容存进历史，新内容保留为当前备注
+    if (oldCust && upd.followUpNote !== undefined && upd.followUpNote !== (oldCust.followUpNote || '') && upd.followUpHistory === undefined) {
+      const oldNote = oldCust.followUpNote || ''
+      if (oldNote.trim()) {
+        const newEntry: FollowUp = {
+          id: 'fu_' + Date.now(),
+          date: ts,
+          content: oldNote,  // ← 存旧内容
+          nextDate: oldCust.followUpDate || undefined,
+        }
+        finalUpd.followUpHistory = [...(oldCust.followUpHistory || []), newEntry]
+      }
+    }
+
+    persist({ ...data, customers: data.customers.map(c => c.id === id ? { ...c, ...finalUpd, updatedAt: ts } : c) })
   }, [data, ts, persist])
 
   const addCust = useCallback((cust: Partial<Customer>) => {
@@ -157,6 +179,45 @@ export default function CRMPanel() {
   const overdueCount = followUps.filter(c => c.diff < 0).length
   const closedCusts = data.customers.filter(c => c.stage === 'closed')
 
+  const activeProjects = useMemo(() =>
+    (data.projects || []).filter(p => !p.completedDate),
+    [data.projects])
+  const doneProjects = useMemo(() =>
+    (data.projects || []).filter(p => !!p.completedDate).sort((a, b) => b.completedDate!.localeCompare(a.completedDate!)),
+    [data.projects])
+
+  const addProject = useCallback((proj: Omit<Project, 'id'>) => {
+    const p: Project = { id: 'proj_' + Date.now(), ...proj }
+    persist({ ...data, projects: [...(data.projects || []), p] })
+  }, [data, persist])
+
+  const completeProject = useCallback((id: string, completedDate: string) => {
+    persist({
+      ...data,
+      projects: (data.projects || []).map(p => p.id === id ? { ...p, completedDate } : p)
+    })
+    setTab('done-projects')
+    toast.success('项目已移至「已做项目」')
+  }, [data, persist, setTab])
+
+  const deleteProject = useCallback((id: string) => {
+    persist({ ...data, projects: (data.projects || []).filter(p => p.id !== id) })
+    toast.success('已删除项目')
+  }, [data, persist])
+
+  const updateProject = useCallback((id: string, upd: Partial<Project>) => {
+    persist({ ...data, projects: (data.projects || []).map(p => p.id === id ? { ...p, ...upd } : p) })
+  }, [data, persist])
+
+  const addDesigner = useCallback((name: string) => {
+    if ((data.designers || []).includes(name)) return
+    persist({ ...data, designers: [...(data.designers || []), name] })
+  }, [data, persist])
+
+  const deleteDesigner = useCallback((name: string) => {
+    persist({ ...data, designers: (data.designers || []).filter(d => d !== name) })
+  }, [data, persist])
+
   if (!loaded) return <div className="crm-loading">加载中...</div>
 
   const handleSyncUpload = async () => {
@@ -199,13 +260,16 @@ export default function CRMPanel() {
     return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
   }
 
-  const sharedProps = { data, followUps, todayCount, overdueCount, closedCusts, leadCount: 0, enrichCust, updateCust, addCust, deleteCust, deleteCusts, moveCust, viewMode, setViewMode, setEditingCustomer, setEditingContract, setViewingContract, setTab, followUpFilter, setFollowUpFilter }
+  const sharedProps = { data, followUps, todayCount, overdueCount, closedCusts, leadCount: 0, enrichCust, updateCust, addCust, deleteCust, deleteCusts, moveCust, viewMode, setViewMode, setEditingCustomer, setEditingContract, setViewingContract, setTab, followUpFilter, setFollowUpFilter, activeProjects, doneProjects, addProject, completeProject, deleteProject, updateProject, designers: data.designers || [], addDesigner, deleteDesigner }
 
   const sidebarItems = [
     { ...TABS[0], badge: todayCount > 0 ? { count: todayCount, cls: overdueCount > 0 ? 'danger' : 'warn' } : null },
     { ...TABS[1], badge: null },
-    { ...TABS[2], badge: closedCusts.length > 0 ? { count: closedCusts.length, cls: 'success' } : null },
-    { ...TABS[3], badge: null },
+    { ...TABS[2], badge: activeProjects.length > 0 ? { count: activeProjects.length, cls: 'info' } : null },
+    { ...TABS[3], badge: doneProjects.length > 0 ? { count: doneProjects.length, cls: 'success' } : null },
+    { ...TABS[4], badge: closedCusts.length > 0 ? { count: closedCusts.length, cls: 'success' } : null },
+    { ...TABS[5], badge: null },
+    { ...TABS[6], badge: null },
   ]
 
   return (
@@ -248,7 +312,10 @@ export default function CRMPanel() {
         <div className="crm-content">
           {tab === 'workbench' && <Workbench {...sharedProps} />}
           {tab === 'customers' && <CustomerPage {...sharedProps} />}
+          {tab === 'active-projects' && <ActiveProjectsPage {...sharedProps} />}
+          {tab === 'done-projects' && <DoneProjectsPage {...sharedProps} />}
           {tab === 'contracts' && <ContractPage {...sharedProps} />}
+          {tab === 'archived' && <CrmArchivedPage {...sharedProps} />}
           {tab === 'dashboard' && <DashboardPage {...sharedProps} />}
         </div>
       </div>

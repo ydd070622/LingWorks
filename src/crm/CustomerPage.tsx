@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { Search, X, Plus, GripVertical, ArrowUp, ArrowDown, Download } from 'lucide-react'
+import { toast } from 'sonner'
 import { pinyin } from 'pinyin-pro'
 import Fuse from 'fuse.js'
 import ExcelJS from 'exceljs'
@@ -12,24 +13,35 @@ export default function CustomerPage({ data, viewMode, setViewMode, setEditingCu
   const [dragId, setDragId] = useState<string | null>(null)
   const [batchMode, setBatchMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  // 排序：默认按跟进时间降序（最近跟进在上）
   const [timeDesc, setTimeDesc] = useState(true)
+  const [recordTimeDesc, setRecordTimeDesc] = useState(true)
+  const [sortBy, setSortBy] = useState<'followUp' | 'record'>('followUp')
 
-  const customers = data.customers.filter(c => c.stage !== 'closed').map(enrichCust)
+  // 只显示未归档的客户
+  const customers = data.customers.filter(c => c.stage !== 'closed' && !c.archived).map(enrichCust)
 
   const fuse = useMemo(() => new Fuse(customers, {
     keys: ['name', 'city', 'stylePreference', 'style', 'followUpNote'],
-    threshold: 0.4,
+    threshold: 0.3,
+    findAllMatches: true,
   }), [customers])
 
   const filtered = useMemo(() => {
     let list = customers
     if (search) {
+      // 1) Fuzzy search via Fuse
       const results = fuse.search(search)
       list = results.map(r => r.item)
-      // Also check pinyin for exact pinyin search
+      // 2) Direct Chinese substring match (catches "王小姐" in "王小姐梁先生")
       const q = search.toLowerCase()
-      const pinyinMatches = customers.filter(c => pinyin(c.name).toLowerCase().includes(q) && !list.some(m => m.id === c.id))
+      const directMatches = customers.filter(c =>
+        c.name.toLowerCase().includes(q) && !list.some(m => m.id === c.id)
+      )
+      list = [...list, ...directMatches]
+      // 3) Pinyin match (for romanized search like "wang")
+      const pinyinMatches = customers.filter(c =>
+        pinyin(c.name).toLowerCase().includes(q) && !list.some(m => m.id === c.id)
+      )
       list = [...list, ...pinyinMatches]
     }
     // followUpFilter: filter by follow-up date range
@@ -37,11 +49,22 @@ export default function CustomerPage({ data, viewMode, setViewMode, setEditingCu
       list = list.filter(c => c.followUpDate >= followUpFilter.start && c.followUpDate <= followUpFilter.end)
     }
     return list.sort((a, b) => {
-      const da = a.followUpDate || '0000-00-00'
-      const db = b.followUpDate || '0000-00-00'
+      if (sortBy === 'record') {
+        const ra = a.recordDate || ''
+        const rb = b.recordDate || ''
+        if (!ra && !rb) return 0
+        if (!ra) return 1
+        if (!rb) return -1
+        return recordTimeDesc ? rb.localeCompare(ra) : ra.localeCompare(rb)
+      }
+      const da = a.followUpDate || ''
+      const db = b.followUpDate || ''
+      if (!da && !db) return 0
+      if (!da) return 1
+      if (!db) return -1
       return timeDesc ? db.localeCompare(da) : da.localeCompare(db)
     })
-  }, [customers, search, fuse, timeDesc, followUpFilter])
+  }, [customers, search, fuse, timeDesc, recordTimeDesc, sortBy, followUpFilter])
 
   const kanbanGroups = useMemo(() => {
     const m: Record<string, EnrichedCustomer[]> = {}
@@ -217,7 +240,12 @@ export default function CustomerPage({ data, viewMode, setViewMode, setEditingCu
               <tr>
                 {batchMode && <th style={{ width: 36 }}><input type="checkbox" checked={filtered.length > 0 && filtered.every(c => selectedIds.has(c.id))} onChange={e => { if (e.target.checked) setSelectedIds(new Set(filtered.map(c => c.id))); else setSelectedIds(new Set()) }} /></th>}
                 <th style={{ width: 160 }}>客户</th>
-                <th style={{ width: 80 }}>日期</th>
+                <th style={{ width: 100 }}>
+                  <button className="crm-th-sort" onClick={() => { setRecordTimeDesc(v => !v); setSortBy('record') }} title="点击排序">
+                    添加时间
+                    {recordTimeDesc ? <ArrowDown size={11} /> : <ArrowUp size={11} />}
+                  </button>
+                </th>
                 <th style={{ width: 70 }}>地区</th>
                 <th style={{ width: 80 }}>小区名称</th>
                 <th style={{ width: 70 }}>房子面积</th>
@@ -225,16 +253,12 @@ export default function CustomerPage({ data, viewMode, setViewMode, setEditingCu
                 <th style={{ width: 90 }}>客户归属</th>
                 <th style={{ width: 90 }}>跟进</th>
                 <th style={{ width: 110 }}>
-                  <button
-                    className={`crm-th-sort active`}
-                    onClick={() => setTimeDesc(v => !v)}
-                    title={timeDesc ? '按跟进时间降序，点击切换升序' : '按跟进时间升序，点击切换降序'}
-                  >
+                  <button className="crm-th-sort" onClick={() => { setTimeDesc(v => !v); setSortBy('followUp') }} title="点击排序">
                     跟进时间
                     {timeDesc ? <ArrowDown size={11} /> : <ArrowUp size={11} />}
                   </button>
                 </th>
-                <th style={{ width: 70 }}>操作</th>
+                <th style={{ width: 70 }}>归档</th>
               </tr>
             </thead>
             <tbody>
@@ -263,7 +287,7 @@ export default function CustomerPage({ data, viewMode, setViewMode, setEditingCu
                     <td>{fu ? <span className={`crm-tag ${fu.cls}`}>{fu.text}</span> : <span className="crm-muted">—</span>}</td>
                     <td><span className="crm-muted">{c.followUpDate ? fmtDate(c.followUpDate) : '—'}</span></td>
                     <td>
-                      <button className="crm-btn-ghost-xs" onClick={e => { e.stopPropagation(); setEditingCustomer(c) }}>详情</button>
+                      <button className="crm-btn-ghost-xs" style={{ color: '#f87171' }} onClick={e => { e.stopPropagation(); if (confirm('确定归档？客户将不再出现在客户管理页面')) { updateCust(c.id, { archived: true }); toast.success(`${c.name} 已归档`) } }}>归档</button>
                     </td>
                   </tr>
                 )

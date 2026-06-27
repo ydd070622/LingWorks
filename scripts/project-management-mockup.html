@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=1350">
+<title>项目管理 v3 — 点击展开编辑 / 日期选择 / 跟进同步 / 下拉不透明</title>
+<style>
+:root {
+  --bg-primary: #1a1b1e; --bg-sidebar: #1e1f23; --bg-card: #232428;
+  --bg-card-hover: #2a2b30; --bg-active: rgba(129,140,248,0.10);
+  --border-color: #2f3037; --text-primary: #e4e4e7; --text-secondary: #a1a1aa;
+  --text-muted: #71717a; --accent: #6366f1; --danger: #ef4444;
+  --warning: #f59e0b; --success: #22c55e;
+  --font: -apple-system, "Microsoft YaHei", sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);font-size:13px;background:#111;display:flex;justify-content:center;padding:30px}
+
+/* Panel */
+.crm-panel{display:flex;width:1350px;height:680px;background:var(--bg-primary);border-radius:12px;box-shadow:0 4px 30px rgba(0,0,0,.5);overflow:hidden}
+
+/* Sidebar */
+.crm-sidebar{width:170px;flex-shrink:0;background:var(--bg-sidebar);border-right:1px solid var(--border-color);display:flex;flex-direction:column;user-select:none}
+.crm-sidebar-logo{padding:14px;display:flex;align-items:center;gap:7px;border-bottom:1px solid var(--border-color)}
+.crm-sidebar-logo-icon{width:24px;height:24px;border-radius:6px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700}
+.crm-sidebar-logo-text{color:var(--text-primary);font-size:13px;font-weight:700}
+.crm-sidebar-section{padding:12px 12px 4px;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.crm-sidebar-nav{display:flex;flex-direction:column;padding:4px 6px;gap:1px}
+.crm-sidebar-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;font-size:13px;color:var(--text-muted);cursor:pointer;transition:all .12s;font-weight:500;position:relative}
+.crm-sidebar-item:hover{background:var(--bg-card-hover);color:var(--text-primary)}
+.crm-sidebar-item.active{background:var(--bg-active);color:var(--text-primary)}
+.crm-sidebar-item.active::before{content:'';position:absolute;left:6px;width:3px;height:18px;border-radius:2px;background:var(--accent)}
+.crm-sidebar-item-icon{width:18px;display:flex;align-items:center;justify-content:center;opacity:.6;font-size:14px}
+.crm-sidebar-item.active .crm-sidebar-item-icon{opacity:1}
+.crm-sidebar-badge{margin-left:auto;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:700;color:#fff;background:#3b82f6}
+
+/* Main */
+.crm-main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg-primary)}
+.crm-content{flex:1;overflow-y:auto;padding:20px 24px}
+
+.page-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.page-header h2{font-size:18px;font-weight:700;color:var(--text-primary)}
+.page-header .count{font-size:12px;color:var(--text-muted)}
+
+/* Buttons */
+.btn{padding:7px 14px;border-radius:6px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .12s;white-space:nowrap;font-family:var(--font)}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:#4f46e5}
+.btn-success{background:rgba(34,197,94,.12);color:#4ade80}.btn-success:hover{background:rgba(34,197,94,.25)}
+.btn-danger{background:rgba(239,68,68,.15);color:#f87171}.btn-danger:hover{background:rgba(239,68,68,.25)}
+.btn-ghost{background:transparent;color:var(--text-secondary);border:1px solid var(--border-color)}.btn-ghost:hover{background:var(--bg-card-hover)}
+.btn-sm{padding:4px 9px;font-size:11px}
+.btn-icon{padding:4px 7px}
+
+/* Table */
+.table-wrap{background:var(--bg-card);border:1px solid var(--border-color);border-radius:8px;overflow:hidden}
+table{width:100%;border-collapse:collapse}
+thead th{font-size:11px;font-weight:600;color:var(--text-muted);text-align:left;padding:10px 10px;border-bottom:1px solid var(--border-color);white-space:nowrap}
+tbody td{padding:10px 10px;border-bottom:1px solid rgba(47,48,55,.4);font-size:13px;vertical-align:middle;white-space:nowrap}
+tbody tr{transition:background .1s;cursor:pointer}
+tbody tr:hover{background:rgba(255,255,255,.02)}
+tbody tr:last-child td{border-bottom:none}
+
+.cell-mono{color:var(--text-secondary);font-size:12px;font-variant-numeric:tabular-nums}
+.cell-name{font-weight:600;color:var(--text-primary)}
+.cell-community{color:var(--text-secondary);max-width:130px;overflow:hidden;text-overflow:ellipsis}
+.cell-none{color:var(--text-muted);opacity:.45}
+.cell-done{color:#4ade80;font-weight:600}
+
+.designer-tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+.designer-tag.a1{background:rgba(99,102,241,.12);color:#818cf8}
+.designer-tag.a2{background:rgba(139,92,246,.12);color:#a78bfa}
+.designer-tag.a3{background:rgba(236,72,153,.12);color:#f472b6}
+.designer-tag.a4{background:rgba(52,211,153,.12);color:#34d399}
+.designer-tag.a5{background:rgba(251,191,36,.12);color:#fbbf24}
+
+.proj-reminder{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700}
+.proj-reminder-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.proj-reminder.overdue{color:#f87171}.proj-reminder.today{color:#fbbf24}
+.proj-reminder.soon{color:#fb923c}.proj-reminder.normal{color:#60a5fa}.proj-reminder.far{color:var(--text-muted)}
+
+.proj-fu-note{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--text-secondary)}
+.proj-fu-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+
+.empty{text-align:center;padding:50px;color:var(--text-muted);font-size:13px}
+.empty span{font-size:32px;display:block;margin-bottom:8px}
+
+/* ===== MODAL - solid, not transparent ===== */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:#1e1f23;border:1px solid #3f3f46;border-radius:10px;width:520px;max-height:88vh;overflow-y:auto;padding:22px 24px;animation:pop .15s ease;box-shadow:0 8px 40px rgba(0,0,0,.7)}
+@keyframes pop{from{transform:scale(.96);opacity:0}}
+.modal-sm{width:390px;text-align:center}
+.modal h3{font-size:15px;color:var(--text-primary);margin-bottom:16px}
+.modal label{display:block;font-size:11px;color:var(--text-muted);margin-bottom:4px;margin-top:14px}
+.modal label:first-of-type{margin-top:0}
+.modal label .hint{font-size:10px;color:var(--accent);font-weight:400}
+.modal input,.modal select{width:100%;padding:9px 10px;font-size:12px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-primary);color:var(--text-primary);outline:none;font-family:var(--font)}
+.modal input:focus,.modal select:focus{border-color:var(--accent)}
+.modal input[readonly]{color:var(--text-muted);background:rgba(255,255,255,.03)}
+.modal-actions{display:flex;gap:8px;margin-top:20px;justify-content:flex-end}
+
+/* Customer search + dropdown - SOLID BG, show only on focus */
+.cust-search-wrap{position:relative}
+.cust-search-wrap input{padding-right:30px}
+.cust-dropdown{position:absolute;top:100%;left:0;right:0;z-index:10;background:#1e1f23;border:1px solid var(--border-color);border-radius:6px;max-height:180px;overflow-y:auto;display:none;margin-top:2px;box-shadow:0 4px 16px rgba(0,0,0,.5)}
+.cust-dropdown.show{display:block}
+.cust-option{padding:9px 12px;cursor:pointer;font-size:12px;transition:background .1s;border-bottom:1px solid rgba(47,48,55,.3)}
+.cust-option:last-child{border-bottom:none}
+.cust-option:hover{background:var(--bg-card-hover)}
+.cust-option.selected{background:rgba(99,102,241,.12);color:var(--accent)}
+.cust-option .name{font-weight:600;color:var(--text-primary)}
+.cust-option .info{font-size:10px;color:var(--text-muted);margin-left:6px}
+
+.designer-row{display:flex;gap:6px;align-items:center}
+.designer-row select{flex:1}
+
+.modal-confirm{text-align:center}
+.modal-confirm .hint{font-size:12px;color:var(--text-muted);margin-bottom:14px}
+.modal-confirm .hint b{color:var(--text-primary)}
+
+/* Date input with calendar icon */
+.date-input-wrap{position:relative}
+.date-input-wrap input{padding-right:36px}
+.date-input-wrap .cal-icon{position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;font-size:15px;color:var(--text-muted)}
+
+.del-warn{color:var(--danger);font-size:12px;margin-top:8px}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 22px;border-radius:8px;font-size:12px;z-index:200;opacity:0;pointer-events:none;transition:opacity .3s}
+.toast.show{opacity:1}
+
+/* Editable hint */
+.edit-hint{font-size:10px;color:var(--text-muted);margin-left:4px}
+</style>
+</head>
+<body>
+
+<div class="crm-panel">
+  <div class="crm-sidebar">
+    <div class="crm-sidebar-logo"><div class="crm-sidebar-logo-icon">L</div><span class="crm-sidebar-logo-text">客户管理</span></div>
+    <div class="crm-sidebar-section">主菜单</div>
+    <div class="crm-sidebar-nav">
+      <div class="crm-sidebar-item" data-tab="other"><span class="crm-sidebar-item-icon">📊</span>工作台</div>
+      <div class="crm-sidebar-item" data-tab="other"><span class="crm-sidebar-item-icon">👥</span>客户管理</div>
+      <div class="crm-sidebar-item active" data-tab="active"><span class="crm-sidebar-item-icon">📐</span>在做项目<span class="crm-sidebar-badge" id="sideBadge">3</span></div>
+      <div class="crm-sidebar-item" data-tab="done"><span class="crm-sidebar-item-icon">✅</span>已做项目<span class="crm-sidebar-badge" id="sideDoneBadge">1</span></div>
+      <div class="crm-sidebar-item" data-tab="other"><span class="crm-sidebar-item-icon">📋</span>合同管理</div>
+      <div class="crm-sidebar-item" data-tab="other"><span class="crm-sidebar-item-icon">📈</span>数据看板</div>
+    </div>
+  </div>
+  <div class="crm-main"><div class="crm-content" id="contentArea"></div></div>
+</div>
+
+<!-- ADD PROJECT MODAL -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <h3>新建项目</h3>
+    <label>客户 <span class="hint">（点击搜索框后出现下拉列表）</span></label>
+    <div class="cust-search-wrap">
+      <input type="text" id="addCustSearch" placeholder="点击此处搜索客户..." oninput="onAddCustSearch()" onfocus="onAddCustFocus()" autocomplete="off">
+      <div class="cust-dropdown" id="addCustDropdown"></div>
+    </div>
+    <label>小区名称 <span class="hint">（自动获取）</span></label>
+    <input type="text" id="addCommunity" readonly>
+    <label>开始日期</label>
+    <input type="date" id="addStartDate">
+    <label>预估完成日期</label>
+    <input type="date" id="addEstEndDate">
+    <label>设计师</label>
+    <div class="designer-row">
+      <select id="addDesigner"></select>
+      <button class="btn btn-primary btn-sm btn-icon" onclick="openDesignerMgr()" title="管理设计师">+</button>
+    </div>
+    <label>跟进情况 <span class="hint">（同步到客户管理）</span></label>
+    <input type="text" id="addFollowUpNote" placeholder="输入跟进内容，会同步更新到客户管理系统">
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeAddModal()">取消</button>
+      <button class="btn btn-primary" onclick="addProject()">确认创建</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT PROJECT MODAL (same card style as add) -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <h3>编辑项目</h3>
+    <label>客户</label>
+    <input type="text" id="editCustName" readonly>
+    <label>小区名称</label>
+    <input type="text" id="editCommunity" readonly>
+    <label>开始日期</label>
+    <input type="date" id="editStartDate">
+    <label>预估完成日期</label>
+    <input type="date" id="editEstEndDate">
+    <label>设计师</label>
+    <select id="editDesigner"></select>
+    <label>跟进情况 <span class="hint">（同步到客户管理）</span></label>
+    <input type="text" id="editFollowUpNote" placeholder="输入跟进内容，会同步更新到客户管理系统">
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeEditModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveEdit()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- DESIGNER MANAGER MODAL -->
+<div class="modal-overlay" id="designerModal">
+  <div class="modal modal-sm">
+    <h3>管理设计师</h3>
+    <label>添加新设计师</label>
+    <div style="display:flex;gap:6px"><input type="text" id="newDesigner" placeholder="输入设计师姓名" style="flex:1"><button class="btn btn-primary btn-sm" onclick="addDesigner()">添加</button></div>
+    <label style="margin-top:16px">现有设计师列表</label>
+    <div style="max-height:160px;overflow-y:auto;border:1px solid var(--border-color);border-radius:6px;margin-top:4px" id="designerList"></div>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeDesignerMgr()">关闭</button></div>
+  </div>
+</div>
+
+<!-- CONFIRM COMPLETE MODAL -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal modal-sm modal-confirm">
+    <h3>确认完成项目</h3>
+    <div class="hint" id="confirmInfo"></div>
+    <label>确认完成日期</label>
+    <div class="date-input-wrap"><input type="date" id="completeDate"><span class="cal-icon">📅</span></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeConfirmModal()">取消</button>
+      <button class="btn btn-success" onclick="confirmComplete()">✅ 确认完成</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE MODAL -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal modal-sm modal-confirm"><h3>⚠ 删除项目</h3><div class="hint" id="deleteInfo"></div><div class="del-warn">此操作不可撤销</div><div class="modal-actions"><button class="btn btn-ghost" onclick="closeDeleteModal()">取消</button><button class="btn btn-danger" onclick="confirmDelete()">确认删除</button></div></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const today = '2026-06-27';
+
+// === State ===
+let designers = [];
+let customers = [
+  { id:'c1',name:'张先生6-20',community:'深圳湾一号',houseArea:'180',stage:'followup',followUpDate:'2026-06-24',followUpNote:'上次说这周定方案' },
+  { id:'c2',name:'李太-南山',community:'南山豪庭',houseArea:'150',stage:'communicating',followUpDate:'2026-06-25',followUpNote:'确认施工队时间' },
+  { id:'c3',name:'甲子Albert',community:'大冲花园',houseArea:'220',stage:'followup',followUpDate:'2026-06-27',followUpNote:'今天约交流' },
+  { id:'c4',name:'王先生-龙华',community:'龙华壹城',houseArea:'120',stage:'wechat',followUpDate:'2026-06-27',followUpNote:'下午3点约看方案' },
+  { id:'c5',name:'刘先生-福田',community:'',houseArea:'',stage:'communicating',followUpDate:'',followUpNote:'' },
+  { id:'c6',name:'陈锡彬',community:'科技园翠华',houseArea:'160',stage:'followup',followUpDate:'2026-06-29',followUpNote:'问业主签设计合同' },
+  { id:'c7',name:'映6-25',community:'华侨城',houseArea:'200',stage:'communicating',followUpDate:'2026-06-29',followUpNote:'纯设计需求' },
+  { id:'c8',name:'胡小姐5-31',community:'深业上城',houseArea:'140',stage:'closed',followUpDate:'',followUpNote:'' },
+];
+
+let activeProjects = [
+  { id:'p1',customerId:'c1',startDate:'2026-06-20',estEndDate:'2026-08-15',designer:'',completedDate:null },
+  { id:'p2',customerId:'c3',startDate:'2026-06-22',estEndDate:'2026-07-30',designer:'',completedDate:null },
+  { id:'p3',customerId:'c6',startDate:'2026-06-25',estEndDate:'2026-06-29',designer:'',completedDate:null },
+];
+let doneProjects = [
+  { id:'p0',customerId:'c8',startDate:'2026-05-10',estEndDate:'2026-06-20',designer:'',completedDate:'2026-06-18' },
+];
+
+let selectedAddCustId = '';
+let currentTab = 'active';
+let manageMode = false;
+let selectedIds = [];
+let editingId = null;
+let completingId = null;
+let deletingId = null;
+
+function getCust(cid){return customers.find(c=>c.id===cid)}
+function designerCls(d){const clss=['a1','a2','a3','a4','a5'];return clss[designers.indexOf(d)%clss.length]||'a1'}
+
+function getFuDot(cid){
+  const c=getCust(cid);if(!c||!c.followUpDate)return'#6b7280';
+  const diff=Math.round((new Date(c.followUpDate+'T00:00:00')-new Date(today+'T00:00:00'))/86400000);
+  if(diff<0)return'#ef4444';if(diff===0)return'#f97316';return'#3b82f6';
+}
+
+function getTimeReminder(s,e){
+  const st=new Date(s+'T00:00:00'),en=new Date(e+'T00:00:00'),n=new Date(today+'T00:00:00');
+  const toEnd=Math.round((en-n)/86400000),toStart=Math.round((st-n)/86400000);
+  if(toStart>0)return{cls:'far',text:toStart+'天后开始',dot:'#6b7280'};
+  if(toEnd<0)return{cls:'overdue',text:'已逾期 '+Math.abs(toEnd)+' 天',dot:'#ef4444'};
+  if(toEnd===0)return{cls:'today',text:'⏰ 今天完成',dot:'#f59e0b'};
+  if(toEnd===1)return{cls:'soon',text:'剩余 1 天',dot:'#f97316'};
+  if(toEnd<=3)return{cls:'soon',text:'剩余 '+toEnd+' 天',dot:'#f97316'};
+  return{cls:'normal',text:'剩余 '+toEnd+' 天',dot:'#3b82f6'};
+}
+
+// ===== RENDER =====
+function renderContent(){document.getElementById('contentArea').innerHTML=currentTab==='active'?renderActive():renderDone();updateBadges()}
+
+function renderActive(){
+  const allSelected = activeProjects.length > 0 && activeProjects.every(p => selectedIds.includes(p.id));
+  const rows=activeProjects.length===0?`<tr><td colspan="${manageMode?'10':'9'}"><div class="empty"><span>📭</span>暂无进行中的项目<br>点击「+ 新建项目」开始</div></td></tr>`:activeProjects.map(p=>{
+    const c=getCust(p.customerId),tr=getTimeReminder(p.startDate,p.estEndDate),noteText=c?.followUpNote||'';
+    const checked = selectedIds.includes(p.id);
+    return `<tr onclick="${manageMode?`toggleSelect('${p.id}')`:`openEditModal('${p.id}')`}">
+      ${manageMode?`<td style="width:40px;text-align:center" onclick="event.stopPropagation();toggleSelect('${p.id}')"><input type="checkbox" ${checked?'checked':''} style="cursor:pointer"></td>`:''}
+      <td class="cell-name">${c?c.name:'?'} ${manageMode?'':'<span class="edit-hint">点击编辑</span>'}</td>
+      <td class="cell-community">${c?.community||'<span class="cell-none">—</span>'}</td>
+      <td class="cell-mono">${p.startDate}</td><td class="cell-mono">${p.estEndDate}</td>
+      <td><span class="proj-reminder ${tr.cls}"><span class="proj-reminder-dot" style="background:${tr.dot}"></span>${tr.text}</span></td>
+      <td>${p.designer?`<span class="designer-tag ${designerCls(p.designer)}">${p.designer}</span>`:'<span class="cell-none">未分配</span>'}</td>
+      <td><span class="cell-none">—</span></td>
+      <td><span class="proj-fu-note"><span class="proj-fu-dot" style="background:${getFuDot(p.customerId)}"></span><span style="max-width:130px;overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:middle" title="${noteText}">${noteText||'<span class="cell-none">暂无备注</span>'}</span></span></td>
+      <td style="text-align:right" onclick="event.stopPropagation()">
+        <button class="btn btn-success btn-sm" onclick="openConfirm('${p.id}')">确认完成</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  return `<div class="page-header">
+    <h2>📐 在做项目</h2><span class="count">共 ${activeProjects.length} 个项目</span>
+    <span style="flex:1"></span>
+    ${manageMode && selectedIds.length > 0 ? `<button class="btn btn-danger btn-sm" onclick="batchDeleteActive()">删除选中 (${selectedIds.length})</button>` : ''}
+    <button class="btn ${manageMode?'btn-danger':'btn-ghost'} btn-sm" style="margin-left:8px" onclick="toggleManage()">${manageMode?'完成管理':'管理'}</button>
+  </div>
+  <div class="crm-toolbar"><button class="btn btn-primary" onclick="openAddModal()">+ 新建项目</button></div>
+  <div class="table-wrap"><table>
+    <thead><tr>
+      ${manageMode?'<th style="width:40px;text-align:center"><input type="checkbox" '+(allSelected?'checked':'')+' onclick="toggleSelectAllActive()" style="cursor:pointer"></th>':''}
+      <th>客户</th><th>小区名称</th><th>开始日期</th><th>预估完成日期</th><th>时间提醒</th><th>设计师</th><th>确认完成日期</th><th>跟进情况</th><th style="text-align:right">操作</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+function renderDone(){
+  const allSelected = doneProjects.length > 0 && doneProjects.every(p => selectedIds.includes(p.id));
+  const rows=doneProjects.length===0?`<tr><td colspan="${manageMode?'9':'8'}"><div class="empty"><span>📭</span>暂无已完成的项目</div></td></tr>`:doneProjects.map(p=>{
+    const c=getCust(p.customerId),noteText=c?.followUpNote||'';
+    const checked = selectedIds.includes(p.id);
+    return `<tr>
+      ${manageMode?`<td style="width:40px;text-align:center"><input type="checkbox" ${checked?'checked':''} onclick="event.stopPropagation();toggleSelect('${p.id}')" style="cursor:pointer"></td>`:''}
+      <td class="cell-name">${c?c.name:'?'}</td><td class="cell-community">${c?.community||'<span class="cell-none">—</span>'}</td>
+      <td class="cell-mono">${p.startDate}</td><td class="cell-mono">${p.estEndDate}</td><td class="cell-done">${p.completedDate}</td>
+      <td>${p.designer?`<span class="designer-tag ${designerCls(p.designer)}">${p.designer}</span>`:'<span class="cell-none">未分配</span>'}</td>
+      <td><span class="proj-fu-note"><span class="proj-fu-dot" style="background:${getFuDot(p.customerId)}"></span><span style="max-width:130px;overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:middle" title="${noteText}">${noteText||'<span class="cell-none">暂无备注</span>'}</span></span></td>
+      ${manageMode?'<td></td>':'<td></td>'}
+    </tr>`;
+  }).join('');
+
+  return `<div class="page-header">
+    <h2>✅ 已做项目</h2><span class="count">共 ${doneProjects.length} 个项目</span>
+    <span style="flex:1"></span>
+    ${manageMode && selectedIds.length > 0 ? `<button class="btn btn-danger btn-sm" onclick="batchDeleteDone()">删除选中 (${selectedIds.length})</button>` : ''}
+    <button class="btn ${manageMode?'btn-danger':'btn-ghost'} btn-sm" style="margin-left:8px" onclick="toggleManage()">${manageMode?'完成管理':'管理'}</button>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr>
+      ${manageMode?'<th style="width:40px;text-align:center"><input type="checkbox" '+(allSelected?'checked':'')+' onclick="toggleSelectAllDone()" style="cursor:pointer"></th>':''}
+      <th>客户</th><th>小区名称</th><th>开始日期</th><th>预估完成日期</th><th>确认完成日期</th><th>设计师</th><th>跟进情况</th>${manageMode?'<th></th>':'<th></th>'}
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+function updateBadges(){
+  document.getElementById('sideBadge').textContent=activeProjects.length;
+  document.getElementById('sideDoneBadge').textContent=doneProjects.length;
+}
+
+// ===== EDIT PROJECT MODAL (same card style as add) =====
+function openEditModal(pid){
+  editingId=pid;
+  const p=activeProjects.find(p=>p.id===pid);
+  if(!p)return;
+  const c=getCust(p.customerId);
+  document.getElementById('editCustName').value=c?.name||'';
+  document.getElementById('editCommunity').value=c?.community||'';
+  document.getElementById('editStartDate').value=p.startDate;
+  document.getElementById('editEstEndDate').value=p.estEndDate;
+  document.getElementById('editFollowUpNote').value=c?.followUpNote||'';
+  // Populate designer select
+  const sel=document.getElementById('editDesigner');
+  if(designers.length===0) sel.innerHTML='<option value="">-- 请先添加设计师 --</option>';
+  else sel.innerHTML='<option value="">-- 选择设计师 --</option>'+designers.map(d=>`<option value="${d}" ${d===p.designer?'selected':''}>${d}</option>`).join('');
+  document.getElementById('editModal').classList.add('show');
+}
+
+function closeEditModal(){document.getElementById('editModal').classList.remove('show');editingId=null}
+
+function saveEdit(){
+  if(!editingId)return;
+  const p=activeProjects.find(p=>p.id===editingId);
+  if(!p)return;
+  p.startDate=document.getElementById('editStartDate').value||p.startDate;
+  p.estEndDate=document.getElementById('editEstEndDate').value||p.estEndDate;
+  p.designer=document.getElementById('editDesigner').value||p.designer;
+  // Sync follow-up note to customer
+  const fuNote=document.getElementById('editFollowUpNote').value.trim();
+  const c=getCust(p.customerId);
+  if(c&&fuNote!==undefined){
+    c.followUpNote=fuNote;
+    if(fuNote&&!c.followUpDate)c.followUpDate=today;
+  }
+  closeEditModal();renderContent();toast('项目已更新（跟进已同步到客户管理）');
+}
+
+// ===== TAB / MANAGE / SELECTION =====
+document.querySelectorAll('.crm-sidebar-item[data-tab]').forEach(item=>{item.addEventListener('click',()=>{if(item.dataset.tab==='other')return;currentTab=item.dataset.tab;document.querySelectorAll('.crm-sidebar-item').forEach(i=>i.classList.remove('active'));item.classList.add('active');selectedIds=[];renderContent()})});
+
+function toggleManage(){manageMode=!manageMode;selectedIds=[];renderContent()}
+
+function toggleSelect(pid){
+  if(selectedIds.includes(pid)) selectedIds=selectedIds.filter(id=>id!==pid);
+  else selectedIds.push(pid);
+  renderContent();
+}
+
+function toggleSelectAllActive(){
+  if(selectedIds.length===activeProjects.length) selectedIds=[];
+  else selectedIds=activeProjects.map(p=>p.id);
+  renderContent();
+}
+
+function toggleSelectAllDone(){
+  if(selectedIds.length===doneProjects.length) selectedIds=[];
+  else selectedIds=doneProjects.map(p=>p.id);
+  renderContent();
+}
+
+function batchDeleteActive(){
+  if(selectedIds.length===0)return;
+  if(!confirm(`确定删除选中的 ${selectedIds.length} 个项目？`))return;
+  activeProjects=activeProjects.filter(p=>!selectedIds.includes(p.id));
+  selectedIds=[];renderContent();toast(`已删除 ${selectedIds.length} 个项目`);
+}
+
+function batchDeleteDone(){
+  if(selectedIds.length===0)return;
+  if(!confirm(`确定删除选中的 ${selectedIds.length} 个项目？`))return;
+  doneProjects=doneProjects.filter(p=>!selectedIds.includes(p.id));
+  selectedIds=[];renderContent();toast(`已删除 ${selectedIds.length} 个项目`);
+}
+
+// ===== ADD PROJECT MODAL =====
+function openAddModal(){
+  document.getElementById('addModal').classList.add('show');
+  document.getElementById('addCustSearch').value='';
+  document.getElementById('addCommunity').value='';
+  document.getElementById('addStartDate').value=today;
+  document.getElementById('addEstEndDate').value='';
+  document.getElementById('addFollowUpNote').value='';
+  document.getElementById('addCustDropdown').classList.remove('show');
+  selectedAddCustId='';
+  populateAddDesigners();
+}
+function closeAddModal(){document.getElementById('addModal').classList.remove('show');selectedAddCustId=''}
+
+function populateAddDesigners(){
+  const sel=document.getElementById('addDesigner');
+  if(designers.length===0) sel.innerHTML='<option value="">-- 请先添加设计师 --</option>';
+  else sel.innerHTML='<option value="">-- 选择设计师 --</option>'+designers.map(d=>`<option value="${d}">${d}</option>`).join('');
+}
+
+function onAddCustFocus(){
+  // Only show dropdown when focusing search box
+  renderAddCustDropdown(document.getElementById('addCustSearch').value);
+}
+
+function onAddCustSearch(){
+  renderAddCustDropdown(document.getElementById('addCustSearch').value);
+}
+
+function renderAddCustDropdown(filterText){
+  const dropdown=document.getElementById('addCustDropdown');
+  const q=(filterText||'').toLowerCase();
+  let list=customers.filter(c=>c.stage!=='closed'&&!activeProjects.some(p=>p.customerId===c.id));
+  if(q)list=list.filter(c=>c.name.toLowerCase().includes(q)||c.community.toLowerCase().includes(q));
+  if(list.length===0)dropdown.innerHTML='<div class="cust-option" style="color:var(--text-muted);cursor:default">无匹配客户</div>';
+  else dropdown.innerHTML=list.map(c=>`<div class="cust-option${selectedAddCustId===c.id?' selected':''}" onclick="selectAddCust('${c.id}')"><span class="name">${c.name}</span><span class="info">${c.community||'无小区'}</span></div>`).join('');
+  dropdown.classList.add('show');
+}
+
+function selectAddCust(cid){
+  if(activeProjects.some(p=>p.customerId===cid)){toast('该客户已有一个进行中的项目');return}
+  selectedAddCustId=cid;
+  const c=getCust(cid);
+  document.getElementById('addCustSearch').value=c.name+' · '+(c.community||'无小区');
+  document.getElementById('addCommunity').value=c.community||'';
+  document.getElementById('addFollowUpNote').value=c.followUpNote||'';
+  document.getElementById('addCustDropdown').classList.remove('show');
+}
+
+function addProject(){
+  if(!selectedAddCustId)return toast('请选择客户');
+  const sd=document.getElementById('addStartDate').value,ed=document.getElementById('addEstEndDate').value;
+  if(!sd)return toast('请填写开始日期');if(!ed)return toast('请填写预估完成日期');
+  const designer=document.getElementById('addDesigner').value;
+  if(!designer)return toast('请选择设计师');
+  const fuNote=document.getElementById('addFollowUpNote').value.trim();
+
+  activeProjects.push({id:'p'+Date.now(),customerId:selectedAddCustId,startDate:sd,estEndDate:ed,designer,completedDate:null});
+  // Sync follow-up note to customer
+  if(fuNote){const c=getCust(selectedAddCustId);if(c){c.followUpNote=fuNote;if(!c.followUpDate)c.followUpDate=today;}}
+  closeAddModal();renderContent();toast('项目已创建（跟进已同步到客户管理）');
+}
+
+// Click outside closes dropdown
+document.addEventListener('click',e=>{if(!e.target.closest('.cust-search-wrap'))document.getElementById('addCustDropdown').classList.remove('show')});
+
+// ===== DESIGNER MANAGEMENT =====
+function openDesignerMgr(){document.getElementById('designerModal').classList.add('show');renderDesignerList()}
+function closeDesignerMgr(){document.getElementById('designerModal').classList.remove('show')}
+function renderDesignerList(){
+  const el=document.getElementById('designerList');
+  el.innerHTML=designers.map((d,i)=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;font-size:12px;border-bottom:1px solid rgba(47,48,55,.3);color:var(--text-primary)"><span>${d}</span><button class="btn btn-danger btn-sm" onclick="deleteDesigner(${i})">✕</button></div>`).join('');
+}
+function addDesigner(){const n=document.getElementById('newDesigner').value.trim();if(!n)return toast('请输入姓名');if(designers.includes(n))return toast('已存在');designers.push(n);document.getElementById('newDesigner').value='';renderDesignerList();populateAddDesigners();toast('设计师已添加')}
+function deleteDesigner(idx){const name=designers[idx];if([...activeProjects,...doneProjects].some(p=>p.designer===name))return toast('有关联项目，无法删除');designers.splice(idx,1);renderDesignerList();populateAddDesigners();toast('设计师已删除')}
+
+// ===== CONFIRM COMPLETE =====
+function openConfirm(pid){completingId=pid;const p=activeProjects.find(p=>p.id===pid),c=getCust(p.customerId);document.getElementById('confirmInfo').innerHTML='将 <b>'+(c?.community||'项目')+'</b> 标记为已完成';document.getElementById('completeDate').value=today;document.getElementById('confirmModal').classList.add('show')}
+function closeConfirmModal(){document.getElementById('confirmModal').classList.remove('show');completingId=null}
+function confirmComplete(){const idx=activeProjects.findIndex(p=>p.id===completingId);if(idx===-1)return;const p=activeProjects[idx];p.completedDate=document.getElementById('completeDate').value||today;activeProjects.splice(idx,1);doneProjects.unshift(p);closeConfirmModal();currentTab='done';document.querySelectorAll('.crm-sidebar-item').forEach(i=>i.classList.remove('active'));document.querySelector('[data-tab="done"]').classList.add('active');renderContent();toast('✅ 项目已移至「已做项目」')}
+
+// ===== DELETE =====
+function openDelete(pid){deletingId=pid;document.getElementById('deleteInfo').innerHTML='确定删除客户 <b>'+(getCust(activeProjects.find(p=>p.id===pid)?.customerId)?.name||'?')+'</b> 的项目？';document.getElementById('deleteModal').classList.add('show')}
+function openDeleteDone(pid){deletingId=pid;document.getElementById('deleteInfo').innerHTML='确定删除客户 <b>'+(getCust(doneProjects.find(p=>p.id===pid)?.customerId)?.name||'?')+'</b> 的已做项目？';document.getElementById('deleteModal').classList.add('show')}
+function closeDeleteModal(){document.getElementById('deleteModal').classList.remove('show');deletingId=null}
+function confirmDelete(){if(deletingId){activeProjects=activeProjects.filter(p=>p.id!==deletingId);doneProjects=doneProjects.filter(p=>p.id!==deletingId);toast('项目已删除')}closeDeleteModal();renderContent()}
+
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),1800)}
+
+renderContent();
+</script>
+</body>
+</html>
