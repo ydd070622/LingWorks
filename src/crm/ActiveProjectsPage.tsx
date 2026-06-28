@@ -2,10 +2,9 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Search } from 'lucide-react'
 import type { SharedProps } from './types'
-import { avatarGrad } from './helpers'
+import { avatarGrad, today } from './helpers'
 
 export default function ActiveProjectsPage({ data, activeProjects, addProject, completeProject, deleteProject, updateProject, updateCust, setTab, designers, addDesigner, deleteDesigner }: SharedProps) {
-  const todayStr = new Date().toISOString().split('T')[0]
 
   const availableCustomers = data.customers.filter(
     c => c.stage !== 'closed' && !activeProjects.some(p => p.customerId === c.id)
@@ -22,7 +21,7 @@ export default function ActiveProjectsPage({ data, activeProjects, addProject, c
   // Add form
   const [search, setSearch] = useState('')
   const [selectedCustId, setSelectedCustId] = useState('')
-  const [addStart, setAddStart] = useState(todayStr)
+  const [addStart, setAddStart] = useState(today())
   const [addEnd, setAddEnd] = useState('')
   const [addDesignerVal, setAddDesignerVal] = useState('')
   const [addFuNote, setAddFuNote] = useState('')
@@ -37,7 +36,7 @@ export default function ActiveProjectsPage({ data, activeProjects, addProject, c
 
   // Complete / Designer
   const [completingId, setCompletingId] = useState<string | null>(null)
-  const [completedDate, setCompletedDate] = useState(todayStr)
+  const [completedDate, setCompletedDate] = useState(today())
 
   const [showDropdown, setShowDropdown] = useState(false)
 
@@ -51,14 +50,14 @@ export default function ActiveProjectsPage({ data, activeProjects, addProject, c
   const getFuDot = (custId: string) => {
     const c = data.customers.find(c => c.id === custId)
     if (!c || !c.followUpDate) return '#6b7280'
-    const diff = Math.round((new Date(c.followUpDate + 'T00:00:00').getTime() - new Date(todayStr + 'T00:00:00').getTime()) / 86400000)
+    const diff = Math.round((new Date(c.followUpDate + 'T00:00:00').getTime() - new Date(today() + 'T00:00:00').getTime()) / 86400000)
     if (diff < 0) return '#ef4444'
     if (diff === 0) return '#f97316'
     return '#3b82f6'
   }
 
   const getTimeReminder = (start: string, end: string) => {
-    const s = new Date(start + 'T00:00:00'), e = new Date(end + 'T00:00:00'), n = new Date(todayStr + 'T00:00:00')
+    const s = new Date(start + 'T00:00:00'), e = new Date(end + 'T00:00:00'), n = new Date(today() + 'T00:00:00')
     const toEnd = Math.round((e.getTime() - n.getTime()) / 86400000), toStart = Math.round((s.getTime() - n.getTime()) / 86400000)
     if (toStart > 0) return { cls: 'far', text: toStart + '天后开始', color: '#6b7280' }
     if (toEnd < 0) return { cls: 'overdue', text: '已逾期 ' + Math.abs(toEnd) + ' 天', color: '#ef4444' }
@@ -89,7 +88,7 @@ export default function ActiveProjectsPage({ data, activeProjects, addProject, c
   }
 
   // --- Add Project ---
-  const resetAdd = () => { setSearch(''); setSelectedCustId(''); setAddDesignerVal(''); setAddFuNote(''); setAddStart(todayStr); setAddEnd('') }
+  const resetAdd = () => { setSearch(''); setSelectedCustId(''); setAddDesignerVal(''); setAddFuNote(''); setAddStart(today()); setAddEnd('') }
   const handleAdd = () => {
     if (!selectedCustId) { toast.error('请选择客户'); return }
     if (!addStart) { toast.error('请填写开始日期'); return }
@@ -97,7 +96,7 @@ export default function ActiveProjectsPage({ data, activeProjects, addProject, c
     if (!addDesignerVal) { toast.error('请选择设计师'); return }
     addProject({ customerId: selectedCustId, startDate: addStart, estEndDate: addEnd, designer: addDesignerVal, completedDate: null })
     // Sync follow-up note to customer
-    if (addFuNote.trim()) { updateCust(selectedCustId, { followUpNote: addFuNote.trim(), followUpDate: selectedCust?.followUpDate || todayStr }) }
+    if (addFuNote.trim()) { updateCust(selectedCustId, { followUpNote: addFuNote.trim(), followUpDate: selectedCust?.followUpDate || today() }) }
     setShowAdd(false); resetAdd()
     toast.success('项目已创建（跟进已同步到客户管理）')
   }
@@ -117,7 +116,7 @@ export default function ActiveProjectsPage({ data, activeProjects, addProject, c
     // Sync follow-up note to customer
     if (editFuNote.trim()) {
       const c = data.customers.find(c => c.id === p.customerId)
-      updateCust(p.customerId, { followUpNote: editFuNote.trim(), followUpDate: c?.followUpDate || todayStr })
+      updateCust(p.customerId, { followUpNote: editFuNote.trim(), followUpDate: c?.followUpDate || today() })
     }
     // Set completed date → move to done
     if (editCompleteDate) {
@@ -215,7 +214,7 @@ export default function ActiveProjectsPage({ data, activeProjects, addProject, c
                     </span>
                   </td>
                   <td style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
-                    <button className="btn btn-complete btn-sm" onClick={() => { setCompletingId(p.id); setCompletedDate(todayStr) }}>确认完成</button>
+                    <button className="btn btn-complete btn-sm" onClick={() => { setCompletingId(p.id); setCompletedDate(today()) }}>确认完成</button>
                   </td>
                 </tr>
               )

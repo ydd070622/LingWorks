@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { toast } from 'sonner'
 import { CloudUpload, CloudDownload, ChevronDown, Users, FileText } from 'lucide-react'
 import type { CRMData, Customer, EnrichedCustomer, FollowUp, Project } from '../crm/types'
-import { STAGES, SOURCES, TABS, STORAGE_KEY } from '../crm/constants'
+import { STAGES, TABS, STORAGE_KEY } from '../crm/constants'
 import { today as todayStr, daysDiff } from '../crm/helpers'
 import { createDefaultData } from '../crm/defaultData'
 import Workbench from '../crm/Workbench'
@@ -32,12 +32,14 @@ export default function CRMPanel() {
 
   useEffect(() => {
     const load = async () => {
-      // 数据迁移：给老客户补新字段默认值（无感升级）
-      const migrate = (raw: CRMData): CRMData => ({
-        ...raw,
-        projects: raw.projects || [],
-        designers: raw.designers || [],
-        customers: raw.customers.map(c => {
+      // 数据迁移：给老客户补新字段默认值（无感升级），同时剥离废弃字段
+      const migrate = (raw: any): CRMData => {
+        const { accounts, notes, ...rest } = raw
+        return {
+          ...rest,
+          projects: raw.projects || [],
+          designers: raw.designers || [],
+          customers: (raw.customers || []).map((c: any) => {
           // 合同字段（仅 closed 客户）
           const contractBase = c.stage === 'closed' ? {
             contractStatus: c.contractStatus || 'signed' as const,
@@ -61,7 +63,8 @@ export default function CRMPanel() {
           }
           return { ...c, recordDate: c.recordDate || c.createdAt || '', stylePreference: c.stylePreference || '', community: c.community || '', houseArea: c.houseArea || '', ...contractBase, followUpHistory, contractArchived: c.contractArchived ?? false }
         }),
-      })
+      }
+      }
       if (window.electronAPI) {
         const saved = await window.electronAPI.getStore(STORAGE_KEY)
         if (saved && typeof saved === 'object' && Array.isArray(saved.customers)) {
@@ -97,29 +100,21 @@ export default function CRMPanel() {
 
   const ts = todayStr()
 
-  const enrichCust = useCallback((c: Customer): EnrichedCustomer => {
-    const src = SOURCES.find(s => s.id === c.source)
-    let sourceLabel = src?.label || ''
-    if (c.source === 'xiaohongshu' && c.sourceNoteId) {
-      const note = data.notes.find(n => n.id === c.sourceNoteId)
-      sourceLabel = note ? note.title : '小红书'
-    }
-    return { ...c, sourceLabel, sourceIcon: src?.icon || '📌' }
-  }, [data.notes])
+  const enrichCust = useCallback((c: Customer): EnrichedCustomer => c, [])
 
   const updateCust = useCallback((id: string, upd: Partial<Customer>) => {
     const oldCust = data.customers.find(c => c.id === id)
     let finalUpd = { ...upd }
 
-    // 跟进备注变化时——旧内容存进历史，新内容保留为当前备注
+    // 跟进备注变化时——记录新的跟进内容到历史
     if (oldCust && upd.followUpNote !== undefined && upd.followUpNote !== (oldCust.followUpNote || '') && upd.followUpHistory === undefined) {
-      const oldNote = oldCust.followUpNote || ''
-      if (oldNote.trim()) {
+      const newNote = (upd.followUpNote || '').trim()
+      if (newNote) {
         const newEntry: FollowUp = {
           id: 'fu_' + Date.now(),
           date: ts,
-          content: oldNote,  // ← 存旧内容
-          nextDate: oldCust.followUpDate || undefined,
+          content: newNote,  // 记录新内容
+          nextDate: upd.followUpDate !== undefined ? upd.followUpDate : oldCust.followUpDate || undefined,
         }
         finalUpd.followUpHistory = [...(oldCust.followUpHistory || []), newEntry]
       }
@@ -131,7 +126,6 @@ export default function CRMPanel() {
   const addCust = useCallback((cust: Partial<Customer>) => {
     const c: Customer = {
       id: 'c' + Date.now(), name: cust.name || '', phone: cust.phone || '', wechat: cust.wechat || '',
-      source: cust.source || 'xiaohongshu', sourceNoteId: cust.sourceNoteId || null,
       stage: cust.stage || 'lead', houseType: cust.houseType || '', city: cust.city || '',
       community: cust.community || '', houseArea: cust.houseArea || '',
       style: cust.style || '', recordDate: cust.recordDate || ts, stylePreference: cust.stylePreference || '',

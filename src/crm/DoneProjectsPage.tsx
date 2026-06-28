@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import type { SharedProps } from './types'
-import { avatarGrad } from './helpers'
+import { avatarGrad, today } from './helpers'
 
-export default function DoneProjectsPage({ data, doneProjects, deleteProject, designers }: SharedProps) {
-  const todayStr = new Date().toISOString().split('T')[0]
+export default function DoneProjectsPage({ data, doneProjects, deleteProject, designers, setEditingCustomer }: SharedProps) {
 
   const [manageMode, setManageMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -12,7 +11,7 @@ export default function DoneProjectsPage({ data, doneProjects, deleteProject, de
   const getFuDot = (custId: string) => {
     const c = data.customers.find(c => c.id === custId)
     if (!c || !c.followUpDate) return '#6b7280'
-    const diff = Math.round((new Date(c.followUpDate + 'T00:00:00').getTime() - new Date(todayStr + 'T00:00:00').getTime()) / 86400000)
+    const diff = Math.round((new Date(c.followUpDate + 'T00:00:00').getTime() - new Date(today() + 'T00:00:00').getTime()) / 86400000)
     if (diff < 0) return '#ef4444'
     if (diff === 0) return '#f97316'
     return '#3b82f6'
@@ -72,8 +71,8 @@ export default function DoneProjectsPage({ data, doneProjects, deleteProject, de
               const [g1, g2] = avatarGrad(c?.name || '')
               const noteText = c?.followUpNote || ''
               return (
-                <tr key={p.id}>
-                  {manageMode && <td style={{ width: 40, textAlign: 'center' }}><input type="checkbox" checked={selectedIds.includes(p.id)} onChange={() => toggleSelect(p.id)} /></td>}
+                <tr key={p.id} onClick={() => { if (manageMode) toggleSelect(p.id); else c && setEditingCustomer(c) }} style={{ cursor: 'pointer' }}>
+                  {manageMode && <td style={{ width: 40, textAlign: 'center' }} onClick={e => e.stopPropagation()}><input type="checkbox" checked={selectedIds.includes(p.id)} onChange={() => toggleSelect(p.id)} /></td>}
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span className="cell-av" style={{ background: `linear-gradient(135deg,${g1},${g2})` }}>{c?.name?.[0] || '?'}</span>

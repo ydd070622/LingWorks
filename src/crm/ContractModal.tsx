@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { X } from 'lucide-react'
 import type { Customer } from './types'
 import { STAGES, defaultPaymentPlan } from './constants'
+import { today } from './helpers'
 
 export default function ContractModal({ customers, onSaveNew, onUpdateExisting, onClose }: {
   customers: Customer[]
@@ -86,7 +87,6 @@ export default function ContractModal({ customers, onSaveNew, onUpdateExisting, 
           <button className="crm-btn-primary" onClick={() => {
             if (!form.name.trim() || !form.dealAmount) return
             const dealAmount = parseInt(form.dealAmount) || 0
-            const today = new Date().toISOString().split('T')[0]
             if (form.linkMode === 'existing' && form.linkedId) {
               // 更新已有客户，不创建重复记录
               onUpdateExisting(form.linkedId, {
@@ -96,7 +96,7 @@ export default function ContractModal({ customers, onSaveNew, onUpdateExisting, 
                 style: form.style || selectedCust?.style || '',
                 notes: form.notes,
                 contractStatus: 'signed',
-                signDate: today,
+                signDate: today(),
                 paymentPlan: defaultPaymentPlan(dealAmount),
               })
             } else {
@@ -105,13 +105,12 @@ export default function ContractModal({ customers, onSaveNew, onUpdateExisting, 
                 name: form.name,
                 phone: selectedCust?.phone || '', wechat: selectedCust?.wechat || '',
                 houseType: selectedCust?.houseType || '', city: selectedCust?.city || '',
-                source: selectedCust?.source || 'other', sourceNoteId: selectedCust?.sourceNoteId || null,
                 stage: 'closed',
                 style: form.style || selectedCust?.style || '',
                 dealAmount, notes: form.notes,
                 followUpDate: '', followUpNote: '', projectId: form.projectId || undefined,
                 contractStatus: 'signed',
-                signDate: today,
+                signDate: today(),
                 paymentPlan: defaultPaymentPlan(dealAmount),
               })
             }

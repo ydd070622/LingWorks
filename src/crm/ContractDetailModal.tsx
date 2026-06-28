@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import { X, Check, Pencil, Trash2, Plus } from 'lucide-react'
 import type { Customer, Payment } from './types'
 import { CONTRACT_STATUS, defaultPaymentPlan } from './constants'
+import { today } from './helpers'
 
 export default function ContractDetailModal({ contract, onSave, onDelete, onArchive, onClose }: {
   contract: Customer
@@ -32,8 +33,6 @@ export default function ContractDetailModal({ contract, onSave, onDelete, onArch
   const ratio = dealAmount > 0 ? (totalPaid / dealAmount * 100) : 0
   const isOwed = ratio < 100 && form.contractStatus === 'done'
 
-  const todayStr = () => new Date().toISOString().split('T')[0]
-
   const doSave = (overrides?: Partial<Customer>) => {
     if (!form.name.trim() || !form.dealAmount) return
     onSave(contract.id, {
@@ -48,7 +47,7 @@ export default function ContractDetailModal({ contract, onSave, onDelete, onArch
   }
 
   const markPaid = (p: Payment) => {
-    setPaymentPlan(prev => prev.map(x => x.id === p.id ? { ...x, paid: true, date: todayStr() } : x))
+    setPaymentPlan(prev => prev.map(x => x.id === p.id ? { ...x, paid: true, date: today() } : x))
     toast.success(`已记录收款 ¥${p.amount.toLocaleString()} · ${p.label}`)
   }
   const unmarkPaid = (p: Payment) => {
@@ -74,7 +73,7 @@ export default function ContractDetailModal({ contract, onSave, onDelete, onArch
     const p: Payment = {
       id: 'p_man_' + Date.now(),
       label: newLabel.trim(), amount: parseInt(newAmount) || 0,
-      paid: newPaid, date: newPaid ? todayStr() : '',
+      paid: newPaid, date: newPaid ? today() : '',
     }
     setPaymentPlan(prev => [...prev, p])
     setNewLabel(''); setNewAmount(''); setNewPaid(false)

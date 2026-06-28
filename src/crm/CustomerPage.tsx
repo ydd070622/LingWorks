@@ -6,7 +6,7 @@ import Fuse from 'fuse.js'
 import ExcelJS from 'exceljs'
 import type { SharedProps, Customer, EnrichedCustomer } from './types'
 import { TAG_COLORS } from './constants'
-import { avatarGrad, fuDisplay, fmtDate } from './helpers'
+import { avatarGrad, fuDisplay, fmtDate, today } from './helpers'
 
 export default function CustomerPage({ data, setEditingCustomer, enrichCust, updateCust, deleteCusts, followUpFilter, setFollowUpFilter }: SharedProps) {
   const [search, setSearch] = useState('')
@@ -69,7 +69,7 @@ export default function CustomerPage({ data, setEditingCustomer, enrichCust, upd
 
   // Date helpers for filters
   const now = new Date()
-  const daysFromNow = (n: number) => { const d = new Date(now); d.setDate(d.getDate() + n); return d.toISOString().split('T')[0] }
+  const daysFromNow = (n: number) => { const d = new Date(now); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` }
   const getMonday = (d: Date) => { const r = new Date(d); r.setDate(d.getDate() - (d.getDay() === 0 ? 6 : d.getDay() - 1)); return r }
   const fmtLocal = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
   const thisMon = getMonday(now)
@@ -154,7 +154,7 @@ export default function CustomerPage({ data, setEditingCustomer, enrichCust, upd
     const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url; a.download = `客户信息表_${new Date().toISOString().split('T')[0]}.xlsx`; a.click()
+    a.href = url; a.download = `客户信息表_${today()}.xlsx`; a.click()
     URL.revokeObjectURL(url)
   }
 
@@ -209,7 +209,7 @@ export default function CustomerPage({ data, setEditingCustomer, enrichCust, upd
           ) : (
             <>
               <button className="crm-btn-ghost" onClick={() => { setBatchMode(true) }}>管理</button>
-              <button className="crm-btn-ghost" onClick={handleDownload} title="下载为CSV表格"><Download size={13} /></button>
+              <button className="crm-btn-ghost" onClick={handleDownload} title="下载为Excel表格"><Download size={13} /></button>
               <button className="crm-btn-primary" onClick={() => onAdd()}><Plus size={14} /> 添加客户</button>
             </>
           )}

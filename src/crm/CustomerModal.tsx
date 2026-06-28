@@ -32,23 +32,20 @@ export default function CustomerModal({ customer, onSave, onDelete, onClose }: {
     const upd: Partial<Customer> & { id?: string } = {
       id: customer.id,
       ...form,
-      // 新客户默认来源为 other，已有客户保持原来源
-      source: customer.id ? (customer.source || 'other') : 'other' as const,
-      sourceNoteId: customer.sourceNoteId || null,
+      // 新客户默认归属待选，已有客户保留原归属
       ...(customer.id ? {} : { stage: 'wechat' as const }),
     }
 
-    // 跟进备注有变化时——把旧内容存进历史，新内容保留为当前备注
+    // 跟进备注有变化时——记录新的跟进内容到历史
     if (customer.id) {
       const oldNote = customer.followUpNote || ''
       const fuChanged = form.followUpNote.trim() && form.followUpNote !== oldNote
-      if (fuChanged && oldNote.trim()) {
-        const todayStr = new Date().toISOString().split('T')[0]
+      if (fuChanged) {
         const newEntry: FollowUp = {
           id: 'fu_' + Date.now(),
-          date: todayStr,
-          content: oldNote,  // ← 存的是旧内容
-          nextDate: customer.followUpDate || undefined,
+          date: today(),
+          content: form.followUpNote.trim(),  // 记录新内容
+          nextDate: form.followUpDate || undefined,
         }
         upd.followUpHistory = [...history, newEntry]
       }

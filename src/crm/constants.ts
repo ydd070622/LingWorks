@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, FileText, BarChart3, FileEdit, Hammer, CheckCircle, Archive } from 'lucide-react'
+import { LayoutDashboard, Users, FileText, BarChart3, Hammer, CheckCircle, Archive } from 'lucide-react'
 import type { Payment } from './types'
 
 export const STAGES = [
@@ -7,12 +7,6 @@ export const STAGES = [
   { id: 'communicating', label: '沟通中', icon: '🤝', dotColor: '#6366f1', cls: 'stage-communicating' },
   { id: 'followup', label: '待跟进', icon: '⏰', dotColor: '#f59e0b', cls: 'stage-followup' },
   { id: 'closed', label: '已成交', icon: '✅', dotColor: '#22c55e', cls: 'stage-closed' },
-] as const
-
-export const SOURCES = [
-  { id: 'xiaohongshu', label: '小红书笔记', icon: '📕' },
-  { id: 'referral', label: '老客户介绍', icon: '👥' },
-  { id: 'other', label: '其他', icon: '📌' },
 ] as const
 
 // 合同生命周期状态（仅成交后 stage==='closed' 时有意义），自由跳转不强制顺序
@@ -68,7 +62,6 @@ export const TABS = [
   { id: 'contracts', label: '合同管理', icon: FileText },
   { id: 'archived', label: '已完成项', icon: Archive },
   { id: 'dashboard', label: '数据看板', icon: BarChart3 },
-  { id: 'notes', label: '笔记管理', icon: FileEdit },
 ] as const
 
 export const STORAGE_KEY = 'lingworks_crm_v3'

@@ -15,16 +15,9 @@ export interface FollowUp {
   nextDate?: string // 约定的下次跟进日期（可选，YYYY-MM-DD）
 }
 
-export interface Note {
-  id: string; title: string; publishDate: string; status: 'published' | 'draft'
-  views: number; likes: number; comments: number
-  account: string
-  style: string
-}
-
 export interface Customer {
   id: string; name: string; phone: string; wechat: string
-  source: 'xiaohongshu' | 'referral' | 'other'; sourceNoteId: string | null
+  source?: string; sourceNoteId?: string | null
   stage: 'lead' | 'wechat' | 'communicating' | 'followup' | 'closed'
   houseType: string; city: string; community: string; houseArea: string; style: string
   recordDate: string; stylePreference: string
@@ -54,11 +47,9 @@ export interface Project {
   completedDate: string | null  // 确认完成日期，null=进行中，有值=已做
 }
 
-export interface CRMData { accounts: string[]; notes: Note[]; customers: Customer[]; projects: Project[]; designers: string[] }
+export interface CRMData { customers: Customer[]; projects: Project[]; designers: string[] }
 
-export interface EnrichedCustomer extends Customer {
-  sourceLabel: string; sourceIcon: string
-}
+export interface EnrichedCustomer extends Customer {}
 
 export interface SharedProps {
   data: CRMData

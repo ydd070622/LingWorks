@@ -16,8 +16,8 @@
 import type { AgentModel, ToolCall, AgentEvent } from '../types'
 import { getProviderEndpoint, AGENT_PROVIDERS } from './agent'
 import { searchWeb } from './search'
-import type { CRMData, Customer, Note } from '../crm/types'
-import { STORAGE_KEY, SOURCES } from '../crm/constants'
+import type { CRMData, Customer } from '../crm/types'
+import { STORAGE_KEY } from '../crm/constants'
 
 // ===== Agent Chat Options =====
 
@@ -55,8 +55,6 @@ async function tavilySearch(query: string, apiKey: string, signal?: AbortSignal)
   return resp.json()
 }
 
-	// ===== Dynamic CRM helpers for tool descriptions =====
-	const SOURCE_OPTIONS = SOURCES.map(s => `${s.id}(${s.label})`).join('、')
 
 // ===== Tool Definitions (OpenAI function-calling format) =====
 const TOOL_DEFS = [
@@ -451,38 +449,14 @@ const TOOL_DEFS = [
       name: 'crm_search_customers',
       description:
         '搜索或筛选CRM中的客户。' +
-        '支持按姓名/电话搜索、按来源筛选、按笔记风格筛选、按是否有跟进日期筛选。' +
-        '当用户询问"帮我查一下xx客户"、"有哪些需要跟进的客户"、"xx笔记的获客"、"xx风格笔记来了多少客户"时使用此工具。' +
-        '⚠️ 用户问"需要跟进"时，务必传 hasFollowUp: true，只有设置了跟进日期的客户才算需要跟进。' +
-        '⚠️ CRM中笔记和客户的关联：客户的 sourceNoteId 字段指向来源笔记的id。用户问"xx笔记的获客"时，先用 crm_search_notes 查笔记id，再用本工具传 query 搜客户。',
+        '支持按姓名/电话搜索、按是否有跟进日期筛选。' +
+        '当用户询问"帮我查一下xx客户"、"有哪些需要跟进的客户"时使用此工具。' +
+        '⚠️ 用户问"需要跟进"时，务必传 hasFollowUp: true，只有设置了跟进日期的客户才算需要跟进。',
       parameters: {
         type: 'object',
         properties: {
           query: { type: 'string', description: '搜索关键词，按姓名或电话模糊匹配，可选' },
-          source: { type: 'string', description: `筛选来源：${SOURCE_OPTIONS}` },
           hasFollowUp: { type: 'boolean', description: '是否只返回设置了跟进日期的客户。用户问"需要跟进"时传true。' },
-          noteStyle: { type: 'string', description: '按来源笔记的风格筛选，如"意式极简"或"法式风格"。用户问"xx风格的笔记获客"时使用。' },
-          limit: { type: 'number', description: '最多返回条数，默认10' },
-        },
-        required: [],
-      },
-    },
-  },
-  {
-    type: 'function' as const,
-    function: {
-      name: 'crm_search_notes',
-      description:
-        '搜索CRM中的笔记/文章。' +
-        '支持按标题搜索、按状态筛选、按风格筛选。返回结果包含每篇笔记带来的客户数(customerCount)和客户名单(customerNames)。' +
-        '当用户询问"有哪些笔记"、"找一下xx笔记"、"xx风格的笔记"时使用此工具。' +
-        '如果用户追问"这些笔记的获客/带来多少客户"，直接用返回的 customerCount 回答。',
-      parameters: {
-        type: 'object',
-        properties: {
-          query: { type: 'string', description: '搜索关键词，按标题模糊匹配，可选' },
-          style: { type: 'string', description: '按笔记风格筛选，如"意式极简"或"法式风格"' },
-          status: { type: 'string', description: '筛选状态：published(已发布)、draft(草稿)' },
           limit: { type: 'number', description: '最多返回条数，默认10' },
         },
         required: [],
@@ -1469,10 +1443,10 @@ async function executeTool(tc: ToolCall, options?: AgentChatOptions, signal?: Ab
     case 'crm_stats': {
       const crmData = await loadCRMData()
       if (!crmData) return JSON.stringify({ error: 'CRM 数据不可用，请先在CRM中录入数据' })
-      const { customers, notes } = crmData
+      const { customers } = crmData
       const now = new Date()
-      const todayStr = now.toISOString().split('T')[0]
-      const diffDays = (d: string) => Math.ceil((new Date(todayStr).getTime() - new Date(d).getTime()) / 86400000)
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`
+      const diffDays = (d: string) => Math.round((new Date(todayStr + 'T00:00:00').getTime() - new Date(d + 'T00:00:00').getTime()) / 86400000)
 
       const followUps = customers.filter(c => c.stage !== 'closed' && c.followUpDate && c.followUpDate.trim())
       const todayFu = followUps.filter(c => c.followUpDate === todayStr).length
@@ -1489,8 +1463,6 @@ async function executeTool(tc: ToolCall, options?: AgentChatOptions, signal?: Ab
         overdueFollowUps: overdueFu,
         closedCount: closed.length,
         totalRevenue: revenue,
-        noteCount: notes.length,
-        publishedNotes: notes.filter(n => n.status === 'published').length,
       }, null, 2)
     }
 
@@ -1503,22 +1475,14 @@ async function executeTool(tc: ToolCall, options?: AgentChatOptions, signal?: Ab
         const q = query.toLowerCase()
         results = results.filter(c => c.name.toLowerCase().includes(q) || c.phone.includes(q))
       }
-      if (args.source) results = results.filter(c => c.source === args.source)
       if (args.hasFollowUp === true) results = results.filter(c => c.stage !== 'closed' && c.followUpDate && c.followUpDate.trim())
-      if (args.noteStyle) {
-        const noteIds = crmData.notes.filter(n => n.style === args.noteStyle).map(n => n.id)
-        if (noteIds.length > 0) results = results.filter(c => noteIds.includes(c.sourceNoteId || ''))
-        else results = []
-      }
       // Sort by follow-up date (urgent first) when filtering for follow-ups
       if (args.hasFollowUp === true) results.sort((a, b) => a.followUpDate.localeCompare(b.followUpDate))
       const limit = args.limit || 10
       results = results.slice(0, limit)
 
-      const sourceLabel = (id: string) => SOURCES.find(s => s.id === id)?.label || id
-      const getNoteTitle = (noteId: string | null) => noteId ? (crmData.notes.find(n => n.id === noteId)?.title || '') : ''
-      const todayStr2 = new Date().toISOString().split('T')[0]
-      const fuDiff = (d: string) => Math.ceil((new Date(todayStr2).getTime() - new Date(d).getTime()) / 86400000)
+      const todayDate = `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}-${String(new Date().getDate()).padStart(2,'0')}`
+      const fuDiff = (d: string) => Math.round((new Date(todayDate + 'T00:00:00').getTime() - new Date(d + 'T00:00:00').getTime()) / 86400000)
 
       return JSON.stringify({
         total: results.length,
@@ -1532,7 +1496,6 @@ async function executeTool(tc: ToolCall, options?: AgentChatOptions, signal?: Ab
           }
           return ({
             name: c.name, phone: c.phone,
-            source: getNoteTitle(c.sourceNoteId) || sourceLabel(c.source),
             wechat: c.wechat,
             city: c.city, community: c.community, houseArea: c.houseArea,
             stylePreference: c.stylePreference, style: c.style,
@@ -1543,37 +1506,6 @@ async function executeTool(tc: ToolCall, options?: AgentChatOptions, signal?: Ab
             notes: c.notes?.slice(0, 200) || undefined,
             createdAt: c.createdAt, updatedAt: c.updatedAt,
           })
-        }),
-      }, null, 2)
-    }
-
-    case 'crm_search_notes': {
-      const crmData = await loadCRMData()
-      if (!crmData) return JSON.stringify({ error: 'CRM 数据不可用' })
-      let results = [...crmData.notes]
-      const query = args.query?.trim()
-      if (query) {
-        const q = query.toLowerCase()
-        results = results.filter(n => n.title.toLowerCase().includes(q))
-      }
-      if (args.status) results = results.filter(n => n.status === args.status)
-      if (args.style) results = results.filter(n => n.style === args.style)
-      const limit = args.limit || 10
-      results = results.slice(0, limit)
-
-      return JSON.stringify({
-        total: results.length,
-        notes: results.map(n => {
-          const linkedCustomers = crmData.customers.filter(c => c.sourceNoteId === n.id)
-          return {
-            title: n.title, status: n.status === 'published' ? '已发布' : '草稿',
-            publishDate: n.publishDate || undefined,
-            style: n.style || undefined,
-            customerCount: linkedCustomers.length,
-            customerNames: linkedCustomers.length > 0 ? linkedCustomers.map(c => c.name) : undefined,
-            views: n.views, likes: n.likes, comments: n.comments,
-            account: n.account,
-          }
         }),
       }, null, 2)
     }

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import type { SharedProps, FollowUp, Customer } from './types'
-import { avatarGrad, fmtDate } from './helpers'
+import { avatarGrad, fmtDate, today } from './helpers'
 import { TAG_COLORS } from './constants'
 
 type SubKey = 'overdue' | 'today' | 'tomorrow' | 'dayAfter'
@@ -18,7 +18,6 @@ function subLabel(key: SubKey) {
 export default function Workbench({ data, followUps, closedCusts, updateCust, setEditingCustomer, setTab, setFollowUpFilter }: SharedProps) {
   const active = data.customers.filter(c => c.stage !== 'closed')
   const closed = closedCusts.length
-  const today = new Date().toISOString().split('T')[0]
 
   // Natural weeks (Mon-Sun) — local-date-safe
   function fmtLocal(d: Date) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` }
@@ -82,17 +81,16 @@ export default function Workbench({ data, followUps, closedCusts, updateCust, se
     if (expandedFuId === id) { setExpandedFuId(null); return }
     setExpandedFuId(id)
     setFuNote('')
-    setFuDate(date || today)
+    setFuDate(date || today())
   }
 
   const markDone = (id: string) => {
     const cust = data.customers.find(c => c.id === id)
     const existingHistory = cust?.followUpHistory ?? []
-    const todayStr = new Date().toISOString().split('T')[0]
     updateCust(id, {
       followUpDate: '',
       followUpNote: cust?.followUpNote || '',
-      followUpHistory: [...existingHistory, { id: 'fu_' + Date.now(), date: todayStr, content: '已完成跟进', nextDate: undefined }],
+      followUpHistory: [...existingHistory, { id: 'fu_' + Date.now(), date: today(), content: '已完成跟进', nextDate: undefined }],
     })
     toast.success(`已标记完成 · ${cust?.name || ''}`)
   }
@@ -100,9 +98,8 @@ export default function Workbench({ data, followUps, closedCusts, updateCust, se
   const doneFU = (id: string, newStage?: string) => {
     const cust = data.customers.find(c => c.id === id)
     const existingHistory = cust?.followUpHistory ?? []
-    const todayStr = new Date().toISOString().split('T')[0]
     const newEntry: FollowUp = {
-      id: 'fu_' + Date.now(), date: todayStr,
+      id: 'fu_' + Date.now(), date: today(),
       content: fuNote || (newStage === 'closed' ? '已成交' : '完成跟进'),
       nextDate: newStage === 'closed' ? undefined : (fuDate || undefined),
     }

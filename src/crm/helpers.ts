@@ -1,9 +1,16 @@
 import { AVATAR_GRADS } from './constants'
 
-export function today(): string { return new Date().toISOString().split('T')[0] }
+// 返回本地时区的今天日期字符串 YYYY-MM-DD
+export function today(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
+// 计算两个日期（YYYY-MM-DD，本地时区）之间的天数差
 export function daysDiff(d1: string, d2: string): number {
-  return Math.ceil((new Date(d1).getTime() - new Date(d2).getTime()) / 86400000)
+  const a = new Date(d1 + 'T00:00:00')
+  const b = new Date(d2 + 'T00:00:00')
+  return Math.round((a.getTime() - b.getTime()) / 86400000)
 }
 
 export function fmtDate(d: string): string {
