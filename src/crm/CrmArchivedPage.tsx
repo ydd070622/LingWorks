@@ -4,7 +4,7 @@ import type { SharedProps } from './types'
 import { TAG_COLORS } from './constants'
 import { avatarGrad, fuDisplay, fmtDate } from './helpers'
 
-export default function CrmArchivedPage({ data, updateCust }: SharedProps) {
+export default function CrmArchivedPage({ data, updateCust, setEditingCustomer }: SharedProps) {
   const archived = data.customers.filter(c => !!c.archived)
 
   const [manageMode, setManageMode] = useState(false)
@@ -51,8 +51,8 @@ export default function CrmArchivedPage({ data, updateCust }: SharedProps) {
               const fu = fuDisplay(c.followUpDate || null)
               const [g1, g2] = avatarGrad(c.name)
               return (
-                <tr key={c.id}>
-                  {manageMode && <td style={{ width: 36, textAlign: 'center' }}><input type="checkbox" checked={selectedIds.includes(c.id)} onChange={() => toggleSelect(c.id)} /></td>}
+                <tr key={c.id} onClick={() => { if (manageMode) toggleSelect(c.id); else setEditingCustomer(c) }} style={{ cursor: 'pointer' }}>
+                  {manageMode && <td style={{ width: 36, textAlign: 'center' }} onClick={e => e.stopPropagation()}><input type="checkbox" checked={selectedIds.includes(c.id)} onChange={() => toggleSelect(c.id)} /></td>}
                   <td>
                     <div className="crm-td-name">
                       <div className="crm-avatar crm-avatar-sm" style={{ background: `linear-gradient(135deg,${g1},${g2})` }}>{c.name[0]}</div>

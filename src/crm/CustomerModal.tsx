@@ -56,7 +56,7 @@ export default function CustomerModal({ customer, onSave, onDelete, onClose }: {
   }
 
   return (
-    <div className="crm-modal-overlay" onClick={onClose}>
+    <div className="crm-modal-overlay">
       <div className="crm-modal crm-modal-lg" onClick={e => e.stopPropagation()}>
         <div className="crm-modal-header">
           <span className="crm-modal-title">{customer.id ? '编辑客户' : '添加客户'}</span>

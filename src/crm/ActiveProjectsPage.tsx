@@ -225,7 +225,7 @@ export default function ActiveProjectsPage({ data, activeProjects, addProject, c
 
       {/* ═══ Add Modal ═══ */}
       {showAdd && (
-        <div className="proj-modal-overlay" onClick={() => { setShowAdd(false); resetAdd() }}>
+        <div className="proj-modal-overlay">
           <div className="proj-modal" onClick={e => e.stopPropagation()}>
             <h3>新建项目</h3>
             <label>客户 <span className="proj-hint">（点击搜索框后出现下拉列表）</span></label>
@@ -279,7 +279,7 @@ export default function ActiveProjectsPage({ data, activeProjects, addProject, c
 
       {/* ═══ Edit Modal ═══ */}
       {showEdit && editingId && (
-        <div className="proj-modal-overlay" onClick={() => { setShowEdit(false); setEditingId(null) }}>
+        <div className="proj-modal-overlay">
           <div className="proj-modal" onClick={e => e.stopPropagation()}>
             <h3>编辑项目</h3>
             {(() => {
@@ -321,7 +321,7 @@ export default function ActiveProjectsPage({ data, activeProjects, addProject, c
 
       {/* ═══ Designer Manager ═══ */}
       {showDesignerMgr && (
-        <div className="proj-modal-overlay" onClick={() => setShowDesignerMgr(false)}>
+        <div className="proj-modal-overlay">
           <div className="proj-modal proj-modal-sm" onClick={e => e.stopPropagation()}>
             <h3>管理设计师</h3>
             <label>添加新设计师</label>
@@ -351,7 +351,7 @@ export default function ActiveProjectsPage({ data, activeProjects, addProject, c
 
       {/* ═══ Confirm Complete ═══ */}
       {completingId && (
-        <div className="proj-modal-overlay" onClick={() => setCompletingId(null)}>
+        <div className="proj-modal-overlay">
           <div className="proj-modal proj-modal-sm" style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
             <h3>确认完成项目</h3>
             <p className="proj-confirm-hint">

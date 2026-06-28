@@ -4,7 +4,7 @@ import type { SharedProps } from './types'
 import { avatarGrad, fmtDate } from './helpers'
 import { CONTRACT_STATUS } from './constants'
 
-export default function ContractArchivePage({ archivedContracts, restoreContract, restoreContracts }: SharedProps) {
+export default function ContractArchivePage({ archivedContracts, restoreContract, restoreContracts, setViewingContract }: SharedProps) {
   const [manageMode, setManageMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
 
@@ -55,8 +55,8 @@ export default function ContractArchivePage({ archivedContracts, restoreContract
               const ratio = (c.dealAmount || 1) > 0 ? (paid / (c.dealAmount || 1) * 100) : 0
               const st = statusLabel(c.contractStatus)
               return (
-                <tr key={c.id}>
-                  {manageMode && <td style={{ width: 36, textAlign: 'center' }}><input type="checkbox" checked={selectedIds.includes(c.id)} onChange={() => toggleSelect(c.id)} /></td>}
+                <tr key={c.id} onClick={() => { if (manageMode) toggleSelect(c.id); else setViewingContract(c) }} style={{ cursor: 'pointer' }}>
+                  {manageMode && <td style={{ width: 36, textAlign: 'center' }} onClick={e => e.stopPropagation()}><input type="checkbox" checked={selectedIds.includes(c.id)} onChange={() => toggleSelect(c.id)} /></td>}
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span className="cell-av" style={{ background: `linear-gradient(135deg,${avatarGrad(c.name)[0]},${avatarGrad(c.name)[1]})` }}>{c.name[0]}</span>

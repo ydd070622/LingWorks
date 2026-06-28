@@ -20,7 +20,7 @@ export default function ContractModal({ customers, onSaveNew, onUpdateExisting, 
   const selectedCust = customers.find(c => c.id === form.linkedId)
 
   return (
-    <div className="crm-modal-overlay" onClick={onClose}>
+    <div className="crm-modal-overlay">
       <div className="crm-modal crm-modal-sm" onClick={e => e.stopPropagation()}>
         <div className="crm-modal-header">
           <span className="crm-modal-title">新增合同</span>

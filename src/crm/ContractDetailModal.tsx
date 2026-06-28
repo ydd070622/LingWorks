@@ -88,7 +88,7 @@ export default function ContractDetailModal({ contract, onSave, onDelete, onArch
   const contractStatus = CONTRACT_STATUS.find(s => s.id === form.contractStatus)
 
   return (
-    <div className="crm-modal-overlay" onClick={onClose}>
+    <div className="crm-modal-overlay">
       <div className="crm-modal crm-modal-lg" onClick={e => e.stopPropagation()}>
         <div className="crm-modal-header">
           <span className="crm-modal-title">合同详情 · {contract.name}</span>
