@@ -97,8 +97,8 @@
 ### 从源码构建
 
 ```bash
-git clone https://github.com/ydd070622/AI-Web-Tools.git
-cd AI-Web-Tools
+git clone https://github.com/ydd070622/LingWorks.git
+cd LingWorks
 npm install
 npm run dev     # 启动开发环境
 npm run build   # 构建生产版本
