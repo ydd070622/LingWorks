@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { toast } from 'sonner'
-import { CloudUpload, CloudDownload, ChevronDown, Users, FileText } from 'lucide-react'
-import type { CRMData, Customer, EnrichedCustomer, FollowUp, Project } from '../crm/types'
+import { CloudUpload, CloudDownload, ChevronDown } from 'lucide-react'
+import type { CRMData, Customer, EnrichedCustomer, FollowUp, Project, BuildProject, DiscardedProject, CompletedBuildProject, ManualDesignProjectInput, ManualBuildProjectInput } from '../crm/types'
 import { STAGES, TABS, STORAGE_KEY } from '../crm/constants'
 import { today as todayStr, daysDiff } from '../crm/helpers'
 import { createDefaultData } from '../crm/defaultData'
@@ -16,6 +16,12 @@ import ActiveProjectsPage from '../crm/ActiveProjectsPage'
 import DoneProjectsPage from '../crm/DoneProjectsPage'
 import CrmArchivedPage from '../crm/CrmArchivedPage'
 import ContractArchivePage from '../crm/ContractArchivePage'
+import BuildOverviewPage from '../crm/BuildOverviewPage'
+import BuildProgressPage from '../crm/BuildProgressPage'
+import DesignOverviewPage from '../crm/DesignOverviewPage'
+import DesignProgressPage from '../crm/DesignProgressPage'
+import DiscardedProjectsPage from '../crm/DiscardedProjectsPage'
+import CompletedBuildsPage from '../crm/CompletedBuildsPage'
 
 export default function CRMPanel() {
   const [data, setData] = useState<CRMData>(createDefaultData)
@@ -29,7 +35,7 @@ export default function CRMPanel() {
   const [syncStatus, setSyncStatus] = useState({ configured: false, lastSyncAt: '' })
   const [syncing, setSyncing] = useState(false)
   const [followUpFilter, setFollowUpFilter] = useState<{ start: string; end: string } | null>(null)
-  const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set(['archived']))
+  const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const load = async () => {
@@ -53,7 +59,15 @@ export default function CRMPanel() {
         // Clean orphan projects (customer deleted but project remains)
         const custIds = new Set(customers.map(c => c.id))
         const projects = (raw.projects || []).filter((p: any) => custIds.has(p.customerId))
-        return { ...rest, projects, designers: raw.designers || [], customers }
+        return {
+          ...rest,
+          projects,
+          buildProjects: raw.buildProjects || [],
+          discardedProjects: raw.discardedProjects || [],
+          completedBuildProjects: raw.completedBuildProjects || [],
+          designers: raw.designers || [],
+          customers,
+        }
       }
       if (window.electronAPI) {
         const saved = await window.electronAPI.getStore(STORAGE_KEY)
@@ -185,8 +199,19 @@ export default function CRMPanel() {
     (data.projects || []).filter(p => !p.completedDate),
     [data.projects])
   const meetingProjects = useMemo(() =>
-    (data.projects || []).filter(p => !!p.completedDate).sort((a, b) => b.completedDate!.localeCompare(a.completedDate!)),
-    [data.projects])
+    (data.projects || [])
+      .filter(p => !!p.completedDate && data.customers.find(c => c.id === p.customerId)?.stage !== 'closed')
+      .sort((a, b) => b.completedDate!.localeCompare(a.completedDate!)),
+    [data.projects, data.customers])
+  const buildProjects = useMemo(() =>
+    (data.buildProjects || []),
+    [data.buildProjects])
+  const discardedProjects = useMemo(() =>
+    (data.discardedProjects || []),
+    [data.discardedProjects])
+  const completedBuildProjects = useMemo(() =>
+    (data.completedBuildProjects || []),
+    [data.completedBuildProjects])
 
   const archivedContracts = useMemo(() =>
     data.customers.filter(c => c.stage === 'closed' && c.contractArchived === true),
@@ -230,6 +255,247 @@ export default function CRMPanel() {
   const updateProject = useCallback((id: string, upd: Partial<Project>) => {
     persist({ ...data, projects: (data.projects || []).map(p => p.id === id ? { ...p, ...upd } : p) })
   }, [data, persist])
+
+  const discardProject = useCallback((projectId: string, reason: string, note: string) => {
+    const project = (data.projects || []).find(p => p.id === projectId)
+    if (!project) return
+    const cust = data.customers.find(c => c.id === project.customerId)
+    const discarded: DiscardedProject = {
+      id: 'discard_' + Date.now(),
+      customerId: project.customerId,
+      projectId: project.id,
+      stage: project.completedDate ? 'meeting' : 'planning',
+      projectName: cust?.community ? `${cust.community}·${cust.name}` : `${cust?.name || '客户'}方案`,
+      designer: project.designer,
+      reason,
+      note,
+      discardedDate: ts,
+      originalProject: project,
+    }
+    persist({
+      ...data,
+      projects: (data.projects || []).filter(p => p.id !== projectId),
+      discardedProjects: [...(data.discardedProjects || []), discarded],
+    })
+    toast.success('方案已归档到「废弃方案」')
+    setExpandedMenus(prev => new Set(prev).add('archived'))
+    setTab('discarded-projects')
+  }, [data, persist, ts])
+
+  const discardDesignProject = useCallback((customerId: string, reason: string, note: string) => {
+    const cust = data.customers.find(c => c.id === customerId)
+    if (!cust) return
+    const project = (data.projects || []).find(p => p.customerId === customerId)
+    const discarded: DiscardedProject = {
+      id: 'discard_' + Date.now(),
+      customerId,
+      projectId: project?.id,
+      stage: 'design',
+      projectName: cust.community ? `${cust.community}·${cust.name}` : `${cust.name}设计项目`,
+      designer: project?.designer || '',
+      reason,
+      note,
+      discardedDate: ts,
+      originalProject: project,
+    }
+    persist({
+      ...data,
+      customers: data.customers.map(c => c.id === customerId ? { ...c, contractArchived: true } : c),
+      discardedProjects: [...(data.discardedProjects || []), discarded],
+    })
+    toast.success('设计项目已归档到「废弃方案」')
+    setExpandedMenus(prev => new Set(prev).add('archived'))
+    setTab('discarded-projects')
+  }, [data, persist, ts])
+
+  const restoreDiscardedProject = useCallback((id: string) => {
+    const item = (data.discardedProjects || []).find(p => p.id === id)
+    if (!item) return
+    const restoredProject: Project = item.originalProject || {
+      id: item.projectId || 'proj_' + Date.now(),
+      customerId: item.customerId,
+      startDate: ts,
+      estEndDate: ts,
+      designer: item.designer,
+      completedDate: item.stage === 'planning' ? null : ts,
+    }
+    persist({
+      ...data,
+      customers: data.customers.map(c => c.id === item.customerId ? { ...c, contractArchived: false } : c),
+      projects: item.stage === 'design' ? (data.projects || []) : [...(data.projects || []), restoredProject],
+      discardedProjects: (data.discardedProjects || []).filter(p => p.id !== id),
+    })
+    toast.success('废弃方案已恢复')
+    setTab(item.stage === 'planning' ? 'planning' : item.stage === 'meeting' ? 'meeting' : 'design-overview')
+  }, [data, persist, ts])
+
+  const addManualDesignProject = useCallback((input: ManualDesignProjectInput) => {
+    const now = Date.now()
+    const customerId = 'c_manual_design_' + now
+    const projectId = 'proj_manual_design_' + now
+    const signDate = input.signDate || ts
+    const remark = input.remark.trim()
+    const customer: Customer = {
+      id: customerId,
+      name: input.name.trim(),
+      phone: input.phone.trim(),
+      wechat: '',
+      stage: 'closed',
+      houseType: '',
+      city: '',
+      community: input.community.trim(),
+      houseArea: input.houseArea.trim(),
+      style: '',
+      recordDate: signDate,
+      stylePreference: '',
+      followUpDate: '',
+      followUpNote: '',
+      dealAmount: null,
+      notes: '手动补录设计项目',
+      createdAt: ts,
+      updatedAt: ts,
+      contractStatus: 'signed',
+      paymentPlan: [],
+      signDate,
+      followUpHistory: [],
+      contractArchived: false,
+      designProjectName: input.projectName.trim(),
+      designProjectDetail: input.detail.trim(),
+      designRemark: remark,
+      designRemarkHistory: remark ? [{ id: 'design_remark_' + now, date: ts, content: remark }] : [],
+      manualSource: 'design',
+    }
+    const project: Project = {
+      id: projectId,
+      customerId,
+      startDate: signDate,
+      estEndDate: input.planEndDate || '',
+      designer: input.designer.trim(),
+      completedDate: ts,
+    }
+    persist({
+      ...data,
+      customers: [...data.customers, customer],
+      projects: [...(data.projects || []), project],
+    })
+    toast.success('补录设计项目已添加')
+    setExpandedMenus(prev => new Set(prev).add('design'))
+    setTab('design-overview')
+  }, [data, persist, ts])
+
+  const addBuildProject = useCallback((bp: Omit<BuildProject, 'id'>) => {
+    const p: BuildProject = { id: 'bproj_' + Date.now(), ...bp }
+    persist({ ...data, buildProjects: [...(data.buildProjects || []), p] })
+    toast.success('施工项目已添加')
+  }, [data, persist])
+
+  const updateBuildProject = useCallback((id: string, upd: Partial<BuildProject>) => {
+    persist({ ...data, buildProjects: (data.buildProjects || []).map(p => p.id === id ? { ...p, ...upd } : p) })
+  }, [data, persist])
+
+  const deleteBuildProject = useCallback((id: string) => {
+    if (!confirm('确定删除此施工项目？')) return
+    persist({ ...data, buildProjects: (data.buildProjects || []).filter(p => p.id !== id) })
+    toast.success('施工项目已删除')
+  }, [data, persist])
+
+  const createBuildProjectFromDesign = useCallback((customerId: string, planEndDate?: string, detail?: string) => {
+    const cust = data.customers.find(c => c.id === customerId)
+    if (!cust) return
+    if ((data.buildProjects || []).some(p => p.customerId === customerId)) {
+      toast.error('该客户已有施工项目')
+      return
+    }
+    const designProject = (data.projects || []).find(p => p.customerId === customerId)
+    const p: BuildProject = {
+      id: 'bproj_' + Date.now(),
+      customerId,
+      projectName: cust.community ? `${cust.community}·${cust.name}` : `${cust.name}施工项目`,
+      designer: designProject?.designer || '',
+      signDate: cust.signDate || ts,
+      planEndDate: planEndDate || '',
+      progress: '',
+      detail: detail || '由设计阶段转入施工',
+    }
+    persist({ ...data, buildProjects: [...(data.buildProjects || []), p] })
+    toast.success('已转入施工阶段')
+    setExpandedMenus(prev => new Set(prev).add('build'))
+    setTab('build-overview')
+  }, [data, persist, ts])
+
+  const addManualBuildProject = useCallback((input: ManualBuildProjectInput) => {
+    const now = Date.now()
+    const customerId = 'c_manual_build_' + now
+    const signDate = input.signDate || ts
+    const customer: Customer = {
+      id: customerId,
+      name: input.name.trim(),
+      phone: input.phone.trim(),
+      wechat: '',
+      stage: 'closed',
+      houseType: '',
+      city: '',
+      community: input.community.trim(),
+      houseArea: input.houseArea.trim(),
+      style: '',
+      recordDate: signDate,
+      stylePreference: '',
+      followUpDate: '',
+      followUpNote: '',
+      dealAmount: null,
+      notes: '手动补录施工项目',
+      createdAt: ts,
+      updatedAt: ts,
+      contractStatus: 'signed',
+      paymentPlan: [],
+      signDate,
+      followUpHistory: [],
+      contractArchived: false,
+      designProjectName: input.projectName.trim(),
+      manualSource: 'build',
+    }
+    const project: BuildProject = {
+      id: 'bproj_manual_' + now,
+      customerId,
+      projectName: input.projectName.trim(),
+      designer: input.designer.trim(),
+      signDate,
+      planEndDate: input.planEndDate || '',
+      progress: '',
+      detail: input.remark.trim(),
+      thisWeekWork: input.thisWeekWork.trim(),
+      thisWeekMaterials: input.thisWeekMaterials.trim(),
+      thisWeekIssues: input.thisWeekIssues.trim(),
+      nextWeekPlan: input.nextWeekPlan.trim(),
+      remark: input.remark.trim(),
+    }
+    persist({
+      ...data,
+      customers: [...data.customers, customer],
+      buildProjects: [...(data.buildProjects || []), project],
+    })
+    toast.success('补录施工项目已添加')
+    setExpandedMenus(prev => new Set(prev).add('build'))
+    setTab('build-overview')
+  }, [data, persist, ts])
+
+  const completeBuildProject = useCallback((id: string, note?: string) => {
+    const project = (data.buildProjects || []).find(p => p.id === id)
+    if (!project) return
+    const completed: CompletedBuildProject = {
+      ...project,
+      completedDate: ts,
+      completedNote: note || '',
+    }
+    persist({
+      ...data,
+      buildProjects: (data.buildProjects || []).filter(p => p.id !== id),
+      completedBuildProjects: [...(data.completedBuildProjects || []), completed],
+    })
+    toast.success('施工项目已归档到「完工归档」')
+    setExpandedMenus(prev => new Set(prev).add('archived'))
+    setTab('completed-builds')
+  }, [data, persist, ts])
 
   const archiveContract = useCallback((id: string) => {
     updateCust(id, { contractArchived: true })
@@ -313,20 +579,44 @@ export default function CRMPanel() {
     return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
   }
 
-  const sharedProps = { data, followUps, todayCount, overdueCount, closedCusts, leadCount: 0, enrichCust, updateCust, addCust, deleteCust, deleteCusts, moveCust, viewMode, setViewMode, setEditingCustomer, setEditingContract, setViewingContract, setTab, followUpFilter, setFollowUpFilter, planningProjects, meetingProjects, addProject, completeProject, uncompleteProject, signContract, deleteProject, updateProject, designers: data.designers || [], addDesigner, deleteDesigner, archivedContracts, archiveContract, restoreContract, restoreContracts, rollbackContract }
+  const sharedProps = { data, followUps, todayCount, overdueCount, closedCusts, leadCount: 0, enrichCust, updateCust, addCust, deleteCust, deleteCusts, moveCust, viewMode, setViewMode, setEditingCustomer, setEditingContract, setViewingContract, setTab, followUpFilter, setFollowUpFilter, planningProjects, meetingProjects, buildProjects, addProject, completeProject, uncompleteProject, signContract, deleteProject, updateProject, discardProject, discardDesignProject, restoreDiscardedProject, discardedProjects, addManualDesignProject, addBuildProject, updateBuildProject, deleteBuildProject, createBuildProjectFromDesign, addManualBuildProject, completeBuildProject, completedBuildProjects, designers: data.designers || [], addDesigner, deleteDesigner, archivedContracts, archiveContract, restoreContract, restoreContracts, rollbackContract }
 
-  const sidebarItems = [
-    { ...TABS[0], badge: todayCount > 0 ? { count: todayCount, cls: overdueCount > 0 ? 'danger' : 'warn' } : null },
-    { ...TABS[1], badge: null },
-    { ...TABS[2], badge: planningProjects.length > 0 ? { count: planningProjects.length, cls: 'info' } : null },
-    { ...TABS[3], badge: meetingProjects.length > 0 ? { count: meetingProjects.length, cls: 'warn' } : null },
-    { ...TABS[4], badge: closedCusts.length > 0 ? { count: closedCusts.length, cls: 'success' } : null },
-    { ...TABS[5], badge: null, children: [
-      { id: 'archived-customers', label: '客户归档', icon: Users },
-      { id: 'archived-contracts', label: '合同归档', icon: FileText },
-    ] as const },
-    { ...TABS[6], badge: null },
-  ]
+  const getTabBadge = (id: string): { count: number; cls: string } | null => {
+    const activeContracts = closedCusts.filter(c => !c.contractArchived)
+    const counts: Record<string, { count: number; cls: string }> = {
+      workbench: { count: todayCount, cls: overdueCount > 0 ? 'danger' : 'warn' },
+      planning: { count: planningProjects.length, cls: 'info' },
+      meeting: { count: meetingProjects.length, cls: 'info' },
+      'design-overview': { count: activeContracts.length, cls: 'info' },
+      'design-progress': { count: activeContracts.length, cls: 'info' },
+      'build-overview': { count: buildProjects.length, cls: 'info' },
+      'build-progress': { count: buildProjects.length, cls: 'info' },
+      contracts: { count: closedCusts.length, cls: 'success' },
+      'archived-customers': { count: data.customers.filter(c => !!c.archived).length, cls: 'info' },
+      'discarded-projects': { count: discardedProjects.length, cls: 'danger' },
+      'completed-builds': { count: completedBuildProjects.length, cls: 'success' },
+      'archived-contracts': { count: archivedContracts.length, cls: 'info' },
+    }
+    const badge = counts[id]
+    return badge && badge.count > 0 ? badge : null
+  }
+
+  const sidebarItems = TABS.map((item, i) => {
+    let badge: { count: number; cls: string } | null = null
+    if (i === 0) badge = getTabBadge('workbench')
+    else if (i === 2) badge = (planningProjects.length + meetingProjects.length) > 0 ? { count: planningProjects.length + meetingProjects.length, cls: 'info' } : null
+    else if (i === 3) {
+      const count = closedCusts.filter(c => !c.contractArchived).length
+      badge = count > 0 ? { count, cls: 'info' } : null
+    }
+    else if (i === 4) badge = buildProjects.length > 0 ? { count: buildProjects.length, cls: 'info' } : null
+    else if (i === 5) badge = getTabBadge('contracts')
+    else if (i === 6) {
+      const count = data.customers.filter(c => !!c.archived).length + discardedProjects.length + completedBuildProjects.length + archivedContracts.length
+      badge = count > 0 ? { count, cls: 'info' } : null
+    }
+    return { ...item, badge }
+  })
 
   return (
     <div className="crm-panel">
@@ -373,16 +663,16 @@ export default function CRMPanel() {
                   )}
                   {item.badge && <span className={`crm-sidebar-badge ${item.badge.cls}`}>{item.badge.count}</span>}
                 </div>
-                {hasChildren && isExpanded && item.children!.map((child: { id: string; label: string; icon: any }) => {
-                  const ChildIcon = child.icon
+                {hasChildren && isExpanded && item.children!.map((child: { id: string; label: string }) => {
+                  const childBadge = getTabBadge(child.id)
                   return (
                     <div
                       key={child.id}
                       className={`crm-sidebar-item crm-sidebar-sub-item ${tab === child.id ? 'active' : ''}`}
                       onClick={() => setTab(child.id)}
                     >
-                      <span className="crm-sidebar-item-icon"><ChildIcon size={13} /></span>
                       <span>{child.label}</span>
+                      {childBadge && <span className={`crm-sidebar-badge ${childBadge.cls}`}>{childBadge.count}</span>}
                     </div>
                   )
                 })}
@@ -412,8 +702,14 @@ export default function CRMPanel() {
           {tab === 'customers' && <CustomerPage {...sharedProps} />}
           {tab === 'planning' && <ActiveProjectsPage {...sharedProps} batchUpdate={batchUpdate} />}
           {tab === 'meeting' && <DoneProjectsPage {...sharedProps} />}
+          {tab === 'design-overview' && <DesignOverviewPage {...sharedProps} />}
+          {tab === 'design-progress' && <DesignProgressPage {...sharedProps} />}
+          {tab === 'build-overview' && <BuildOverviewPage {...sharedProps} />}
+          {tab === 'build-progress' && <BuildProgressPage {...sharedProps} />}
           {tab === 'contracts' && <ContractPage {...sharedProps} />}
           {tab === 'archived-customers' && <CrmArchivedPage {...sharedProps} />}
+          {tab === 'discarded-projects' && <DiscardedProjectsPage {...sharedProps} />}
+          {tab === 'completed-builds' && <CompletedBuildsPage {...sharedProps} />}
           {tab === 'archived-contracts' && <ContractArchivePage {...sharedProps} />}
           {tab === 'dashboard' && <DashboardPage {...sharedProps} />}
         </div>
@@ -430,8 +726,8 @@ export default function CRMPanel() {
         <ContractModal
           customers={data.customers.filter(c => meetingProjects.some(p => p.customerId === c.id))}
           prefillId={contractPrefillCustomerId}
-          onSaveNew={cust => { addCust(cust); setEditingContract(false); setContractPrefillCustomerId(null) }}
-          onUpdateExisting={(id, upd) => { updateCust(id, upd); setEditingContract(false); setContractPrefillCustomerId(null) }}
+          onSaveNew={cust => { addCust(cust); setEditingContract(false); setContractPrefillCustomerId(null); setExpandedMenus(prev => new Set(prev).add('design')); setTab('design-overview') }}
+          onUpdateExisting={(id, upd) => { updateCust(id, upd); setEditingContract(false); setContractPrefillCustomerId(null); setExpandedMenus(prev => new Set(prev).add('design')); setTab('design-overview') }}
           onClose={() => { setEditingContract(false); setContractPrefillCustomerId(null) }}
         />
       )}

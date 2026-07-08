@@ -15,6 +15,24 @@ export interface FollowUp {
   nextDate?: string // 约定的下次跟进日期（可选，YYYY-MM-DD）
 }
 
+export interface DiscardedProject {
+  id: string
+  customerId: string
+  projectId?: string
+  stage: 'planning' | 'meeting' | 'design'
+  projectName: string
+  designer: string
+  reason: string
+  note: string
+  discardedDate: string
+  originalProject?: Project
+}
+
+export interface CompletedBuildProject extends BuildProject {
+  completedDate: string
+  completedNote?: string
+}
+
 export interface Customer {
   id: string; name: string; phone: string; wechat: string
   source?: string; sourceNoteId?: string | null
@@ -35,6 +53,41 @@ export interface Customer {
   archived?: boolean
   // —— 合同归档（手动归档已完工合同）——
   contractArchived?: boolean
+  // —— 设计阶段项目备注（独立于合同备注）——
+  designProjectDetail?: string
+  designProjectName?: string
+  designRemark?: string
+  designRemarkHistory?: FollowUp[]
+  manualSource?: 'design' | 'build'
+}
+
+export interface ManualDesignProjectInput {
+  projectName: string
+  name: string
+  phone: string
+  community: string
+  houseArea: string
+  designer: string
+  signDate: string
+  planEndDate: string
+  detail: string
+  remark: string
+}
+
+export interface ManualBuildProjectInput {
+  projectName: string
+  name: string
+  phone: string
+  community: string
+  houseArea: string
+  designer: string
+  signDate: string
+  planEndDate: string
+  thisWeekWork: string
+  thisWeekMaterials: string
+  thisWeekIssues: string
+  nextWeekPlan: string
+  remark: string
 }
 
 // 项目管理：平面规划中 / 待约洽谈
@@ -47,7 +100,31 @@ export interface Project {
   completedDate: string | null  // 确认完成日期，null=平面规划中，有值=待约洽谈
 }
 
-export interface CRMData { customers: Customer[]; projects: Project[]; designers: string[] }
+// 施工项目管理
+export interface BuildProject {
+  id: string                 // 'bproj_' + Date.now()
+  projectName: string        // 项目名称
+  customerId: string         // 业主 ID
+  designer: string           // 设计师
+  signDate: string           // 签约起始时间 YYYY-MM-DD
+  planEndDate: string        // 计划完成时间 YYYY-MM-DD
+  progress: string           // 进度（预留）
+  detail: string             // 项目详情
+  thisWeekWork?: string       // 本周施工内容
+  thisWeekMaterials?: string  // 本周主材进场
+  thisWeekIssues?: string     // 本周遗留问题
+  nextWeekPlan?: string       // 下周计划施工内容
+  remark?: string             // 备注
+}
+
+export interface CRMData {
+  customers: Customer[]
+  projects: Project[]
+  buildProjects: BuildProject[]
+  discardedProjects: DiscardedProject[]
+  completedBuildProjects: CompletedBuildProject[]
+  designers: string[]
+}
 
 export interface EnrichedCustomer extends Customer {}
 
@@ -84,10 +161,24 @@ export interface SharedProps {
   addDesigner: (name: string) => void
   deleteDesigner: (name: string) => void
   updateProject: (id: string, upd: Partial<Project>) => void
+  discardProject: (projectId: string, reason: string, note: string) => void
+  discardDesignProject: (customerId: string, reason: string, note: string) => void
+  restoreDiscardedProject: (id: string) => void
+  discardedProjects: DiscardedProject[]
+  addManualDesignProject: (input: ManualDesignProjectInput) => void
   // 合同归档
   archivedContracts: Customer[]
   archiveContract: (id: string) => void
   restoreContract: (id: string) => void
   restoreContracts: (ids: string[]) => void
   rollbackContract: (id: string) => void
+  // 施工项目
+  buildProjects: BuildProject[]
+  addBuildProject: (p: Omit<BuildProject, 'id'>) => void
+  updateBuildProject: (id: string, upd: Partial<BuildProject>) => void
+  deleteBuildProject: (id: string) => void
+  createBuildProjectFromDesign: (customerId: string, planEndDate?: string, detail?: string) => void
+  addManualBuildProject: (input: ManualBuildProjectInput) => void
+  completeBuildProject: (id: string, note?: string) => void
+  completedBuildProjects: CompletedBuildProject[]
 }

@@ -15,5 +15,5 @@ export function createDefaultData(): CRMData {
     { id: 'c8', name: '吴女士', phone: '131****0123', wechat: 'wu_design', stage: 'followup', houseType: '两室一厅', city: '广州', community: '', houseArea: '', style: '守中法式', recordDate: '2026-06-08', stylePreference: '法式风格', followUpDate: fmt(now), followUpNote: '今天联系确认方案', dealAmount: null, notes: '预算有限，基础改造。发了方案还没反馈。', createdAt: '2026-06-08', updatedAt: '2026-06-13', followUpHistory: [{ id: 'fu_c8_1', date: '2026-06-13', content: '今天联系确认方案，发了方案还没反馈', nextDate: fmt(now) }] },
     { id: 'c9', name: '林先生', phone: '130****3456', wechat: '', stage: 'lead', houseType: '', city: '北京', community: '', houseArea: '', style: '守中法式', recordDate: '2026-06-16', stylePreference: '法式风格', followUpDate: '', followUpNote: '', dealAmount: null, notes: '私信问案例，发了案例集未回复。', createdAt: '2026-06-16', updatedAt: '2026-06-16' },
   ]
-  return { customers, projects: [], designers: [] }
+  return { customers, projects: [], buildProjects: [], discardedProjects: [], completedBuildProjects: [], designers: [] }
 }

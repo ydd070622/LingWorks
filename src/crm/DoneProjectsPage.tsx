@@ -7,7 +7,7 @@ import ExcelJS from 'exceljs'
 import type { SharedProps } from './types'
 import { avatarGrad, today } from './helpers'
 
-export default function DoneProjectsPage({ data, meetingProjects, uncompleteProject, signContract, designers, setEditingCustomer, followUpFilter, setFollowUpFilter }: SharedProps) {
+export default function DoneProjectsPage({ data, meetingProjects, uncompleteProject, signContract, designers, setEditingCustomer, followUpFilter, setFollowUpFilter, discardProject }: SharedProps) {
 
   const [manageMode, setManageMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -84,6 +84,13 @@ export default function DoneProjectsPage({ data, meetingProjects, uncompleteProj
     selectedIds.forEach(id => uncompleteProject(id))
     setSelectedIds([]); setManageMode(false)
     toast.success('已退档 ' + selectedIds.length + ' 个项目')
+  }
+
+  const handleDiscard = (id: string) => {
+    const reason = prompt('废弃原因：', '业主一直未到店')
+    if (!reason) return
+    const note = prompt('废弃备注：', '已完成方案但未签约，归档为废弃方案。') || ''
+    discardProject(id, reason, note)
   }
 
   const allSelected = filtered.length > 0 && filtered.every(p => selectedIds.includes(p.id))
@@ -247,7 +254,8 @@ export default function DoneProjectsPage({ data, meetingProjects, uncompleteProj
                   </td>
                   <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
                     <button className="btn btn-ghost btn-sm" style={{ marginRight: 6 }} onClick={() => { if (confirm('确定将此项目退回「平面规划中」？')) uncompleteProject(p.id) }}>退档</button>
-                    <button className="btn btn-complete btn-sm" onClick={() => { if (confirm('确定签订合同？将跳转到合同管理页面。')) signContract(p.id) }}>合同签订</button>
+                    <button className="btn btn-complete btn-sm" onClick={() => signContract(p.id)}>合同签订</button>
+                    <button className="btn btn-danger btn-sm" style={{ marginLeft: 6 }} onClick={() => handleDiscard(p.id)}>废弃方案</button>
                   </td>
                 </tr>
               )

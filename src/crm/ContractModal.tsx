@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { X, Search } from 'lucide-react'
 import type { Customer } from './types'
-import { STAGES, defaultPaymentPlan } from './constants'
+import { defaultPaymentPlan } from './constants'
 import { today } from './helpers'
 
 export default function ContractModal({ customers, prefillId, onSaveNew, onUpdateExisting, onClose }: {
@@ -21,6 +21,7 @@ export default function ContractModal({ customers, prefillId, onSaveNew, onUpdat
   // Search + dropdown state
   const [search, setSearch] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
+  const [pickingCustomer, setPickingCustomer] = useState(!prefillId)
 
   // Auto-select prefill customer
   useEffect(() => {
@@ -31,11 +32,14 @@ export default function ContractModal({ customers, prefillId, onSaveNew, onUpdat
         h('linkedId', c.id)
         h('name', c.name)
         h('style', c.style)
+        setPickingCustomer(false)
       }
     }
   }, [prefillId])
 
   const selectedCust = customers.find(c => c.id === form.linkedId)
+
+  const shouldShowDropdown = pickingCustomer && showDropdown
 
   const filteredCustomers = search.trim()
     ? customers.filter(c =>
@@ -52,6 +56,7 @@ export default function ContractModal({ customers, prefillId, onSaveNew, onUpdat
     h('style', c.style)
     setSearch('')
     setShowDropdown(false)
+    setPickingCustomer(false)
   }
 
   const selectNewCustomer = () => {
@@ -61,6 +66,7 @@ export default function ContractModal({ customers, prefillId, onSaveNew, onUpdat
     h('style', '')
     setSearch('')
     setShowDropdown(false)
+    setPickingCustomer(false)
   }
 
   return (
@@ -72,45 +78,52 @@ export default function ContractModal({ customers, prefillId, onSaveNew, onUpdat
         </div>
         <div className="crm-modal-body">
           <div className="crm-form-group">
-            <label className="crm-form-label">关联客户 * <span className="proj-hint">（点击搜索框后出现下拉列表）</span></label>
-            <div className="proj-search-wrap">
-              <Search size={14} className="proj-search-icon" />
-              <input className="proj-search-input" placeholder="搜索客户姓名/电话/小区..."
-                value={form.linkMode === 'existing' && selectedCust
-                  ? `${selectedCust.name} · ${selectedCust.phone || '无电话'}`
-                  : search
-                }
-                onChange={e => {
-                  setSearch(e.target.value)
-                  if (form.linkMode === 'existing' && form.linkedId) {
-                    h('linkedId', ''); h('name', ''); h('style', '')
-                  }
-                  setShowDropdown(true)
-                }}
-                onFocus={() => setShowDropdown(true)}
-                onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
-                autoComplete="off"
-              />
-              {showDropdown && (
-                <div className="proj-dropdown">
-                  {filteredCustomers.length === 0 ? (
-                    <div className="proj-dropdown-empty">无匹配客户</div>
-                  ) : (
-                    filteredCustomers.map(c => (
-                      <div key={c.id} className="proj-dropdown-item" onClick={() => selectCustomer(c)}>
-                        <span className="proj-dropdown-name">{c.name}</span>
-                        <span className="proj-dropdown-info">{c.phone || '无电话'} · {c.community || '无小区'}</span>
-                      </div>
-                    ))
-                  )}
-                  <div className="proj-dropdown-item" style={{ borderTop: '1px solid var(--border)', color: 'var(--accent)' }}
-                    onClick={selectNewCustomer}>
-                    <span className="proj-dropdown-name">+ 新建客户</span>
-                    <span className="proj-dropdown-info">创建一个新客户并关联合同</span>
-                  </div>
+            <label className="crm-form-label">关联客户 *</label>
+            {selectedCust && !pickingCustomer ? (
+              <div className="crm-linked-customer">
+                <div>
+                  <div className="crm-linked-customer-name">{selectedCust.name}</div>
+                  <div className="crm-linked-customer-meta">{selectedCust.phone || '无电话'} · {selectedCust.community || '无小区'}</div>
                 </div>
-              )}
-            </div>
+                <button className="crm-btn-ghost-xs" onClick={() => { setPickingCustomer(true); setSearch(''); setShowDropdown(true) }}>重选</button>
+              </div>
+            ) : (
+              <div className="proj-search-wrap">
+                <Search size={14} className="proj-search-icon" />
+                <input className="proj-search-input" placeholder="搜索客户姓名/电话/小区..."
+                  value={search}
+                  onChange={e => {
+                    setSearch(e.target.value)
+                    if (form.linkMode === 'existing' && form.linkedId) {
+                      h('linkedId', ''); h('name', ''); h('style', '')
+                    }
+                    setShowDropdown(true)
+                  }}
+                  onFocus={() => setShowDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
+                  autoComplete="off"
+                />
+                {shouldShowDropdown && (
+                  <div className="proj-dropdown">
+                    {filteredCustomers.length === 0 ? (
+                      <div className="proj-dropdown-empty">无匹配客户</div>
+                    ) : (
+                      filteredCustomers.map(c => (
+                        <div key={c.id} className="proj-dropdown-item" onClick={() => selectCustomer(c)}>
+                          <span className="proj-dropdown-name">{c.name}</span>
+                          <span className="proj-dropdown-info">{c.phone || '无电话'} · {c.community || '无小区'}</span>
+                        </div>
+                      ))
+                    )}
+                    <div className="proj-dropdown-item" style={{ borderTop: '1px solid var(--border)', color: 'var(--accent)' }}
+                      onClick={selectNewCustomer}>
+                      <span className="proj-dropdown-name">+ 新建客户</span>
+                      <span className="proj-dropdown-info">创建一个新客户并关联合同</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             {form.linkMode === 'new' && (
               <input className="crm-form-input" style={{ marginTop: 8 }} value={form.name}
                 onChange={e => h('name', e.target.value)} placeholder="输入新客户姓名" />
@@ -119,7 +132,7 @@ export default function ContractModal({ customers, prefillId, onSaveNew, onUpdat
           <div className="crm-form-row">
             <div className="crm-form-group">
               <label className="crm-form-label">合同编号</label>
-              <input className="crm-form-input" value={form.projectId} onChange={e => h('projectId', e.target.value)} placeholder="如 P2026-001" />
+              <input className="crm-form-input" value={form.projectId} onChange={e => h('projectId', e.target.value)} placeholder="如 P2026-001" autoFocus={!!prefillId} />
             </div>
             <div className="crm-form-group">
               <label className="crm-form-label">归属账号</label>

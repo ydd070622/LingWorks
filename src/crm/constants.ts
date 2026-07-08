@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, FileText, BarChart3, Hammer, CheckCircle, Archive } from 'lucide-react'
+import { LayoutDashboard, Users, FileText, BarChart3, Archive, Phone, PenTool, Wrench } from 'lucide-react'
 import type { Payment } from './types'
 
 export const STAGES = [
@@ -54,14 +54,29 @@ export const TAG_COLORS: Record<string, { bg: string; text: string }> = {
   '法式风格': { bg: '#f59e0b', text: '#fff' },
 }
 
-export const TABS = [
+export const TABS: { id: string; label: string; icon: any; children?: { id: string; label: string }[] }[] = [
   { id: 'workbench', label: '工作台', icon: LayoutDashboard },
   { id: 'customers', label: '客户管理', icon: Users },
-  { id: 'planning', label: '平面规划中', icon: Hammer },
-  { id: 'meeting', label: '待约洽谈', icon: CheckCircle },
+  { id: 'pre-comm', label: '前期沟通', icon: Phone, children: [
+    { id: 'planning', label: '平面规划中' },
+    { id: 'meeting', label: '待约洽谈' },
+  ]},
+  { id: 'design', label: '设计阶段', icon: PenTool, children: [
+    { id: 'design-overview', label: '项目总览表' },
+    { id: 'design-progress', label: '项目跟进表' },
+  ]},
+  { id: 'build', label: '施工阶段', icon: Wrench, children: [
+    { id: 'build-overview', label: '项目总览表' },
+    { id: 'build-progress', label: '进度管理表' },
+  ]},
   { id: 'contracts', label: '合同管理', icon: FileText },
-  { id: 'archived', label: '已完成项', icon: Archive },
+  { id: 'archived', label: '归档中心', icon: Archive, children: [
+    { id: 'archived-customers', label: '客户归档' },
+    { id: 'discarded-projects', label: '废弃方案' },
+    { id: 'completed-builds', label: '完工归档' },
+    { id: 'archived-contracts', label: '合同归档' },
+  ]},
   { id: 'dashboard', label: '数据看板', icon: BarChart3 },
-] as const
+]
 
 export const STORAGE_KEY = 'lingworks_crm_v3'

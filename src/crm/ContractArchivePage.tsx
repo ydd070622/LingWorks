@@ -42,12 +42,12 @@ export default function ContractArchivePage({ archivedContracts, restoreContract
           <thead>
             <tr>
               {manageMode && <th style={{ width: 36, textAlign: 'center' }}><input type="checkbox" checked={archivedContracts.length > 0 && selectedIds.length === archivedContracts.length} onChange={toggleAll} /></th>}
-              <th>客户</th><th>合同金额</th><th>回款进度</th><th>状态</th><th>签约日期</th><th>操作</th>
+              <th>客户</th><th>合同金额</th><th>回款进度</th><th>状态</th><th>签约日期</th><th>备注</th><th>操作</th>
             </tr>
           </thead>
           <tbody>
             {archivedContracts.length === 0 && (
-              <tr><td colSpan={manageMode ? 7 : 6}><div className="crm-empty"><span>📭</span>暂无归档合同</div></td></tr>
+              <tr><td colSpan={manageMode ? 8 : 7}><div className="crm-empty"><span>📭</span>暂无归档合同</div></td></tr>
             )}
             {archivedContracts.map(c => {
               const payments = c.paymentPlan || []
@@ -72,6 +72,7 @@ export default function ContractArchivePage({ archivedContracts, restoreContract
                   </td>
                   <td><span className={`crm-badge crm-badge-${st.color}`}>{st.icon} {st.label}</span></td>
                   <td className="crm-muted">{fmtDate(c.signDate || c.updatedAt)}</td>
+                  <td className="crm-notes-cell">{c.notes || <span className="crm-muted">—</span>}</td>
                   <td>
                     <button className="crm-btn-ghost-xs" onClick={e => { e.stopPropagation(); if (confirm('确定退档此合同？将回到合同管理页面。')) { restoreContract(c.id) } }}>
                       退档

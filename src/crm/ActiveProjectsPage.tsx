@@ -7,7 +7,7 @@ import ExcelJS from 'exceljs'
 import type { SharedProps, CRMData } from './types'
 import { avatarGrad, today } from './helpers'
 
-export default function ActiveProjectsPage({ data, planningProjects, batchUpdate, addProject, completeProject, deleteProject, updateProject, updateCust, setTab, designers, addDesigner, deleteDesigner, followUpFilter, setFollowUpFilter }: SharedProps & { batchUpdate: (fn: (data: CRMData) => CRMData) => void }) {
+export default function ActiveProjectsPage({ data, planningProjects, batchUpdate, addProject, completeProject, deleteProject, updateProject, updateCust, setTab, designers, addDesigner, deleteDesigner, followUpFilter, setFollowUpFilter, discardProject }: SharedProps & { batchUpdate: (fn: (data: CRMData) => CRMData) => void }) {
 
   const availableCustomers = data.customers.filter(
     c => c.stage !== 'closed' && !planningProjects.some(p => p.customerId === c.id)
@@ -138,6 +138,13 @@ export default function ActiveProjectsPage({ data, planningProjects, batchUpdate
     selectedIds.forEach(id => deleteProject(id))
     setSelectedIds([]); setManageMode(false)
     toast.success(`已删除 ${selectedIds.length} 个项目`)
+  }
+
+  const handleDiscard = (id: string) => {
+    const reason = prompt('废弃原因：', '业主暂不需要')
+    if (!reason) return
+    const note = prompt('废弃备注：', '方案废弃，保留历史记录。') || ''
+    discardProject(id, reason, note)
   }
 
   // --- Add Project ---
@@ -394,8 +401,9 @@ export default function ActiveProjectsPage({ data, planningProjects, batchUpdate
                       <span style={{ maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block', verticalAlign: 'middle' }} title={noteText}>{noteText || <span className="cell-none">暂无备注</span>}</span>
                     </span>
                   </td>
-                  <td style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                  <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
                     <button className="btn btn-complete btn-sm" onClick={() => { setCompletingId(p.id); setCompletedDate(today()) }}>确认完成</button>
+                    <button className="btn btn-danger btn-sm" style={{ marginLeft: 6 }} onClick={() => handleDiscard(p.id)}>废弃方案</button>
                   </td>
                 </tr>
               )
@@ -539,7 +547,6 @@ export default function ActiveProjectsPage({ data, planningProjects, batchUpdate
                     <div className="proj-date-wrap">
                       <input type="date" className="proj-input" value={editCompleteDate || ''} onChange={e => {
                         setEditCompleteDate(e.target.value)
-                        if (e.target.value) setShowEditCompleteConfirm(true)
                       }} />
                       <span className="proj-date-icon">📅</span>
                     </div>
